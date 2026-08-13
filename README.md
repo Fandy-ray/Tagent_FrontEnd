@@ -57,7 +57,7 @@ PUBLIC_OPENNOTEBOOK_URL=http://localhost:8502
 
 未配置时，笔记本页默认使用 `http://localhost:8502/notebooks`。
 
-OpenNoteBook本地配置教程详见：https://gitee.com/kevin-zhengscuter/fixed_open_notebook。
+OpenNoteBook本地配置教程详见：https://gitee.com/kevin-zhengscuter/fixed_open_notebook
 
 ## 项目结构
 
