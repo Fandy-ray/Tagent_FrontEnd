@@ -1,48 +1,270 @@
 <script lang="ts">
-	type MockChat = {
+	import FolderModal, { type FolderFormValue } from './FolderModal.svelte';
+	import RecursiveFolder from './RecursiveFolder.svelte';
+	import UserMenu from '$lib/components/layout/UserMenu.svelte';
+	import type { QaFolder } from '$lib/data/qaFolders';
+
+	export type ChatSummary = {
 		id: string;
 		title: string;
-		timeRange: '昨天' | '过去 7 天';
-		timeLabel: string;
+		updatedAt: number;
+		folderId?: string | null;
 	};
+
+	type NavKey = 'chats' | 'notes' | 'workspace';
 
 	type Props = {
 		activeChatId?: string | null;
+		selectedFolderId?: string | null;
+		chats?: ChatSummary[];
+		folders?: QaFolder[];
+		modelId?: string;
+		userName?: string;
+		avatarText?: string;
+		activeNav?: NavKey;
+		onHome?: () => void;
 		onNewChat?: () => void;
 		onSelectChat?: (chatId: string) => void;
+		onSelectFolder?: (folderId: string | null) => void;
 		onClose?: () => void;
+		onOpenNotes?: () => void;
+		onOpenWorkspace?: () => void;
+		onSettings?: () => void;
+		onArchivedChats?: () => void;
+		onPlayground?: () => void;
+		onAdmin?: () => void;
+		onShortcuts?: () => void;
+		onSignOut?: () => void;
+		statusEmoji?: string;
+		statusMessage?: string;
+		onStatusSave?: (value: { emoji: string; message: string }) => void;
+		onToast?: (message: string) => void;
+		onCreateFolder?: (value: FolderFormValue, parentId?: string | null) => void;
+		onUpdateFolder?: (folderId: string, value: FolderFormValue) => void;
+		onDeleteFolder?: (folderId: string, deleteContents: boolean) => void;
+		onToggleFolderExpanded?: (folderId: string) => void;
+		onMoveChatToFolder?: (chatId: string, folderId: string | null) => void;
+		onMoveFolder?: (folderId: string, parentId: string | null) => void;
+		onExportFolder?: (folderId: string) => void;
+		knowledgeOptions?: { id: string; name: string }[];
+		onOpenWorkspaceKnowledge?: () => void;
 	};
 
 	let {
 		activeChatId = null,
+		selectedFolderId = null,
+		chats = [],
+		folders = [],
+		modelId = '',
+		userName = 'Tagent',
+		avatarText = 'T',
+		activeNav = 'chats',
+		onHome = () => {},
 		onNewChat = () => {},
 		onSelectChat = () => {},
-		onClose = () => {}
+		onSelectFolder = () => {},
+		onClose = () => {},
+		onOpenNotes = () => {},
+		onOpenWorkspace = () => {},
+		onSettings = () => {},
+		onArchivedChats = () => {},
+		onPlayground = () => {},
+		onAdmin = () => {},
+		onShortcuts = () => {},
+		onSignOut = () => {},
+		statusEmoji = '',
+		statusMessage = '',
+		onStatusSave = () => {},
+		onToast = () => {},
+		onCreateFolder = () => {},
+		onUpdateFolder = () => {},
+		onDeleteFolder = () => {},
+		onToggleFolderExpanded = () => {},
+		onMoveChatToFolder = () => {},
+		onMoveFolder = () => {},
+		onExportFolder = () => {},
+		knowledgeOptions = [],
+		onOpenWorkspaceKnowledge = () => {}
 	}: Props = $props();
 
-	const mockChats: MockChat[] = [
-		{
-			id: 'chat-1',
-			title: '离散事件仿真的基本概念',
-			timeRange: '昨天',
-			timeLabel: '22小时前'
-		},
-		{
-			id: 'chat-2',
-			title: '系统模型的分类',
-			timeRange: '昨天',
-			timeLabel: '22小时前'
-		},
-		{
-			id: 'chat-3',
-			title: '连续系统仿真方法',
-			timeRange: '过去 7 天',
-			timeLabel: '5天前'
-		}
-	];
+	let searchOpen = $state(false);
+	let searchQuery = $state('');
+	let showFolders = $state(
+		typeof localStorage !== 'undefined'
+			? localStorage.getItem('sidebar-folders-folder-state') !== 'false'
+			: true
+	);
+	let folderModalOpen = $state(false);
+	let folderModalMode = $state<'create' | 'rename' | 'sub'>('create');
+	let folderModalTargetId = $state<string | null>(null);
+	let folderModalParentId = $state<string | null>(null);
+	let folderModalDraft = $state<FolderFormValue>({
+		name: '',
+		systemPrompt: '',
+		backgroundImageUrl: null,
+		knowledgeItems: []
+	});
+	let openFolderMenuId = $state<string | null>(null);
+	let openChatMenuId = $state<string | null>(null);
+	let dragOverFolderId = $state<string | null>(null);
+	let deleteConfirmOpen = $state(false);
+	let deleteTargetId = $state<string | null>(null);
+	let deleteContents = $state(true);
 
-	const yesterdayChats = mockChats.filter((chat) => chat.timeRange === '昨天');
-	const recentChats = mockChats.filter((chat) => chat.timeRange === '过去 7 天');
+	const sortedChats = $derived([...chats].sort((a, b) => b.updatedAt - a.updatedAt));
+
+	const filteredChats = $derived(
+		searchQuery.trim()
+			? sortedChats.filter((chat) => chat.title.includes(searchQuery.trim()))
+			: sortedChats
+	);
+
+	const rootFolders = $derived(
+		folders
+			.filter((f) => !f.parentId)
+			.sort((a, b) => a.name.localeCompare(b.name, 'zh-CN', { numeric: true }))
+	);
+
+	const chatsInFolder = (folderId: string) =>
+		filteredChats.filter((chat) => chat.folderId === folderId);
+
+	const unfiledChats = $derived(filteredChats.filter((chat) => !chat.folderId));
+
+	const startOfToday = () => {
+		const date = new Date();
+		date.setHours(0, 0, 0, 0);
+		return date.getTime();
+	};
+
+	const DAY = 24 * 60 * 60 * 1000;
+
+	const groupOf = (chat: ChatSummary) => {
+		const today = startOfToday();
+		if (chat.updatedAt >= today) return '今天';
+		if (chat.updatedAt >= today - DAY) return '昨天';
+		if (chat.updatedAt >= today - 7 * DAY) return '过去 7 天';
+		return '更早';
+	};
+
+	const timeLabel = (chat: ChatSummary) => {
+		const minutes = Math.floor((Date.now() - chat.updatedAt) / 60000);
+		if (minutes < 1) return '刚刚';
+		if (minutes < 60) return `${minutes}分钟前`;
+		if (minutes < 60 * 24) return `${Math.floor(minutes / 60)}小时前`;
+		return `${Math.floor(minutes / (60 * 24))}天前`;
+	};
+
+	const GROUP_ORDER = ['今天', '昨天', '过去 7 天', '更早'];
+
+	const groupedUnfiledChats = $derived(
+		GROUP_ORDER.map((label) => ({
+			label,
+			items: unfiledChats.filter((chat) => groupOf(chat) === label)
+		})).filter((group) => group.items.length > 0)
+	);
+
+	const navClass = (key: NavKey) =>
+		`group flex w-full items-center gap-3 rounded-2xl px-2.5 py-2 outline-none transition hover:bg-gray-900 ${
+			activeNav === key ? 'bg-gray-900 text-white' : 'text-gray-200'
+		}`;
+
+	const openCreateFolder = (parentId: string | null = null) => {
+		folderModalMode = parentId ? 'sub' : 'create';
+		folderModalParentId = parentId;
+		folderModalTargetId = null;
+		folderModalDraft = { name: '', systemPrompt: '', backgroundImageUrl: null, knowledgeItems: [] };
+		folderModalOpen = true;
+		openFolderMenuId = null;
+	};
+
+	const openRenameFolder = (folder: QaFolder) => {
+		folderModalMode = 'rename';
+		folderModalTargetId = folder.id;
+		folderModalParentId = folder.parentId;
+		folderModalDraft = {
+			name: folder.name,
+			systemPrompt: folder.systemPrompt ?? '',
+			backgroundImageUrl: folder.backgroundImageUrl ?? null,
+			knowledgeItems: folder.knowledgeItems ?? []
+		};
+		folderModalOpen = true;
+		openFolderMenuId = null;
+	};
+
+	const submitFolderModal = (value: FolderFormValue) => {
+		if (folderModalMode === 'rename' && folderModalTargetId) {
+			onUpdateFolder(folderModalTargetId, value);
+			return;
+		}
+		onCreateFolder(value, folderModalParentId);
+		showFolders = true;
+		localStorage.setItem('sidebar-folders-folder-state', 'true');
+	};
+
+	const askDeleteFolder = (folderId: string) => {
+		deleteTargetId = folderId;
+		deleteContents = true;
+		deleteConfirmOpen = true;
+		openFolderMenuId = null;
+	};
+
+	const confirmDeleteFolder = () => {
+		if (!deleteTargetId) return;
+		onDeleteFolder(deleteTargetId, deleteContents);
+		deleteConfirmOpen = false;
+		deleteTargetId = null;
+	};
+
+	const onChatDragStart = (event: DragEvent, chatId: string) => {
+		event.dataTransfer?.setData('application/x-chat-id', chatId);
+		event.dataTransfer?.setData(
+			'text/plain',
+			JSON.stringify({ type: 'chat', id: chatId })
+		);
+		if (event.dataTransfer) event.dataTransfer.effectAllowed = 'move';
+	};
+
+	const onFolderDragStart = (event: DragEvent, folderId: string) => {
+		event.dataTransfer?.setData(
+			'text/plain',
+			JSON.stringify({ type: 'folder', id: folderId })
+		);
+		event.dataTransfer?.setData('application/x-folder-id', folderId);
+		if (event.dataTransfer) event.dataTransfer.effectAllowed = 'move';
+	};
+
+	const onFolderDragOver = (event: DragEvent, folderId: string) => {
+		event.preventDefault();
+		dragOverFolderId = folderId;
+	};
+
+	const onFolderDragLeave = (folderId: string) => {
+		if (dragOverFolderId === folderId) dragOverFolderId = null;
+	};
+
+	const onFolderDrop = (event: DragEvent, folderId: string) => {
+		event.preventDefault();
+		dragOverFolderId = null;
+		const raw =
+			event.dataTransfer?.getData('text/plain') ||
+			event.dataTransfer?.getData('application/x-chat-id') ||
+			'';
+		try {
+			const parsed = JSON.parse(raw) as { type?: string; id?: string };
+			if (parsed.type === 'folder' && parsed.id) {
+				onMoveFolder(parsed.id, folderId);
+				return;
+			}
+			if (parsed.type === 'chat' && parsed.id) {
+				onMoveChatToFolder(parsed.id, folderId);
+				return;
+			}
+		} catch {
+			// plain chat id fallback
+		}
+		const chatId = event.dataTransfer?.getData('application/x-chat-id') || raw;
+		if (chatId && !chatId.startsWith('{')) onMoveChatToFolder(chatId, folderId);
+	};
 </script>
 
 <aside
@@ -52,10 +274,11 @@
 		<button
 			type="button"
 			class="flex size-8 shrink-0 items-center justify-center rounded-xl transition hover:bg-gray-900"
-			onclick={onNewChat}
-			aria-label="新建对话"
+			onclick={onHome}
+			title="返回选择智能体"
+			aria-label="返回选择智能体"
 		>
-			<div class="flex size-6 items-center justify-center rounded-full bg-white text-[9px] font-bold text-black">
+			<div class="flex size-6 items-center justify-center rounded-full bg-white text-[8px] font-black text-black">
 				OI
 			</div>
 		</button>
@@ -63,7 +286,7 @@
 		<button
 			type="button"
 			class="min-w-0 flex-1 truncate px-1 text-left text-xs font-medium text-white"
-			onclick={onNewChat}
+			onclick={onHome}
 		>
 			系统建模与仿真智能体
 		</button>
@@ -92,7 +315,7 @@
 	</header>
 
 	<div class="min-h-0 flex-1 overflow-y-auto px-[7px] pb-3 pt-1">
-		<nav class="pb-4">
+		<nav class="pb-2">
 			<button
 				type="button"
 				id="sidebar-new-chat-button"
@@ -112,17 +335,18 @@
 					<path d="M12 20h9"></path>
 					<path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"></path>
 				</svg>
-
 				<span class="flex-1 text-left text-sm">新对话</span>
-
-				<span class="invisible rounded border border-gray-800 px-1.5 py-0.5 text-[9px] text-gray-600 group-hover:visible">
-					Ctrl K
-				</span>
 			</button>
 
 			<button
 				type="button"
+				id="sidebar-search-button"
 				class="group flex w-full items-center gap-3 rounded-2xl px-2.5 py-2 text-gray-200 outline-none transition hover:bg-gray-900"
+				onclick={() => {
+					searchOpen = !searchOpen;
+					if (!searchOpen) searchQuery = '';
+					else queueMicrotask(() => document.getElementById('sidebar-search-input')?.focus());
+				}}
 			>
 				<svg
 					class="size-[18px] shrink-0"
@@ -137,70 +361,149 @@
 					<circle cx="11" cy="11" r="7"></circle>
 					<path d="m20 20-3.5-3.5"></path>
 				</svg>
-
 				<span class="flex-1 text-left text-sm">搜索</span>
 			</button>
 
-			<a
-	href="/notebook?from=qa&model=deepseek"
-	class="flex w-full items-center gap-3 rounded-2xl px-2.5 py-2 text-gray-200 transition hover:bg-gray-900"
->
-	<svg
-		class="size-[18px] shrink-0"
-		viewBox="0 0 24 24"
-		fill="none"
-		stroke="currentColor"
-		stroke-width="2"
-		stroke-linecap="round"
-		stroke-linejoin="round"
-		aria-hidden="true"
-	>
-		<path d="M6 3h12a2 2 0 0 1 2 2v16H8a4 4 0 0 1-4-4V5a2 2 0 0 1 2-2z"></path>
-		<path d="M8 3v18"></path>
-	</svg>
-
-	<span class="text-sm">笔记</span>
-</a>
+			<button type="button" class={navClass('notes')} onclick={onOpenNotes} title="打开笔记">
+				<svg
+					class="size-[18px] shrink-0"
+					viewBox="0 0 24 24"
+					fill="none"
+					stroke="currentColor"
+					stroke-width="1.5"
+					stroke-linecap="round"
+					stroke-linejoin="round"
+					aria-hidden="true"
+				>
+					<path d="M8 2v4"></path>
+					<path d="M12 2v4"></path>
+					<path d="M16 2v4"></path>
+					<path d="M4 6h16v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6z"></path>
+					<path d="M8 12h8"></path>
+					<path d="M8 16h5"></path>
+				</svg>
+				<span class="flex-1 text-left text-sm">笔记</span>
+			</button>
 
 			<button
 				type="button"
-				class="flex w-full items-center gap-3 rounded-2xl px-2.5 py-2 text-gray-200 transition hover:bg-gray-900"
+				class={navClass('workspace')}
+				onclick={onOpenWorkspace}
+				title="打开工作空间"
 			>
 				<svg
 					class="size-[18px] shrink-0"
 					viewBox="0 0 24 24"
 					fill="none"
 					stroke="currentColor"
-					stroke-width="2"
+					stroke-width="1.5"
 					stroke-linecap="round"
 					stroke-linejoin="round"
 					aria-hidden="true"
 				>
-					<rect x="3" y="3" width="7" height="7" rx="1"></rect>
-					<rect x="14" y="3" width="7" height="7" rx="1"></rect>
-					<rect x="3" y="14" width="7" height="7" rx="1"></rect>
-					<rect x="14" y="14" width="7" height="7" rx="1"></rect>
+					<path
+						d="M13.5 16.875h3.375m0 0h3.375m-3.375 0V13.5m0 3.375v3.375M6 10.5h2.25a2.25 2.25 0 0 0 2.25-2.25V6a2.25 2.25 0 0 0-2.25-2.25H6A2.25 2.25 0 0 0 3.75 6v2.25A2.25 2.25 0 0 0 6 10.5Zm0 9.75h2.25A2.25 2.25 0 0 0 10.5 18v-2.25a2.25 2.25 0 0 0-2.25-2.25H6a2.25 2.25 0 0 0-2.25 2.25V18A2.25 2.25 0 0 0 6 20.25Zm9.75-9.75H18a2.25 2.25 0 0 0 2.25-2.25V6A2.25 2.25 0 0 0 18 3.75h-2.25A2.25 2.25 0 0 0 13.5 6v2.25a2.25 2.25 0 0 0 2.25 2.25Z"
+					></path>
 				</svg>
-
-				<span class="text-sm">工作空间</span>
+				<span class="flex-1 text-left text-sm">工作空间</span>
 			</button>
+
+			{#if searchOpen}
+				<input
+					id="sidebar-search-input"
+					class="mb-1 w-full rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2 text-sm text-gray-100 outline-none placeholder:text-gray-500 focus:border-white/20"
+					placeholder="搜索对话"
+					bind:value={searchQuery}
+				/>
+			{/if}
 		</nav>
 
+		<section class="mt-0.5 px-0.5 pb-1">
+			<div
+				class="group relative flex w-full items-center justify-between rounded-xl text-gray-400 transition hover:bg-gray-900"
+			>
+				<button
+					type="button"
+					class="flex w-full items-center gap-1.5 py-1.5 pl-2.5 text-xs font-medium"
+					onclick={() => {
+						showFolders = !showFolders;
+						localStorage.setItem('sidebar-folders-folder-state', String(showFolders));
+					}}
+				>
+					<span class="translate-y-[0.5px]">分组</span>
+				</button>
+				<button
+					type="button"
+					class="absolute right-2 z-10 flex items-center rounded-md p-0.5 text-gray-400 opacity-0 transition group-hover:opacity-100 hover:text-white"
+					title="创建分组"
+					aria-label="创建分组"
+					onclick={(e) => {
+						e.stopPropagation();
+						openCreateFolder(null);
+					}}
+				>
+					<svg class="size-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+						<path stroke-linecap="round" d="M12 5v14M5 12h14"></path>
+					</svg>
+				</button>
+			</div>
+
+			{#if showFolders}
+				{#if rootFolders.length === 0}
+					<p class="px-2.5 py-1 text-[11px] leading-4 text-gray-600">
+						点击 + 创建分组。可拖拽对话/分组进行整理，编辑里可设系统提示词与背景。
+					</p>
+				{/if}
+
+				{#each rootFolders as folder (folder.id)}
+					<RecursiveFolder
+						{folder}
+						{folders}
+						chats={filteredChats}
+						{activeChatId}
+						{selectedFolderId}
+						{dragOverFolderId}
+						openMenuId={openFolderMenuId}
+						onSelectFolder={onSelectFolder}
+						onToggleExpanded={onToggleFolderExpanded}
+						onOpenMenu={(id) => {
+							openFolderMenuId = id;
+							openChatMenuId = null;
+						}}
+						onEdit={openRenameFolder}
+						onCreateSub={(parentId) => openCreateFolder(parentId)}
+						onExport={onExportFolder}
+						onDelete={askDeleteFolder}
+						onSelectChat={onSelectChat}
+						onMoveChatOut={(chatId) => onMoveChatToFolder(chatId, null)}
+						{onChatDragStart}
+						{onFolderDragStart}
+						{onFolderDragOver}
+						{onFolderDragLeave}
+						{onFolderDrop}
+						{timeLabel}
+					/>
+				{/each}
+			{/if}
+		</section>
+
 		<section>
-			<div class="px-2.5 pb-2 text-xs font-medium text-gray-500">
-				分组
+			<div class="flex items-center justify-between px-2.5 pb-2 pt-1">
+				<div class="text-xs font-medium text-gray-500">对话</div>
+				{#if selectedFolderId}
+					<button
+						type="button"
+						class="text-[10px] text-sky-400/90 hover:text-sky-300"
+						onclick={() => onSelectFolder(null)}
+					>
+						清除筛选
+					</button>
+				{/if}
 			</div>
 
-			<div class="px-2.5 pb-2 pt-1 text-xs font-medium text-gray-500">
-				对话
-			</div>
-
-			<div class="px-2.5 pb-1.5 pt-1 text-xs font-medium text-gray-500">
-				昨天
-			</div>
-
-			<div class="space-y-0.5">
-				{#each yesterdayChats as chat (chat.id)}
+			{#if selectedFolderId}
+				{@const selectedChats = chatsInFolder(selectedFolderId)}
+				{#each selectedChats as chat (chat.id)}
 					<button
 						type="button"
 						class={`group flex w-full items-center gap-2 rounded-xl px-2.5 py-2 text-left transition ${
@@ -208,44 +511,96 @@
 								? 'bg-gray-900 text-white'
 								: 'text-gray-300 hover:bg-gray-900'
 						}`}
+						draggable="true"
+						ondragstart={(e) => onChatDragStart(e, chat.id)}
 						onclick={() => onSelectChat(chat.id)}
 					>
-						<span class="min-w-0 flex-1 truncate text-sm">
-							{chat.title}
-						</span>
-
-						<span class="shrink-0 text-[10px] text-gray-600">
-							{chat.timeLabel}
-						</span>
+						<span class="min-w-0 flex-1 truncate text-sm">{chat.title}</span>
+						<span class="shrink-0 text-[10px] text-gray-600">{timeLabel(chat)}</span>
 					</button>
 				{/each}
-			</div>
+				{#if selectedChats.length === 0}
+					<p class="px-2.5 py-4 text-xs text-gray-500">当前分组暂无对话。新建对话将放入此分组。</p>
+				{/if}
+			{:else}
+				{#each groupedUnfiledChats as group (group.label)}
+					<div class="px-2.5 pb-1.5 pt-1 text-xs font-medium text-gray-500">
+						{group.label}
+					</div>
+					<div class="space-y-0.5">
+						{#each group.items as chat (chat.id)}
+							<div class="group relative">
+								<button
+									type="button"
+									class={`flex w-full items-center gap-2 rounded-xl px-2.5 py-2 text-left transition ${
+										activeChatId === chat.id
+											? 'bg-gray-900 text-white'
+											: 'text-gray-300 hover:bg-gray-900'
+									}`}
+									draggable="true"
+									ondragstart={(e) => onChatDragStart(e, chat.id)}
+									onclick={() => onSelectChat(chat.id)}
+								>
+									<span class="min-w-0 flex-1 truncate text-sm">{chat.title}</span>
+									<span class="shrink-0 text-[10px] text-gray-600">{timeLabel(chat)}</span>
+								</button>
 
-			<div class="px-2.5 pb-1.5 pt-5 text-xs font-medium text-gray-500">
-				过去 7 天
-			</div>
-
-			<div class="space-y-0.5">
-				{#each recentChats as chat (chat.id)}
-					<button
-						type="button"
-						class={`group flex w-full items-center gap-2 rounded-xl px-2.5 py-2 text-left transition ${
-							activeChatId === chat.id
-								? 'bg-gray-900 text-white'
-								: 'text-gray-300 hover:bg-gray-900'
-						}`}
-						onclick={() => onSelectChat(chat.id)}
-					>
-						<span class="min-w-0 flex-1 truncate text-sm">
-							{chat.title}
-						</span>
-
-						<span class="shrink-0 text-[10px] text-gray-600">
-							{chat.timeLabel}
-						</span>
-					</button>
+								{#if folders.length > 0}
+									<button
+										type="button"
+										class="absolute top-1.5 right-1 rounded-md p-0.5 text-gray-500 opacity-0 group-hover:opacity-100 hover:bg-gray-800 hover:text-white"
+										title="移至分组"
+										aria-label="移至分组"
+										onclick={(e) => {
+											e.stopPropagation();
+											openChatMenuId = openChatMenuId === chat.id ? null : chat.id;
+											openFolderMenuId = null;
+										}}
+									>
+										<svg class="size-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+											<path
+												stroke-linecap="round"
+												stroke-linejoin="round"
+												d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7z"
+											></path>
+										</svg>
+									</button>
+									{#if openChatMenuId === chat.id}
+										<div
+											class="absolute top-8 right-1 z-40 max-h-48 w-40 overflow-y-auto rounded-xl border border-white/10 bg-[#1f1f1f] py-1 shadow-xl"
+										>
+											{#each folders as folder (folder.id)}
+												<button
+													type="button"
+													class="flex w-full truncate px-3 py-1.5 text-left text-xs hover:bg-white/[0.06]"
+													onclick={() => {
+														onMoveChatToFolder(chat.id, folder.id);
+														openChatMenuId = null;
+													}}
+												>
+													{folder.name}
+												</button>
+											{/each}
+										</div>
+									{/if}
+								{/if}
+							</div>
+						{/each}
+					</div>
 				{/each}
-			</div>
+
+				{#if unfiledChats.length === 0}
+					<p class="px-2.5 py-6 text-xs leading-5 text-gray-500">
+						{#if chats.length === 0}
+							还没有对话。提问后会出现在这里，刷新后仍会保留。
+						{:else if searchQuery.trim()}
+							没有匹配的对话
+						{:else}
+							对话都在分组中。点击上方分组查看。
+						{/if}
+					</p>
+				{/if}
+			{/if}
 		</section>
 	</div>
 
@@ -254,23 +609,104 @@
 			class="pointer-events-none absolute inset-x-0 -top-8 h-12 bg-gradient-to-t from-gray-950 to-transparent"
 		></div>
 
-		<button
-			type="button"
-			class="relative flex w-full items-center rounded-2xl px-1.5 py-2 transition hover:bg-gray-900"
-		>
-			<div class="relative mr-3 shrink-0">
-				<div class="flex size-7 items-center justify-center rounded-full bg-amber-500 text-[10px] font-semibold text-white">
-					T
-				</div>
-
-				<span class="absolute -bottom-0.5 -right-0.5 size-2.5 rounded-full border-2 border-gray-950 bg-green-500"></span>
-			</div>
-
-			<div class="min-w-0 flex-1 text-left">
-				<p class="truncate text-sm font-medium text-gray-200">
-					Tagent
-				</p>
-			</div>
-		</button>
+		<div class="relative">
+			<UserMenu
+				variant="sidebar"
+				className="w-[240px]"
+				align="start"
+				placement="top"
+				userRole="admin"
+				{userName}
+				{avatarText}
+				{statusEmoji}
+				{statusMessage}
+				triggerClassName="flex w-full items-center rounded-2xl px-1.5 py-2 transition hover:bg-gray-900/50"
+				onSettings={onSettings}
+				onArchivedChats={onArchivedChats}
+				onPlayground={onPlayground}
+				onAdmin={onAdmin}
+				onShortcuts={onShortcuts}
+				onSignOut={onSignOut}
+				onStatusSave={onStatusSave}
+				onToast={onToast}
+			>
+				{#snippet children()}
+					<div class="flex w-full items-center text-left">
+						<div class="relative mr-3 shrink-0 self-center">
+							<div
+								class="flex size-7 items-center justify-center rounded-full bg-amber-500 text-[10px] font-semibold text-white"
+							>
+								{avatarText}
+							</div>
+							<span
+								class="absolute -right-0.5 -bottom-0.5 size-2.5 rounded-full border-2 border-gray-950 bg-green-500"
+							></span>
+						</div>
+						<div class="self-center font-medium text-gray-100">{userName}</div>
+					</div>
+				{/snippet}
+			</UserMenu>
+		</div>
 	</footer>
 </aside>
+
+<FolderModal
+	open={folderModalOpen}
+	title={folderModalMode === 'rename' ? '编辑分组' : folderModalMode === 'sub' ? '创建子分组' : '创建分组'}
+	initialName={folderModalDraft.name}
+	initialSystemPrompt={folderModalDraft.systemPrompt}
+	initialBackgroundImageUrl={folderModalDraft.backgroundImageUrl}
+	initialKnowledgeItems={folderModalDraft.knowledgeItems}
+	{knowledgeOptions}
+	onOpenWorkspaceKnowledge={onOpenWorkspaceKnowledge}
+	onClose={() => {
+		folderModalOpen = false;
+	}}
+	onSubmit={submitFolderModal}
+/>
+
+{#if deleteConfirmOpen}
+	<!-- svelte-ignore a11y_click_events_have_key_events -->
+	<!-- svelte-ignore a11y_no_static_element_interactions -->
+	<div
+		class="fixed inset-0 z-[95] flex items-center justify-center bg-black/60 px-4"
+		onclick={() => {
+			deleteConfirmOpen = false;
+		}}
+	>
+		<div
+			class="w-full max-w-sm rounded-2xl border border-gray-800 bg-gray-850 p-4 text-white shadow-2xl"
+			onclick={(e) => e.stopPropagation()}
+			role="dialog"
+			aria-modal="true"
+			aria-label="删除分组"
+		>
+			<h3 class="text-base font-medium">要删除此分组吗？</h3>
+			<p class="mt-2 text-sm text-gray-400">
+				确定删除「{folders.find((f) => f.id === deleteTargetId)?.name ?? ''}」吗？
+			</p>
+			<label class="mt-3 flex items-center gap-2 text-xs text-gray-400">
+				<input type="checkbox" bind:checked={deleteContents} />
+				删除此分组内的所有内容
+			</label>
+			<div class="mt-4 flex justify-end gap-2">
+				<button
+					type="button"
+					class="rounded-xl px-3 py-1.5 text-sm text-gray-400 hover:bg-gray-800"
+					onclick={() => {
+						deleteConfirmOpen = false;
+					}}
+				>
+					取消
+				</button>
+				<button
+					type="button"
+					class="rounded-xl bg-red-500/90 px-3 py-1.5 text-sm font-medium text-white hover:bg-red-500"
+					onclick={confirmDeleteFolder}
+				>
+					删除
+				</button>
+			</div>
+		</div>
+	</div>
+{/if}

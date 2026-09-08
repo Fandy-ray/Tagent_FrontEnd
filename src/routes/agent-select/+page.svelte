@@ -1,5 +1,8 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
+	import { onMount } from 'svelte';
+
+	import { getAgentModels } from '$lib/apis/agent';
 
 	type AgentType = 'qa' | 'notebook' | 'quiz';
 
@@ -10,18 +13,26 @@
 		accent: 'cyan' | 'violet' | 'green';
 	};
 
-	const models = [
-		{
-			id: 'deepseek',
-			name: 'deepseek'
-		},
-		{
-			id: 'mock-teaching-model',
-			name: '教学大模型（Mock）'
-		}
-	];
+	let models = $state<{ id: string; name: string }[]>([]);
+	let selectedModelId = $state('');
+	let modelsError = $state('');
 
-	let selectedModelId = models[0].id;
+	onMount(() => {
+		void getAgentModels()
+			.then((list) => {
+				models = list.data.map((model) => ({
+					id: model.id,
+					name: model.name || model.id
+				}));
+				selectedModelId = models[0]?.id ?? '';
+				if (models.length === 0) {
+					modelsError = 'basic-agent 已连上，但还没有配置任何模型。';
+				}
+			})
+			.catch(() => {
+				modelsError = '读不到 basic-agent 的模型列表，请确认它已在 5001 端口启动。';
+			});
+	});
 
 	const agents: AgentCard[] = [
 		{
@@ -51,7 +62,7 @@
 		}
 
 		if (type === 'quiz') {
-			void goto(`/exam-copy?model=${encodeURIComponent(selectedModelId)}`);
+			void goto(`/exam?model=${encodeURIComponent(selectedModelId)}`);
 			return;
 		}
 
@@ -254,7 +265,7 @@
 
 			<div class="mt-6 flex items-center gap-2 text-xs text-gray-600">
 				<span class="size-1.5 rounded-full bg-emerald-400"></span>
-				<span>当前为前端 Mock 演示模式</span>
+				<span>{modelsError || '答疑与测评将请求 basic-agent，笔记本仍使用 OpenNotebook。'}</span>
 			</div>
 		</section>
 	</div>

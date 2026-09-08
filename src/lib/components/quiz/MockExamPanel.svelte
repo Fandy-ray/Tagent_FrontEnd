@@ -1,5 +1,15 @@
 <script lang="ts">
+	import { browser } from '$app/environment';
 	import { onDestroy, onMount } from 'svelte';
+
+	import { generateExam, getAgentModels, reviewExam } from '$lib/apis/agent';
+	import KnowledgeCombobox from '$lib/components/quiz/KnowledgeCombobox.svelte';
+	import {
+		findCollection,
+		parseSourceKey,
+		sourceKeysForCollection,
+		type KnowledgeCollection
+	} from '$lib/data/knowledge';
 
 	type Phase = 'idle' | 'generating' | 'answering' | 'submitting' | 'result';
 	type QuestionType = 'cloze' | 'choice' | 'essay';
@@ -84,12 +94,14 @@
 	fullPage?: boolean;
 	onClose?: (() => void) | null;
 	modelId?: string;
+	initialTopic?: string;
 };
 
 	let {
 	fullPage = false,
 	onClose = null,
-	modelId = 'deepseek'
+	modelId = '',
+	initialTopic = ''
 }: Props = $props();
 
 	const LETTERS = ['A', 'B', 'C', 'D'];
@@ -100,13 +112,8 @@
 		essay: '大题'
 	};
 
-	const availableModels: AgentModel[] = [
-		{
-			id: 'deepseek',
-			name: 'deepseek',
-			tags: []
-		}
-	];
+	// 模型列表只认 basic-agent 的 /v1/models，没登记就是空的。
+	let availableModels = $state<AgentModel[]>([]);
 
 	let phase = $state<Phase>('idle');
 	let exam = $state<PublicExam | null>(null);
@@ -116,10 +123,36 @@
 	let pageIndex = $state(0);
 	let resultIndex = $state(0);
 	let topic = $state('');
+	let selectedSourceKeys = $state<string[]>([]);
+	let notebooks = $state<KnowledgeCollection[]>([]);
 	let errorMsg = $state('');
 
-	let selectedModelId = $state(modelId);
+	let selectedModelId = $state('');
 	let modelsLoading = $state(false);
+
+	$effect(() => {
+		selectedModelId = modelId;
+	});
+
+	$effect(() => {
+		if (!initialTopic || notebooks.length === 0) {
+			return;
+		}
+
+		if (!topic) {
+			topic = initialTopic;
+		}
+
+		if (selectedSourceKeys.length > 0) {
+			return;
+		}
+
+		const collection = findCollection(initialTopic, notebooks);
+
+		if (collection) {
+			selectedSourceKeys = sourceKeysForCollection(collection.id, notebooks);
+		}
+	});
 
 	let panelWidth = $state(0);
 	let isFullscreen = $state(false);
@@ -177,107 +210,6 @@
 			: 0
 	);
 
-	const createMockExam = (selectedTopic: string): PublicExam => {
-		const examTopic = selectedTopic.trim() || '系统建模与仿真';
-
-		return {
-			exam_id: `mock-exam-${Date.now()}`,
-			title: `${examTopic}知识测评`,
-			cloze: [
-				{
-					id: 'F1',
-					type: 'cloze',
-					points: 10,
-					cue: '请填写下列句子中的空缺内容。',
-					text: '系统状态只在一系列离散时刻发生变化的仿真方法称为____仿真。',
-					answer: '离散事件',
-					explanation:
-						'离散事件仿真中，系统状态不是连续变化，而是在事件发生时产生跳跃式变化。'
-				},
-				{
-					id: 'F2',
-					type: 'cloze',
-					points: 10,
-					cue: '请填写下列句子中的空缺内容。',
-					text: '事件调度法通常使用____保存未来将要发生的事件。',
-					answer: '未来事件表',
-					explanation:
-						'未来事件表按照事件发生时间保存和排列待处理事件，是事件调度法的核心数据结构。'
-				}
-			],
-			choice: [
-				{
-					id: 'C1',
-					type: 'choice',
-					points: 10,
-					question: '下列哪一项最符合离散事件系统的特点？',
-					options: [
-						'系统状态随时间连续变化',
-						'系统状态只在事件发生时变化',
-						'系统不存在时间变量',
-						'系统只能使用微分方程描述'
-					],
-					answer: 1,
-					explanation:
-						'离散事件系统的核心特征是系统状态只在离散事件发生时改变。'
-				},
-				{
-					id: 'C2',
-					type: 'choice',
-					points: 10,
-					question: '事件调度法中，仿真时钟通常如何推进？',
-					options: [
-						'每次固定增加一个时间单位',
-						'随机选择一个时间点',
-						'推进到未来事件表中最早事件的发生时间',
-						'始终保持不变'
-					],
-					answer: 2,
-					explanation:
-						'事件调度法从未来事件表中选择最早发生的事件，并将仿真时钟推进到该时刻。'
-				}
-			],
-			essay: [
-				{
-					id: 'E1',
-					type: 'essay',
-					points: 30,
-					question: '请简述事件调度法进行离散事件仿真的基本步骤。',
-					answer:
-						'初始化系统状态和仿真时钟，建立未来事件表；选择发生时间最早的事件；将仿真时钟推进到该事件发生时刻；执行事件并更新系统状态；生成新的未来事件；判断是否满足仿真终止条件。',
-					keywords: [
-						'初始化',
-						'未来事件表',
-						'仿真时钟',
-						'事件',
-						'系统状态',
-						'终止'
-					],
-					explanation:
-						'事件调度法的核心是使用未来事件表管理事件，并根据最早事件的发生时间推进仿真时钟。'
-				},
-				{
-					id: 'E2',
-					type: 'essay',
-					points: 30,
-					question: '请说明连续系统仿真和离散事件仿真的主要区别。',
-					answer:
-						'连续系统的状态随时间连续变化，通常使用微分方程描述，并通过数值积分方法求解；离散事件系统的状态只在事件发生时改变，通常使用事件、状态变量、仿真时钟和未来事件表进行描述。',
-					keywords: [
-						'连续变化',
-						'微分方程',
-						'数值积分',
-						'离散事件',
-						'事件发生',
-						'未来事件表'
-					],
-					explanation:
-						'二者最主要的区别是系统状态的变化方式，以及推进仿真时间所采用的方法不同。'
-				}
-			]
-		};
-	};
-
 	const clearTimers = () => {
 		if (generateTimer !== null) {
 			window.clearTimeout(generateTimer);
@@ -310,216 +242,26 @@
 		resultIndex = 0;
 		phase = 'generating';
 
-		generateTimer = window.setTimeout(() => {
-			exam = createMockExam(topic);
-			answers = {};
-			pageIndex = 0;
-			resultIndex = 0;
-			phase = 'answering';
-			generateTimer = null;
-		}, 1200);
-	};
+		const notebookIds = [
+			...new Set(
+				selectedSourceKeys
+					.map((key) => parseSourceKey(key)?.collectionId)
+					.filter((id): id is string => Boolean(id))
+			)
+		];
 
-	const normalizeText = (value: unknown) =>
-		String(value ?? '')
-			.trim()
-			.toLowerCase()
-			.replace(/\s+/g, '');
-
-	const reviewClozeQuestion = (
-		question: ClozeQuestion,
-		answer: ExamAnswer
-	): ReviewResult => {
-		const userAnswer = typeof answer === 'string' ? answer.trim() : '';
-
-		const correct =
-			normalizeText(userAnswer) === normalizeText(question.answer);
-
-		return {
-			id: question.id,
-			type: question.type,
-			score: correct ? question.points : 0,
-			points: question.points,
-			verdict: !userAnswer
-				? 'unanswered'
-				: correct
-					? 'correct'
-					: 'wrong',
-			my_answer: userAnswer,
-			correct_answer: question.answer,
-			feedback: !userAnswer
-				? '本题未作答。'
-				: correct
-					? '回答正确，你已经掌握了该知识点。'
-					: '回答与参考答案不一致，请结合解析复习该知识点。',
-			explanation: question.explanation
-		};
-	};
-
-	const reviewChoiceQuestion = (
-		question: ChoiceQuestion,
-		answer: ExamAnswer
-	): ReviewResult => {
-		const selectedAnswer = typeof answer === 'number' ? answer : null;
-		const correct = selectedAnswer === question.answer;
-
-		return {
-			id: question.id,
-			type: question.type,
-			score: correct ? question.points : 0,
-			points: question.points,
-			verdict:
-				selectedAnswer === null
-					? 'unanswered'
-					: correct
-						? 'correct'
-						: 'wrong',
-			my_answer:
-				selectedAnswer === null
-					? null
-					: `${LETTERS[selectedAnswer]}．${question.options[selectedAnswer]}`,
-			correct_answer:
-				`${LETTERS[question.answer]}．${question.options[question.answer]}`,
-			feedback:
-				selectedAnswer === null
-					? '本题未作答。'
-					: correct
-						? '选择正确。'
-						: '选择错误，请查看参考答案和解析。',
-			explanation: question.explanation
-		};
-	};
-
-	const reviewEssayQuestion = (
-		question: EssayQuestion,
-		answer: ExamAnswer
-	): ReviewResult => {
-		const userAnswer = typeof answer === 'string' ? answer.trim() : '';
-
-		if (!userAnswer) {
-			return {
-				id: question.id,
-				type: question.type,
-				score: 0,
-				points: question.points,
-				verdict: 'unanswered',
-				my_answer: '',
-				correct_answer: question.answer,
-				feedback: '本题未作答。',
-				explanation: question.explanation
-			};
-		}
-
-		const matchedKeywords = question.keywords.filter((keyword) =>
-			userAnswer.includes(keyword)
-		).length;
-
-		const matchRatio = matchedKeywords / question.keywords.length;
-
-		let score: number;
-		let verdict: Verdict;
-		let feedback: string;
-
-		if (matchRatio >= 0.7) {
-			score = question.points;
-			verdict = 'correct';
-			feedback = '回答完整，涵盖了本题的主要知识点。';
-		} else if (matchRatio >= 0.3 || userAnswer.length >= 40) {
-			score = Math.round(question.points * 0.6);
-			verdict = 'partial';
-			feedback = '回答包含部分关键内容，可以结合参考答案进一步完善。';
-		} else {
-			score = Math.round(question.points * 0.25);
-			verdict = 'wrong';
-			feedback = '回答涉及的关键知识点较少，请结合参考答案重新梳理。';
-		}
-
-		return {
-			id: question.id,
-			type: question.type,
-			score,
-			points: question.points,
-			verdict,
-			my_answer: userAnswer,
-			correct_answer: question.answer,
-			feedback,
-			explanation: question.explanation
-		};
-	};
-
-	const reviewQuestion = (
-		question: PublicQuestion,
-		answer: ExamAnswer
-	): ReviewResult => {
-		if (question.type === 'cloze') {
-			return reviewClozeQuestion(question, answer);
-		}
-
-		if (question.type === 'choice') {
-			return reviewChoiceQuestion(question, answer);
-		}
-
-		return reviewEssayQuestion(question, answer);
-	};
-
-	const createMockReview = (): ExamReview => {
-		const results = allQuestions.map((question) =>
-			reviewQuestion(question, answers[question.id])
-		);
-
-		const sections: Record<QuestionType, ExamSectionReview> = {
-			cloze: {
-				earned: 0,
-				max: 0
-			},
-			choice: {
-				earned: 0,
-				max: 0
-			},
-			essay: {
-				earned: 0,
-				max: 0
-			}
-		};
-
-		for (const result of results) {
-			sections[result.type].earned += result.score;
-			sections[result.type].max += result.points;
-		}
-
-		const totalScore = results.reduce(
-			(sum, result) => sum + result.score,
-			0
-		);
-
-		const totalPoints = results.reduce(
-			(sum, result) => sum + result.points,
-			0
-		);
-
-		const scoreRatio =
-			totalPoints > 0 ? totalScore / totalPoints : 0;
-
-		let overallComment: string;
-
-		if (scoreRatio >= 0.85) {
-			overallComment =
-				'本次测评完成得很好，你已经较好地掌握了相关知识点。';
-		} else if (scoreRatio >= 0.6) {
-			overallComment =
-				'你已经掌握了大部分基础内容，建议重点复习部分失分知识点。';
-		} else {
-			overallComment =
-				'本次测评仍有较大提升空间，建议结合逐题解析重新复习课程内容。';
-		}
-
-		return {
-			total_score: totalScore,
-			total_points: totalPoints,
-			overall_comment: overallComment,
-			sections,
-			results
-		};
+		void generateExam(selectedModelId, topic, notebookIds)
+			.then((data) => {
+				exam = data as PublicExam;
+				answers = {};
+				pageIndex = 0;
+				resultIndex = 0;
+				phase = 'answering';
+			})
+			.catch((error: unknown) => {
+				errorMsg = error instanceof Error ? error.message : '出卷失败，请重试。';
+				phase = 'idle';
+			});
 	};
 
 	const submit = () => {
@@ -532,12 +274,18 @@
 		errorMsg = '';
 		phase = 'submitting';
 
-		submitTimer = window.setTimeout(() => {
-			review = createMockReview();
-			resultIndex = 0;
-			phase = 'result';
-			submitTimer = null;
-		}, 900);
+		void reviewExam(selectedModelId, exam.exam_id, answers)
+			.then((data) => {
+				// agent.ts 把 results 声明成 Record<string, unknown>[]（后端用 pydantic
+				// 保证形状），这里按本组件的具体类型读，所以要经 unknown 中转。
+				review = data as unknown as ExamReview;
+				resultIndex = 0;
+				phase = 'result';
+			})
+			.catch((error: unknown) => {
+				errorMsg = error instanceof Error ? error.message : '判卷失败，请重试。';
+				phase = 'answering';
+			});
 	};
 
 	const restart = () => {
@@ -704,11 +452,38 @@
 				rootEl.getBoundingClientRect().width
 			);
 		}
+
+		modelsLoading = true;
+		void getAgentModels()
+			.then((list) => {
+				availableModels = list.data.map((model) => ({
+					id: model.id,
+					name: model.name || model.id,
+					tags: []
+				}));
+
+				if (!availableModels.some((model) => model.id === selectedModelId)) {
+					selectedModelId = availableModels[0]?.id ?? '';
+				}
+			})
+			.catch(() => {
+				availableModels = [];
+				selectedModelId = '';
+				errorMsg = '读不到 basic-agent 的模型列表，请确认它已经启动。';
+			})
+			.finally(() => {
+				modelsLoading = false;
+			});
 	});
 
 	onDestroy(() => {
 		clearTimers();
 		resizeObserver?.disconnect();
+
+		// onDestroy 在 SSR 渲染完也会跑一次，那边没有 document。
+		if (!browser) {
+			return;
+		}
 
 		document.removeEventListener(
 			'fullscreenchange',
@@ -851,17 +626,17 @@
 					基于课程知识库生成一套包含<b>闪卡填空、选择题、大题</b>的测验卷，提交后自动判分并给出解析。
 				</p>
 
-				<input
-					class="w-full max-w-xs rounded-lg border border-white/[0.22] bg-transparent px-3 py-2 text-sm text-gray-100 outline-none placeholder:text-gray-500 focus:border-blue-400"
-					placeholder="可选：输入测验主题"
-					maxlength="100"
+				<KnowledgeCombobox
 					bind:value={topic}
-					onkeydown={(event) => {
-						if (event.key === 'Enter') {
-							startGenerate();
-						}
-					}}
+					bind:selectedKeys={selectedSourceKeys}
+					bind:collections={notebooks}
+					placeholder="输入主题，或选择笔记本与来源"
+					onSubmit={startGenerate}
 				/>
+
+				<p class="max-w-md text-[11px] text-gray-500">
+					选项来自笔记本模块里已有的笔记本和来源，可多选。
+				</p>
 
 				<button
 					type="button"

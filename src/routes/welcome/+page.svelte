@@ -2,7 +2,7 @@
 	import { goto } from '$app/navigation';
 	import { onMount } from 'svelte';
 
-	let phase = 3;
+	let phase = $state(0); // 0=hidden, 1=badge, 2=title, 3=cta
 
 	onMount(() => {
 		try {
@@ -13,16 +13,27 @@
 
 		document.documentElement.classList.remove('light', 'system', 'her');
 		document.documentElement.classList.add('dark');
+
+		const t1 = setTimeout(() => {
+			phase = 1;
+		}, 200);
+		const t2 = setTimeout(() => {
+			phase = 2;
+		}, 600);
+		const t3 = setTimeout(() => {
+			phase = 3;
+		}, 1100);
+
+		return () => {
+			clearTimeout(t1);
+			clearTimeout(t2);
+			clearTimeout(t3);
+		};
 	});
 </script>
 
 <svelte:head>
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="anonymous" />
-  <link
-    href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@700;900&family=JetBrains+Mono:wght@400;600&display=swap"
-    rel="stylesheet"
-  />
+  <title>系统建模与仿真智能教学平台</title>
 </svelte:head>
 
 <div class="wrap">
@@ -69,10 +80,10 @@
     </h1>
 
     <p class="subtitle" class:show={phase >= 2}>
-      RAG 增强检索 · LangGraph 智能体 · 实时答疑与知识测评
+      课程答疑 · 知识笔记本 · 智能测评（演示版）
     </p>
 
-    <button class="cta-btn" class:show={phase >= 3} on:click={() => goto('/agent-select')}>
+    <button class="cta-btn" class:show={phase >= 3} onclick={() => goto('/agent-select')}>
       <span class="cta-text">进入平台</span>
       <span class="cta-arrow">→</span>
     </button>
@@ -154,7 +165,7 @@
   .node-label {
     fill: rgba(0,200,255,0.45);
     font-size: 11px;
-    font-family: 'JetBrains Mono', monospace;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
     letter-spacing: 0.05em;
   }
 
@@ -175,7 +186,7 @@
     display: flex;
     align-items: center;
     gap: 8px;
-    font-family: 'JetBrains Mono', monospace;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
     font-size: 0.78rem;
     letter-spacing: 0.04em;
     color: rgba(0,230,255,0.80);
@@ -203,7 +214,7 @@
 
   /* main title */
   .title {
-    font-family: 'Noto Serif SC', serif;
+    font-family: 'Songti SC', 'Noto Serif SC', 'Source Han Serif SC', serif;
     font-size: clamp(2.4rem, 5.5vw, 4.2rem);
     font-weight: 900;
     line-height: 1.15;
@@ -222,7 +233,7 @@
 
   /* subtitle */
   .subtitle {
-    font-family: 'JetBrains Mono', monospace;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
     font-size: 0.88rem;
     letter-spacing: 0.04em;
     color: rgba(140,180,220,0.75);
@@ -244,7 +255,7 @@
     cursor: pointer;
     font-size: 1.05rem;
     font-weight: 700;
-    font-family: 'Noto Serif SC', serif;
+    font-family: 'Songti SC', 'Noto Serif SC', 'Source Han Serif SC', serif;
     color: #030c18;
     letter-spacing: 0.06em;
     box-shadow: 0 0 24px rgba(0,200,240,0.30), 0 4px 20px rgba(0,0,0,0.40);
@@ -274,7 +285,7 @@
     position: absolute;
     bottom: 20px;
     right: 24px;
-    font-family: 'JetBrains Mono', monospace;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
     font-size: 0.7rem;
     color: rgba(80,140,200,0.35);
     letter-spacing: 0.06em;
