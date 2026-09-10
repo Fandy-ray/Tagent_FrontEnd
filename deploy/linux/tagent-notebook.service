@@ -1,0 +1,36 @@
+# OpenNotebook 容器（页面 8502 / 接口 5055）
+#
+# 可选单元。docker-compose.yml 里已经写了 restart: always，Docker 守护进程
+# 开机自启的话容器本来就会自己回来 —— 这个单元管的是"第一次把它拉起来"，
+# 以及让 systemctl 能统一 start/stop 三个服务。
+[Unit]
+Description=TAgent OpenNotebook (docker compose)
+Documentation=file://@TAGENT_ROOT@/deploy/linux/README.md
+Requires=docker.service
+After=docker.service network-online.target
+Wants=network-online.target
+
+[Service]
+# oneshot + RemainAfterExit：compose up -d 起完就退出，
+# 但 systemd 仍把这个单元记作 active，这样 stop 时才会执行 ExecStop。
+Type=oneshot
+RemainAfterExit=yes
+User=@RUN_USER@
+Group=@RUN_GROUP@
+WorkingDirectory=@TAGENT_ROOT@/opennotebook
+
+# 首次要从 Docker Hub 拉 GB 级镜像，超时给足
+TimeoutStartSec=1800
+
+# 只起这两个服务：aliyun-tts-bridge 要 DashScope Key 且要现场 build，
+# 交接包里没有 Key，默认不带它。
+ExecStart="@DOCKER_BIN@" compose -f "@TAGENT_ROOT@/opennotebook/docker-compose.yml" up -d surrealdb open_notebook
+# stop 而不是 down：down 会删容器，下次得重建。数据在 bind mount 上，两者都不会丢。
+ExecStop="@DOCKER_BIN@" compose -f "@TAGENT_ROOT@/opennotebook/docker-compose.yml" stop
+
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=tagent-notebook
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,14 @@
+# 本目录（交接包根）没有别的 .gitattributes 兜底，而 start.command / stop.command
+# 是 macOS 的双击入口：一旦被 checkout 成 CRLF，双击会报
+# "bad interpreter: /usr/bin/env bash^M"。所以这里把换行符钉死。
+* text=auto
+
+*.command text eol=lf
+*.sh      text eol=lf
+# systemd 单元里混进 \r，ExecStart 的路径末尾就会多一个回车符，
+# 报错是 "No such file or directory" —— 极难看出原因。plist 同理钉住。
+*.service text eol=lf
+*.plist   text eol=lf
+*.bat     text eol=crlf
+*.ps1     text eol=crlf
+*.cmd     text eol=crlf

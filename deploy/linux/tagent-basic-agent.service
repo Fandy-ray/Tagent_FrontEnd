@@ -1,0 +1,57 @@
+# TAgent basic-agent —— 检索 / 答疑 / 出卷判卷（127.0.0.1:5001）
+#
+# 占位符由 ../linux/install.sh 替换后装到 /etc/systemd/system/。
+# 想手改也行：把 @TAGENT_ROOT@ / @RUN_USER@ / @RUN_GROUP@ / @BIND_HOST@
+# 换成实际值，复制过去，再 systemctl daemon-reload。
+[Unit]
+Description=TAgent basic-agent (RAG / 出卷判卷)
+Documentation=file://@TAGENT_ROOT@/deploy/linux/README.md
+After=network-online.target
+Wants=network-online.target
+# 挂了自动拉起，但别无限重启刷屏：300 秒内起 5 次还不行就停下等人来看。
+# 这两项自 systemd 230 起属于 [Unit] 段，写在 [Service] 里会被忽略。
+StartLimitIntervalSec=300
+StartLimitBurst=5
+
+
+[Service]
+Type=simple
+User=@RUN_USER@
+Group=@RUN_GROUP@
+WorkingDirectory=@TAGENT_ROOT@/TAgent重写版/basic-agent
+
+# 端口写死在这里而不是只靠 .env.runtime：
+# main.py 用 python-dotenv 读 ../.env.runtime，而 dotenv 不覆盖已存在的环境变量，
+# 所以这两行是最终裁决 —— 前端的 /agent-api 代理写死了 5001，两边必须一致。
+Environment=BASIC_AGENT_HOST=@BIND_HOST@
+Environment=BASIC_AGENT_PORT=5001
+# 用 waitress 而不是 Flask 自带的开发服务器
+Environment=USE_WAITRESS=1
+# 首次启动要下嵌入模型；国内机器可解开这行走镜像
+#Environment=HF_ENDPOINT=https://hf-mirror.com
+
+ExecStart="@TAGENT_ROOT@/TAgent重写版/basic-agent/.venv/bin/python" main.py
+
+# 挂了就拉起来，但别无限重启刷屏：5 分钟内起 5 次还不行就停下等人来看
+Restart=on-failure
+RestartSec=5
+
+# 首次启动要加载嵌入模型 + 建向量索引，给足时间再判超时
+TimeoutStartSec=600
+TimeoutStopSec=30
+
+# 日志进 journald：journalctl -u tagent-basic-agent -f
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=tagent-agent
+
+# 收紧权限。注意 basic-agent 要写 config/model_providers.json 与 text_db/，
+# 所以不能用 ProtectSystem=strict；ReadWritePaths 只放开它自己的目录。
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=full
+ProtectHome=false
+ReadWritePaths="-@TAGENT_ROOT@/TAgent重写版/basic-agent" "-@TAGENT_ROOT@/TAgent重写版/logs"
+
+[Install]
+WantedBy=multi-user.target

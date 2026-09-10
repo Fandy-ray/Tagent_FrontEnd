@@ -1,0 +1,49 @@
+# TAgent 前端 tagentnote —— Vite dev server（5173）
+#
+# 为什么部署也跑 dev server 而不是 build：
+#   /agent-api -> 127.0.0.1:5001 的反向代理只存在于 Vite dev server 里
+#   （见 tagentnote/vite.config.ts）。跑 `npm run build` 出来的静态产物没有这个
+#   代理，前端所有后端请求都会 404。要上生产级静态托管，得先在 Nginx/Caddy 里
+#   自己补一条 /agent-api 的反代规则，那是另一套部署，不在本单元的范围内。
+[Unit]
+Description=TAgent 前端 (tagentnote / Vite)
+Documentation=file://@TAGENT_ROOT@/deploy/linux/README.md
+After=network-online.target tagent-basic-agent.service
+Wants=network-online.target
+# 用 Wants 而不是 Requires：后端挂了前端页面还能开（只是请求 502），
+# 比整个界面打不开更容易看出问题出在哪。
+Wants=tagent-basic-agent.service
+# 挂了自动拉起，但别无限重启刷屏：300 秒内起 5 次还不行就停下等人来看。
+# 这两项自 systemd 230 起属于 [Unit] 段，写在 [Service] 里会被忽略。
+StartLimitIntervalSec=300
+StartLimitBurst=5
+
+
+[Service]
+Type=simple
+User=@RUN_USER@
+Group=@RUN_GROUP@
+WorkingDirectory=@TAGENT_ROOT@/tagentnote
+
+# 直接用 node 跑 vite，不经 npm：npm 会再派生一个子进程，
+# systemd 记到的主进程就成了 npm 那一层，停止时容易留下孤儿。
+ExecStart="@NODE_BIN@" "@TAGENT_ROOT@/tagentnote/node_modules/vite/bin/vite.js" dev --port 5173 --strictPort --host @BIND_HOST@
+
+Restart=on-failure
+RestartSec=5
+TimeoutStartSec=180
+TimeoutStopSec=30
+
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=tagent-frontend
+
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=full
+ProtectHome=false
+# Vite 要写 node_modules/.vite 缓存
+ReadWritePaths="-@TAGENT_ROOT@/tagentnote"
+
+[Install]
+WantedBy=multi-user.target

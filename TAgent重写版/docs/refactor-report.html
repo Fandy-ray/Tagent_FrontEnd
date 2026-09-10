@@ -1,0 +1,761 @@
+<title>basic-agent 重构成效</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700&family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;1,8..60,400&family=JetBrains+Mono:wght@400;600&display=swap">
+
+<style>
+  :root {
+    --bg: #F6F8F9;
+    --surface: #FFFFFF;
+    --surface-2: #EEF2F4;
+    --ink: #12171B;
+    --ink-2: #4E5A64;
+    --ink-3: #7A868F;
+    --line: #DCE3E7;
+    --line-strong: #C2CCD3;
+    --after: #0E7C7B;
+    --after-soft: #E0EFEF;
+    --before: #A45E22;
+    --before-soft: #F6EADF;
+    --good: #2C7A4B;
+    --warn: #9A6708;
+    --shadow: 0 1px 2px rgba(18,23,27,.05), 0 8px 24px -12px rgba(18,23,27,.14);
+
+    --sans: "Archivo", "Segoe UI", system-ui, sans-serif;
+    --serif: "Source Serif 4", Georgia, "Songti SC", serif;
+    --mono: "JetBrains Mono", ui-monospace, "Cascadia Mono", Consolas, monospace;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #0E1215;
+      --surface: #161B20;
+      --surface-2: #1D242A;
+      --ink: #E9EEF2;
+      --ink-2: #9AA7B1;
+      --ink-3: #71808B;
+      --line: #252D34;
+      --line-strong: #354048;
+      --after: #55C3C1;
+      --after-soft: #10312F;
+      --before: #D9964E;
+      --before-soft: #2C2015;
+      --good: #5FC28A;
+      --warn: #D8A83E;
+      --shadow: 0 1px 2px rgba(0,0,0,.4), 0 10px 28px -14px rgba(0,0,0,.7);
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #0E1215;
+    --surface: #161B20;
+    --surface-2: #1D242A;
+    --ink: #E9EEF2;
+    --ink-2: #9AA7B1;
+    --ink-3: #71808B;
+    --line: #252D34;
+    --line-strong: #354048;
+    --after: #55C3C1;
+    --after-soft: #10312F;
+    --before: #D9964E;
+    --before-soft: #2C2015;
+    --good: #5FC28A;
+    --warn: #D8A83E;
+    --shadow: 0 1px 2px rgba(0,0,0,.4), 0 10px 28px -14px rgba(0,0,0,.7);
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--ink);
+    font-family: var(--serif);
+    font-size: 17px;
+    line-height: 1.65;
+    margin: 0;
+    padding: 0 20px 96px;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .wrap { max-width: 940px; margin: 0 auto; }
+  .prose { max-width: 66ch; }
+
+  /* ---------- masthead ---------- */
+  header.masthead {
+    padding: 72px 0 40px;
+    border-bottom: 2px solid var(--ink);
+    margin-bottom: 48px;
+  }
+  .eyebrow {
+    font-family: var(--mono);
+    font-size: 12px;
+    letter-spacing: .12em;
+    text-transform: uppercase;
+    color: var(--ink-3);
+    margin: 0 0 18px;
+  }
+  h1 {
+    font-family: var(--sans);
+    font-weight: 700;
+    font-size: clamp(34px, 6vw, 54px);
+    line-height: 1.04;
+    letter-spacing: -.022em;
+    margin: 0 0 20px;
+    text-wrap: balance;
+  }
+  .standfirst {
+    font-size: 20px;
+    line-height: 1.55;
+    color: var(--ink-2);
+    max-width: 60ch;
+    margin: 0 0 32px;
+  }
+
+  .badges { display: flex; flex-wrap: wrap; gap: 10px; }
+  .badge {
+    font-family: var(--mono);
+    font-size: 12.5px;
+    padding: 7px 12px;
+    border: 1px solid var(--line-strong);
+    border-radius: 3px;
+    background: var(--surface);
+    color: var(--ink-2);
+    white-space: nowrap;
+  }
+  .badge b { color: var(--good); font-weight: 600; }
+
+  /* ---------- sections ---------- */
+  section { margin: 0 0 64px; }
+  h2 {
+    font-family: var(--sans);
+    font-weight: 700;
+    font-size: 27px;
+    letter-spacing: -.014em;
+    line-height: 1.2;
+    margin: 0 0 8px;
+    text-wrap: balance;
+  }
+  h2 .num {
+    font-family: var(--mono);
+    font-size: 14px;
+    font-weight: 400;
+    color: var(--after);
+    display: inline-block;
+    min-width: 2.2em;
+  }
+  .sub {
+    color: var(--ink-3);
+    font-size: 15px;
+    margin: 0 0 28px;
+    padding-left: 2.2em;
+  }
+  h3 {
+    font-family: var(--sans);
+    font-weight: 600;
+    font-size: 18.5px;
+    letter-spacing: -.008em;
+    margin: 36px 0 10px;
+  }
+  p { margin: 0 0 16px; }
+  strong { font-weight: 600; }
+  code {
+    font-family: var(--mono);
+    font-size: .855em;
+    background: var(--surface-2);
+    padding: .12em .38em;
+    border-radius: 3px;
+    border: 1px solid var(--line);
+  }
+
+  /* ---------- callout ---------- */
+  .callout {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-left: 3px solid var(--after);
+    border-radius: 3px;
+    padding: 22px 26px;
+    margin: 0 0 32px;
+    box-shadow: var(--shadow);
+  }
+  .callout.caution { border-left-color: var(--warn); }
+  .callout p:last-child { margin-bottom: 0; }
+  .callout .label {
+    font-family: var(--mono);
+    font-size: 11.5px;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+    color: var(--ink-3);
+    display: block;
+    margin-bottom: 8px;
+  }
+
+  /* ---------- metric row ---------- */
+  .metrics {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+    gap: 1px;
+    background: var(--line);
+    border: 1px solid var(--line);
+    border-radius: 3px;
+    overflow: hidden;
+    margin: 0 0 32px;
+  }
+  .metric { background: var(--surface); padding: 20px 22px; }
+  .metric .k {
+    font-family: var(--mono);
+    font-size: 11.5px;
+    letter-spacing: .07em;
+    text-transform: uppercase;
+    color: var(--ink-3);
+    margin-bottom: 10px;
+  }
+  .metric .v {
+    font-family: var(--sans);
+    font-weight: 700;
+    font-size: 30px;
+    letter-spacing: -.02em;
+    line-height: 1;
+    font-variant-numeric: tabular-nums;
+  }
+  .metric .v.pos { color: var(--after); }
+  .metric .n { font-size: 13.5px; color: var(--ink-2); margin-top: 8px; line-height: 1.45; }
+
+  /* ---------- tables ---------- */
+  .scroll { overflow-x: auto; margin: 0 0 28px; border: 1px solid var(--line); border-radius: 3px; background: var(--surface); }
+  table { border-collapse: collapse; width: 100%; font-size: 14.5px; min-width: 520px; }
+  th, td { text-align: left; padding: 11px 16px; border-bottom: 1px solid var(--line); }
+  thead th {
+    font-family: var(--mono);
+    font-size: 11.5px;
+    letter-spacing: .06em;
+    text-transform: uppercase;
+    color: var(--ink-3);
+    font-weight: 400;
+    background: var(--surface-2);
+    white-space: nowrap;
+  }
+  tbody tr:last-child td { border-bottom: none; }
+  td.num, th.num { text-align: right; font-family: var(--mono); font-variant-numeric: tabular-nums; white-space: nowrap; }
+  td.before { color: var(--before); }
+  td.after  { color: var(--after); font-weight: 600; }
+  .win { color: var(--after); font-weight: 600; font-family: var(--mono); font-size: 13px; }
+  .flat { color: var(--ink-3); font-family: var(--mono); font-size: 13px; }
+  .ok { color: var(--good); font-family: var(--mono); font-size: 13px; }
+
+  /* ---------- diagram ---------- */
+  figure { margin: 0 0 32px; }
+  .figbox {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 3px;
+    padding: 26px 20px;
+    overflow-x: auto;
+    box-shadow: var(--shadow);
+  }
+  figcaption {
+    font-size: 13.5px;
+    color: var(--ink-3);
+    margin-top: 12px;
+    padding-left: 2px;
+  }
+  svg { display: block; margin: 0 auto; max-width: 100%; height: auto; }
+
+  /* ---------- code block ---------- */
+  pre {
+    font-family: var(--mono);
+    font-size: 13px;
+    line-height: 1.6;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 3px;
+    padding: 18px 20px;
+    overflow-x: auto;
+    margin: 0 0 26px;
+  }
+  pre .c { color: var(--ink-3); }
+  pre .del { color: var(--before); }
+  pre .add { color: var(--after); }
+
+  /* ---------- lists ---------- */
+  ul, ol { margin: 0 0 18px; padding-left: 1.35em; }
+  li { margin-bottom: 8px; }
+
+  .rule { border: none; border-top: 1px solid var(--line); margin: 0 0 44px; }
+
+  footer {
+    border-top: 2px solid var(--ink);
+    padding-top: 24px;
+    margin-top: 24px;
+    font-size: 13.5px;
+    color: var(--ink-3);
+    font-family: var(--mono);
+    line-height: 1.7;
+  }
+
+  @media (max-width: 620px) {
+    body { font-size: 16px; padding: 0 16px 64px; }
+    header.masthead { padding: 44px 0 30px; }
+    .sub { padding-left: 0; }
+    h2 .num { display: block; min-width: 0; margin-bottom: 4px; }
+  }
+</style>
+
+<div class="wrap">
+
+<header class="masthead">
+  <p class="eyebrow">TAgent · basic-agent · 重构成效报告</p>
+  <h1>拆掉一个 1179 行的类之后</h1>
+  <p class="standfirst">
+    Flask 后端从 20 个扁平模块改成 Spring Boot 式九层包结构。
+    请求延迟没有变化——它一直由 LLM 决定；真正变了的是<strong>开发回路的速度</strong>、
+    <strong>加一个新服务的代价</strong>，以及<strong>接入 OpenNotebook 与新 RAG 时要改的文件数</strong>。
+  </p>
+  <div class="badges">
+    <span class="badge">99 测试 <b>全绿</b></span>
+    <span class="badge">新旧真实对照 <b>17/17</b></span>
+    <span class="badge">路由表 <b>21 条逐条一致</b></span>
+    <span class="badge">架构检查 <b>48 模块 / 6 规则</b></span>
+    <span class="badge">DeepSeek 实调 <b>已验证</b></span>
+  </div>
+</header>
+
+<!-- ============================================ -->
+<section>
+  <h2><span class="num">00</span>一句话结论</h2>
+  <p class="sub">先说没变的，再说变了的。</p>
+
+  <div class="callout caution">
+    <span class="label">诚实前提</span>
+    <p>
+      <strong>单次请求的响应时间没有改进，也不应该改进。</strong>
+      <code>/rag/query</code> 耗时 2–6 秒，其中 99% 花在等 DeepSeek 返回；
+      重构只动了进程内几微秒的函数调用路径。报告里任何"更快"都不是指请求延迟。
+    </p>
+  </div>
+
+  <div class="metrics">
+    <div class="metric">
+      <div class="k">隔离导入一个纯工具模块</div>
+      <div class="v pos">801×</div>
+      <div class="n">5138 ms → 6 ms。改 Markdown 清洗不再需要拉起 langchain。</div>
+    </div>
+    <div class="metric">
+      <div class="k">新增一个服务的启动代价</div>
+      <div class="v pos">省 122 s</div>
+      <div class="n">共用知识库，不再各建一份 FAISS 索引。</div>
+    </div>
+    <div class="metric">
+      <div class="k">对应的内存代价</div>
+      <div class="v pos">省 960 MB</div>
+      <div class="n">实测单进程常驻内存，几乎全是嵌入模型 + 索引。</div>
+    </div>
+    <div class="metric">
+      <div class="k">controller 之间互相 import</div>
+      <div class="v pos">3 → 0</div>
+      <div class="n">配套的架构检查会挡住新增的。</div>
+    </div>
+  </div>
+</section>
+
+<hr class="rule">
+
+<!-- ============================================ -->
+<section>
+  <h2><span class="num">01</span>效率：三处能量到的提升</h2>
+  <p class="sub">全部为本机实测，方法写在每张表下面。</p>
+
+  <h3>1.1 改一个纯工具函数，不再需要加载整个 AI 栈</h3>
+  <div class="prose">
+    <p>
+      旧代码里，Markdown 清洗的 179 行、prompt 模板的 128 行、文本工具、上游错误翻译，
+      全都住在 <code>rag_utils.py</code> 里。想跑一个只涉及正则的单测，Python 也得先把
+      langchain、langgraph、openai、faiss、pydantic 全部导入一遍。
+    </p>
+  </div>
+
+  <div class="scroll">
+    <table>
+      <thead><tr>
+        <th>你想改的东西</th><th class="num">旧：必须导入</th><th class="num">新：只需导入</th><th class="num">变化</th>
+      </tr></thead>
+      <tbody>
+        <tr><td>Markdown 表格 / LaTeX 修补</td><td class="num before">5138 ms</td><td class="num after">6 ms</td><td class="num win">801× 更快</td></tr>
+        <tr><td>出题 / 判卷 prompt 模板</td><td class="num before">5327 ms</td><td class="num after">149 ms</td><td class="num win">35.6× 更快</td></tr>
+        <tr><td>provider 数据结构</td><td class="num before">40 ms</td><td class="num after">28 ms</td><td class="num win">1.5× 更快</td></tr>
+        <tr><td>试卷缓存 / 并发闸门</td><td class="num before">25 ms</td><td class="num after">25 ms</td><td class="num flat">持平</td></tr>
+        <tr><td>请求参数校验</td><td class="num before">171 ms</td><td class="num after">175 ms</td><td class="num flat">持平</td></tr>
+        <tr><td>整卷 pydantic schema</td><td class="num before">148 ms</td><td class="num after">152 ms</td><td class="num flat">持平</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p class="sub" style="padding-left:0;margin-top:-16px;">
+    方法：子进程墙钟时间取 5 次最小值，减去解释器空转基线（28 ms）。持平的三项在旧代码里本来就是独立模块——
+    <strong>提升恰好只出现在 God Class 被拆开的地方</strong>，这正是应该出现的地方。
+  </p>
+
+  <h3>1.2 加第二个服务，不再意味着第二份向量索引</h3>
+  <div class="prose">
+    <p>实测一次冷启动预热的构成：</p>
+  </div>
+  <div class="scroll">
+    <table>
+      <thead><tr><th>预热步骤</th><th class="num">耗时</th><th>说明</th></tr></thead>
+      <tbody>
+        <tr><td>import KnowledgeBase</td><td class="num">4.19 s</td><td>langchain / faiss 等重依赖</td></tr>
+        <tr><td>切块 <code>chunks()</code></td><td class="num">0.18 s</td><td>book1.md → 2178 个切块</td></tr>
+        <tr><td>建索引 <code>ensure_index()</code></td><td class="num">117.71 s</td><td>嵌入模型 + FAISS，占 96%</td></tr>
+        <tr><td><strong>合计</strong></td><td class="num after">122.07 s</td><td>常驻内存约 <strong>960 MB</strong></td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="prose">
+    <p>
+      旧结构里，聊天、出题、判卷都挂在同一个 <code>LangChainRAGSimulator</code> 实例上——
+      只要还是"一个类装下全部"，这份开销就只付一次。问题出在<strong>想加第四种能力的时候</strong>：
+      再 new 一个 simulator，就是再付 122 秒和 960 MB。
+    </p>
+    <p>
+      新结构里 <code>KnowledgeBase</code> 和 <code>ModelClientFactory</code> 由
+      <code>app/container.py</code> 建一次，注入三个 service。加第四个 service 时把同一个实例传进去即可，
+      增量成本为零。测试里有一条断言专门盯着这件事：
+    </p>
+  </div>
+  <pre><span class="c"># test_main_routes.py</span>
+self.assertEqual(len(created), 1, <span class="c">"三个 service 必须共用同一个 KnowledgeBase"</span>)
+self.assertIs(services.chat.knowledge_base, created[0])
+self.assertIs(services.quiz.knowledge_base, created[0])
+self.assertIs(services.exam.knowledge_base, created[0])</pre>
+
+  <h3>1.3 顺手修掉一个会静默重建索引的兜底分支</h3>
+  <div class="callout">
+    <span class="label">重构中发现的缺陷</span>
+    <p>
+      旧 <code>route_utils.get_agent_service()</code> 在 <code>current_app.extensions</code>
+      取不到服务时，会<strong>当场 new 一个新的 <code>LangChainRAGSimulator</code></strong>
+      （连带一个独立的 <code>ModelClientFactory</code>）并塞回 extensions。
+    </p>
+    <p>
+      这个分支一旦被走到，就是在请求处理过程中同步建一份新的 FAISS 索引：
+      按上表就是<strong>阻塞 122 秒、再吃 960 MB</strong>，而且旧的 HTTP 连接池被悄悄换掉。
+      新的 <code>deps.get_services()</code> 直接读 extensions，没有这个分支——
+      装配失败就是启动失败，不会伪装成一次很慢的请求。
+    </p>
+  </div>
+</section>
+
+<hr class="rule">
+
+<!-- ============================================ -->
+<section>
+  <h2><span class="num">02</span>耦合度：可度量的部分</h2>
+  <p class="sub">不谈感觉，只列能 grep 出来的数字。</p>
+
+  <div class="scroll">
+    <table>
+      <thead><tr><th>指标</th><th class="num">重构前</th><th class="num">重构后</th><th>怎么验</th></tr></thead>
+      <tbody>
+        <tr><td>controller 互相 import</td><td class="num before">3 处</td><td class="num after">0</td><td><code>check_architecture</code> 规则 6</td></tr>
+        <tr><td>最大的类</td><td class="num before">629 行 / 5 种职责</td><td class="num after">3 个 service</td><td>Chat / Quiz / Exam</td></tr>
+        <tr><td>最大的文件</td><td class="num before">1179 行</td><td class="num after">637 行</td><td>且 637 那个是内聚的 pydantic schema</td></tr>
+        <tr><td>读 <code>os.getenv</code> 的模块</td><td class="num before">5 个</td><td class="num after">1 个</td><td><code>check_architecture</code> 规则 4</td></tr>
+        <tr><td>service 层 import flask</td><td class="num before">经由 route_utils 间接耦合</td><td class="num after">0</td><td><code>check_architecture</code> 规则 5</td></tr>
+        <tr><td>碰 <code>current_app.extensions</code> 的文件</td><td class="num before">3 个</td><td class="num after">1 个（<code>api/deps.py</code>）</td><td>唯一出入口</td></tr>
+        <tr><td><code>sys.path</code> hack</td><td class="num before">5 个文件</td><td class="num after">0</td><td>改由 pytest <code>pythonpath</code></td></tr>
+        <tr><td>生产模块数 / 总行数</td><td class="num before">19 / 3833</td><td class="num after">38 / 3883</td><td>行数几乎没变，只是分开了</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="prose">
+    <p>
+      最后一行值得单独说：<strong>总行数只多了 50 行（+1.3%）</strong>。
+      这次重构基本没有新增逻辑，只是把同样的代码放进了有方向的容器里。
+      多出来的行数是包声明和几个新模块的文档字符串。
+    </p>
+  </div>
+
+  <h3>分层与依赖方向</h3>
+  <figure>
+    <div class="figbox">
+      <svg viewBox="0 0 700 340" role="img" aria-label="分层依赖图：api 依赖 service，service 依赖 rag 与 repository，底层是 schema/errors/util">
+        <defs>
+          <marker id="ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+            <path d="M 0 0 L 10 5 L 0 10 z" fill="currentColor"/>
+          </marker>
+        </defs>
+        <g font-family="JetBrains Mono, monospace" font-size="12.5">
+
+          <!-- api -->
+          <rect x="30" y="18" width="250" height="52" rx="3" fill="var(--after-soft)" stroke="var(--after)" stroke-width="1.5"/>
+          <text x="46" y="40" fill="var(--ink)" font-weight="600">app/api/</text>
+          <text x="46" y="58" fill="var(--ink-2)" font-size="11">6 controller + deps/validators/response</text>
+
+          <!-- container -->
+          <rect x="410" y="18" width="260" height="52" rx="3" fill="var(--surface-2)" stroke="var(--line-strong)" stroke-width="1.5" stroke-dasharray="4 3"/>
+          <text x="426" y="40" fill="var(--ink)" font-weight="600">app/container.py</text>
+          <text x="426" y="58" fill="var(--ink-2)" font-size="11">唯一装配点：谁依赖谁</text>
+
+          <!-- service -->
+          <rect x="30" y="112" width="250" height="56" rx="3" fill="var(--after-soft)" stroke="var(--after)" stroke-width="1.5"/>
+          <text x="46" y="134" fill="var(--ink)" font-weight="600">app/service/</text>
+          <text x="46" y="152" fill="var(--ink-2)" font-size="11">Chat · Quiz · Exam</text>
+
+          <!-- rag -->
+          <rect x="330" y="112" width="180" height="56" rx="3" fill="var(--before-soft)" stroke="var(--before)" stroke-width="2"/>
+          <text x="346" y="134" fill="var(--ink)" font-weight="600">app/rag/</text>
+          <text x="346" y="152" fill="var(--before)" font-size="11">KnowledgeBase ← 接入点</text>
+
+          <!-- repository -->
+          <rect x="540" y="112" width="130" height="56" rx="3" fill="var(--surface-2)" stroke="var(--line-strong)" stroke-width="1.5"/>
+          <text x="556" y="134" fill="var(--ink)" font-weight="600">repository/</text>
+          <text x="556" y="152" fill="var(--ink-2)" font-size="11">JSON · 缓存</text>
+
+          <!-- infra + prompts -->
+          <rect x="330" y="204" width="180" height="46" rx="3" fill="var(--surface-2)" stroke="var(--line-strong)" stroke-width="1.5"/>
+          <text x="346" y="232" fill="var(--ink)" font-weight="600">infra/ · prompts/</text>
+
+          <!-- base -->
+          <rect x="30" y="286" width="640" height="42" rx="3" fill="var(--surface-2)" stroke="var(--line-strong)" stroke-width="1.5"/>
+          <text x="46" y="312" fill="var(--ink)" font-weight="600">schema/ · errors/ · util/ · config</text>
+          <text x="470" y="312" fill="var(--ink-3)" font-size="11">任何层可依赖，自身不依赖任何层</text>
+
+          <!-- arrows -->
+          <g stroke="var(--ink-3)" stroke-width="1.4" fill="none" marker-end="url(#ar)" color="var(--ink-3)">
+            <path d="M 155 70 L 155 108"/>
+            <path d="M 280 140 L 326 140"/>
+            <path d="M 510 140 L 536 140"/>
+            <path d="M 420 168 L 420 200"/>
+            <path d="M 90 168 L 90 282"/>
+            <path d="M 605 168 L 605 282"/>
+          </g>
+          <g stroke="var(--line-strong)" stroke-width="1.4" fill="none" stroke-dasharray="4 3" marker-end="url(#ar)" color="var(--line-strong)">
+            <path d="M 540 70 L 440 108"/>
+          </g>
+          <text x="452" y="96" fill="var(--ink-3)" font-size="10.5">注入</text>
+        </g>
+      </svg>
+    </div>
+    <figcaption>
+      实线为运行期依赖，方向严格向下；虚线为启动期装配。
+      <code>app/rag/KnowledgeBase</code>（橙框）是对外接入的唯一接缝——下一节说明怎么用。
+    </figcaption>
+  </figure>
+</section>
+
+<hr class="rule">
+
+<!-- ============================================ -->
+<section>
+  <h2><span class="num">03</span>接入 OpenNotebook 与新 RAG</h2>
+  <p class="sub">这是重构真正的回报所在。</p>
+
+  <div class="prose">
+    <p>
+      重构前，"换一个知识来源"要动 <code>rag_utils.py</code>——那个文件里检索、出题、判卷、
+      Markdown 清洗、prompt 模板互相缠着，改检索会同时暴露在出题和判卷的代码路径上，
+      而覆盖它们的测试要靠 <code>object.__new__</code> 绕过构造函数才能造出替身。
+    </p>
+    <p>
+      现在三个 service 只依赖一个对象，通过 7 个方法与知识来源打交道：
+    </p>
+  </div>
+
+  <div class="scroll">
+    <table>
+      <thead><tr><th>KnowledgeBase 方法</th><th>被谁用</th><th>接 OpenNotebook 时</th></tr></thead>
+      <tbody>
+        <tr><td><code>retrieve(query)</code></td><td>ChatService · QuizService</td><td class="after">必须实现</td></tr>
+        <tr><td><code>search(query, k=3)</code></td><td>ExamService（解答题补材料）</td><td class="after">必须实现</td></tr>
+        <tr><td><code>chunks()</code></td><td>QuizService（选片段出题）</td><td class="after">必须实现</td></tr>
+        <tr><td><code>sample_exam_context(topic)</code></td><td>ExamService（三段出卷）</td><td class="after">必须实现</td></tr>
+        <tr><td><code>warm_up()</code></td><td>启动预热</td><td>可空实现</td></tr>
+        <tr><td><code>ensure_index()</code></td><td>内部</td><td>可空实现</td></tr>
+        <tr><td><code>quiz_documents()</code></td><td>便捷封装</td><td>可继承默认</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="callout">
+    <span class="label">这个接缝已经被验证过</span>
+    <p>
+      不用等到接 OpenNotebook 才知道行不行——<strong>测试里已经这么干了</strong>。
+      <code>tests/test_review_exam_wiring.py</code> 里的 <code>FakeKnowledgeBase</code>
+      只实现了 3 个方法，<code>ExamService</code> 就能完整跑通出卷与判卷；
+      <code>test_rag_concurrency.py</code> 里的 <code>QuizKnowledgeBase</code> 更极端——
+      它的 <code>ensure_index()</code> 直接 <code>raise</code>，用来断言"出题绝不该触发建向量库"。
+      这些替身就是 OpenNotebook 适配器的原型。
+    </p>
+  </div>
+
+  <h3>三种接法，改动都局限在一两个文件</h3>
+
+  <div class="prose">
+    <p><strong>A. 整体替换</strong>——知识全部来自 OpenNotebook：</p>
+  </div>
+  <pre><span class="c"># 1) 新增 app/rag/opennotebook_kb.py，实现上表前 4 个方法</span>
+<span class="c"># 2) app/container.py 改一行：</span>
+<span class="del">-   knowledge_base = KnowledgeBase(text_db_dir=..., knowledge_file=...)</span>
+<span class="add">+   knowledge_base = OpenNotebookKnowledgeBase(base_url=settings.notebook_url)</span>
+<span class="c"># 3) app/config.py 加一个 notebook_url 字段</span>
+<span class="c"># service / controller / prompts / schema —— 一行都不用改</span></pre>
+
+  <div class="prose">
+    <p><strong>B. 组合</strong>——本地教材 + OpenNotebook 一起检索，这是更可能的形态：</p>
+  </div>
+  <pre><span class="c"># app/rag/composite_kb.py</span>
+class CompositeKnowledgeBase:
+    def __init__(self, *sources): self.sources = sources
+
+    def retrieve(self, query):
+        parts, docs = [], []
+        for s in self.sources:
+            c, d = s.retrieve(query)
+            parts.append(c); docs += d
+        return "\n\n---\n\n".join(parts), docs
+    <span class="c"># search / chunks / sample_exam_context 同理 fan-out</span>
+
+<span class="c"># container.py：</span>
+knowledge_base = CompositeKnowledgeBase(
+    KnowledgeBase(),                     <span class="c"># book1.md</span>
+    OpenNotebookKnowledgeBase(...),      <span class="c"># 笔记库</span>
+)</pre>
+
+  <div class="prose">
+    <p>
+      <strong>C. 增强检索链路</strong>——加 rerank、query 改写、hybrid search：
+      这些属于"检索怎么做"，落在 <code>app/rag/graph.py</code>。
+      它现在是一个 <code>build_answer_graph(knowledge_base, client_factory)</code> 工厂，
+      依赖靠闭包注入，加节点不碰 <code>ChatService</code>：
+    </p>
+  </div>
+  <pre>builder.add_node("rewrite_query", rewrite_node)   <span class="add">+ 新增</span>
+builder.add_node("retrieve_context", retrieve_node)
+builder.add_node("rerank", rerank_node)           <span class="add">+ 新增</span>
+builder.add_node("generate_answer", answer_node)</pre>
+
+  <h3>为什么这在重构前做不到</h3>
+  <div class="scroll">
+    <table>
+      <thead><tr><th>任务</th><th class="num">重构前要改的文件</th><th class="num">重构后</th></tr></thead>
+      <tbody>
+        <tr><td>换知识来源</td><td class="num before">rag_utils.py（1179 行，含出题判卷）</td><td class="num after">新增 1 个 + 改 container 1 行</td></tr>
+        <tr><td>检索链路加一个节点</td><td class="num before">rag_utils.py 内的 <code>_build_graph</code> 及其私有节点方法</td><td class="num after">app/rag/graph.py</td></tr>
+        <tr><td>调 RAG 的系统提示词</td><td class="num before">rag_utils.py 内联字符串</td><td class="num after">app/prompts/chat_prompts.py（22 行）</td></tr>
+        <tr><td>为新来源写单测</td><td class="num before"><code>object.__new__</code> 绕过构造函数，手工塞 6 个私有属性</td><td class="num after">传一个实现 4 个方法的普通对象</td></tr>
+        <tr><td>只跑检索相关测试</td><td class="num before">导入整个 AI 栈（5.1 s）</td><td class="num after">按模块导入</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<hr class="rule">
+
+<!-- ============================================ -->
+<section>
+  <h2><span class="num">04</span>怎么验证的</h2>
+  <p class="sub">重构最大的风险是"看起来没坏"，所以验证方式列在这里备查。</p>
+
+  <h3>新旧服务并排跑同一批真实请求</h3>
+  <div class="prose">
+    <p>
+      旧代码起在 <code>:5098</code>，新代码起在 <code>:5099</code>，配同一个 DeepSeek provider，
+      发同一批请求，比对<strong>状态码 + JSON 结构（键路径与类型的集合）</strong>——
+      LLM 文本不确定，所以比形状不比内容。
+    </p>
+  </div>
+  <div class="scroll">
+    <table>
+      <thead><tr><th>组</th><th>覆盖</th><th class="num">结果</th></tr></thead>
+      <tbody>
+        <tr><td>admin 通道</td><td>注册 provider、列表、Key 脱敏</td><td class="num ok">3/3</td></tr>
+        <tr><td>真实 LLM 调用</td><td>chat 非流式 / SSE 流式 / rag / 出题 / 判题</td><td class="num ok">5/5</td></tr>
+        <tr><td>内部通道</td><td>临时 provider envelope、缓存失效</td><td class="num ok">3/3</td></tr>
+        <tr><td>错误路径</td><td>400 / 403 / 404 / 410 / 413 / 422</td><td class="num ok">6/6</td></tr>
+        <tr><td>整卷路径</td><td>三段并发出卷 + 本地/LLM 分批判卷</td><td class="num ok">结构一致</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="prose">
+    <p>
+      整卷那一项额外断言了<strong>公开投影不泄漏答案字段</strong>
+      （<code>accept</code> / <code>correct_index</code> / <code>reference_answer</code> / <code>rubric</code>）——
+      两边都干净。SSE 流对比的是帧序列特征：首帧 delta 键、末帧 finish_reason、<code>[DONE]</code> 结尾。
+    </p>
+  </div>
+
+  <h3>常驻的架构守卫</h3>
+  <div class="prose">
+    <p>
+      <code>basic-agent/tools/check_architecture.py</code>，纯标准库，无新依赖：
+    </p>
+    <ol>
+      <li>引用了但没定义也没 import 的名字</li>
+      <li>未使用的 import</li>
+      <li>分层依赖方向</li>
+      <li>配置收口：<code>os.getenv</code> 只允许在 <code>app/config.py</code></li>
+      <li>Flask 只允许出现在 <code>app/api/</code> 与启动类</li>
+      <li>controller 不得 import 兄弟 controller</li>
+    </ol>
+    <p>
+      规则 1 不是凑数的——重构过程中它抓到了两次真实缺陷：
+      <code>upstream_errors.py</code> 漏搬 <code>OutputParserException</code>（会让 502 映射变成崩溃），
+      <code>exam_prompts.py</code> 漏搬 <code>TYPE_SHARE_BOUNDS</code>。
+      第一个是靠测试发现的，第二个是这个检查器在测试之前就报了出来。
+    </p>
+  </div>
+  <pre>cd basic-agent && python -m tools.check_architecture
+<span class="c">架构检查通过：48 个模块，6 项规则全部满足。</span></pre>
+</section>
+
+<hr class="rule">
+
+<!-- ============================================ -->
+<section>
+  <h2><span class="num">05</span>没有改进的地方</h2>
+  <p class="sub">避免这份报告读起来像广告。</p>
+
+  <div class="prose">
+    <ul>
+      <li>
+        <strong>请求延迟一点没变</strong>，也不该变。瓶颈是上游模型，
+        对照测试里两边的耗时差异全部落在 LLM 的正常波动范围内。
+      </li>
+      <li>
+        <strong>代码总量没减少</strong>（3833 → 3883 行）。删掉的只有 5 个零调用方的死方法
+        和 2 个死函数，其余是搬家。
+      </li>
+      <li>
+        <strong><code>app/schema/exam.py</code> 仍有 637 行</strong>。它是整卷的 pydantic 模型群，
+        本身内聚，硬拆只会制造循环依赖，所以没动。
+      </li>
+      <li>
+        <strong>试卷缓存仍是单进程内存实现</strong>。<code>ExamCache</code> 依赖 waitress 单进程多线程；
+        要多进程部署仍需换共享存储。重构把它归位到 <code>repository/</code>，让替换有了明确落点，但没有替换。
+      </li>
+      <li>
+        <strong>出卷仍慢</strong>（实测 13–19 s，长材料可到 100 s 以上）。
+        <code>app/config.py</code> 里那段压测注释说得很清楚：提速要靠调度，不是改 prompt。
+      </li>
+      <li>
+        <strong>预热仍要 122 秒</strong>。索引没有落盘缓存，每次启动重建。
+        这是接 OpenNotebook 之后值得优先解决的问题——届时数据量只会更大。
+      </li>
+    </ul>
+  </div>
+
+  <div class="callout caution">
+    <span class="label">下一步建议</span>
+    <p>
+      在接 OpenNotebook <em>之前</em>先给 <code>KnowledgeBase</code> 加索引持久化
+      （FAISS <code>save_local</code> / <code>load_local</code> + 内容哈希失效）。
+      现在只需要动一个文件；等来源变成两个再做，就要同时处理两套失效逻辑。
+    </p>
+  </div>
+</section>
+
+<footer>
+  basic-agent 分层重构 · 6 次提交（baseline → 阶段 0/1/2/3a/3+4）· 72 files changed, +2716 / −2110<br>
+  完整迁移方案见 docs/basic-agent-layering-plan.md · 架构守卫 basic-agent/tools/check_architecture.py<br>
+  全部数据为 Windows 本机实测，LLM 为 DeepSeek deepseek-chat
+</footer>
+
+</div>

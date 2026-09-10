@@ -1,0 +1,50 @@
+@import 'tailwindcss';
+
+:root {
+	font-family:
+		Inter, "Microsoft YaHei", "PingFang SC", ui-sans-serif, system-ui, -apple-system,
+		BlinkMacSystemFont, "Segoe UI", sans-serif;
+	font-synthesis: none;
+	text-rendering: optimizeLegibility;
+	color-scheme: dark;
+	background: #030712;
+}
+
+html {
+	margin: 0;
+	min-width: 320px;
+	min-height: 100%;
+	background: #030712;
+}
+
+body {
+	margin: 0;
+	min-width: 320px;
+	min-height: 100vh;
+	background: #030712;
+}
+
+button,
+input,
+select,
+textarea {
+	font: inherit;
+}
+
+button,
+a {
+	-webkit-tap-highlight-color: transparent;
+}
+
+button {
+	cursor: pointer;
+}
+
+* {
+	box-sizing: border-box;
+}
+
+::selection {
+	color: #ecfeff;
+	background: rgba(6, 182, 212, 0.4);
+}

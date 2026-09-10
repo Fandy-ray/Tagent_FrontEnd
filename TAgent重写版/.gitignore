@@ -1,0 +1,224 @@
+# ====================
+# OS / IDE / System Files
+# ====================
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+.claude/
+
+# ====================
+# IDE Editors
+# ====================
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.project
+.classpath
+.settings/
+*.sublime-project
+*.sublime-workspace
+.claude/
+CLAUDE.md
+
+# ====================
+# Python Environments & Cache
+# ====================
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+/lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+.pytest_cache/
+.coverage
+.coverage.*
+htmlcov/
+.tox/
+.nox/
+.mypy_cache/
+.dmypy.json
+dmypy.json
+.pyre/
+.pytype/
+cython_debug/
+.hypothesis/
+.test-tmp/
+.test-write/
+.run/
+logs/runtime/
+.env.runtime
+.playwright-cli/
+**/.venv312/
+open-webui/.webui_secret_key
+open-webui/.agent_provider_encryption_key
+basic-agent/.agent_internal_token
+open-webui/data/backups/
+basic-agent/config/model_providers.json*
+
+# ====================
+# Python Virtual Environments
+# ====================
+.venv/
+venv/
+env/
+ENV/
+env.bak/
+venv.bak/
+.virtualenv/
+pip-log.txt
+pip-delete-this-directory.txt
+
+# ====================
+# Node.js & Frontend
+# ====================
+node_modules/
+jspm_packages/
+web_modules/
+*.tsbuildinfo
+.npm
+.eslintcache
+.stylelintcache
+.rpt2_cache/
+.rts2_cache_cjs/
+.rts2_cache_es/
+.rts2_cache_umd/
+
+# ====================
+# Build Outputs & Distribution
+# ====================
+.svelte-kit/
+build/
+dist/
+out/
+.next/
+.nuxt/
+.vuepress/dist/
+.docusaurus/
+.parcel-cache/
+.serverless/
+.fusebox/
+
+# ====================
+# Package Manager Files
+# ====================
+# JavaScript lock files are part of the reproducible Open WebUI build.
+yarn.lock
+pnpm-lock.yaml
+*.tgz
+.yarn-integrity
+.yarn/cache
+.yarn/unplugged
+.yarn/build-state.yml
+.yarn/install-state.gz
+.pnp.*
+
+# ====================
+# Environment & Sensitive Data
+# ====================
+.env
+.env.*
+!.env.example
+!.env.runtime.example
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+*.key
+*.pem
+*.cert
+*.p12
+secrets/
+credentials.json
+
+# ====================
+# Database Files
+# ====================
+*.db
+*.sqlite
+*.sqlite3
+*.sqlite-journal
+
+# ====================
+# Logs & Runtime Files
+# ====================
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+lerna-debug.log*
+.pnpm-debug.log*
+logs/
+*.pid
+*.seed
+*.pid.lock
+
+# ====================
+# Testing & Coverage
+# ====================
+.nyc_output/
+coverage/
+*.lcov
+cypress/videos/
+cypress/screenshots/
+.vscode-test/
+
+# ====================
+# Jupyter & Notebooks
+# ====================
+.ipynb_checkpoints/
+*.ipynb
+
+# ====================
+# Business Data & Content
+# ====================
+# 根据业务需求忽略的目录
+basic-agent/pages/
+basic-agent/static/pages/
+basic-agent/text_db/
+
+# ====================
+# OS Specific
+# ====================
+# Windows
+Desktop.ini
+$RECYCLE.BIN/
+
+# Linux
+.directory
+*.bak
+
+# macOS
+.AppleDouble
+.LSOverride
+Icon
+
+# ====================
+# Temporary Files
+# ====================
+*.tmp
+*.temp
+.cache/
+.temp/
+*.cache

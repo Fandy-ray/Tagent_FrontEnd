@@ -1,3 +1,46 @@
+.DS_Store
+.DS_Store?
+._*
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# secrets / local runtime
+.env
+.env.*
+!.env.example
+!.env.runtime.example
+*.key
+*.pem
+*.p12
+credentials.json
+model_providers.json*
+
+# deps / build / cache
+node_modules/
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+.svelte-kit/
+.cache/
+*.egg-info/
+
+# logs / data
+logs/
+*.log
+*.db
+*.sqlite
+*.sqlite3
+opennotebook/surreal_data/
+opennotebook/notebook_data/
+
+# local nested git backup (do not publish)
+.git.nested.bak
+**/.git.nested.bak
+
 # Build and Release Folders
 bin-debug/
 bin-release/
@@ -12,7 +55,3 @@ bin-release/
 *.air
 *.ipa
 *.apk
-
-# Project files, i.e. `.project`, `.actionScriptProperties` and `.flexProperties`
-# should NOT be excluded as they contain compiler settings and other important
-# information for Eclipse / Flash Builder.

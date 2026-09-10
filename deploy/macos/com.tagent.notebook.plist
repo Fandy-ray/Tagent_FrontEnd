@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  OpenNotebook 容器（页面 8502 / 接口 5055）—— 可选。
+
+  docker-compose.yml 里已经写了 restart: always，Docker Desktop 起来后容器
+  本来就会自己回来。这个 job 管的是"登录后确保拉起过一次"，顺带解决
+  Docker Desktop 启动比 launchd 慢的竞态：先等引擎可用再 compose up。
+
+  Type 上是一次性任务：跑完就退出，KeepAlive 用 SuccessfulExit=false 让它
+  在 Docker 还没起来（非 0 退出）时隔 30 秒重试。
+-->
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.tagent.notebook</string>
+
+    <key>ProgramArguments</key>
+    <array>
+        <string>/bin/bash</string>
+        <string>@TAGENT_ROOT@/deploy/macos/notebook-up.sh</string>
+        <string>@DOCKER_BIN@</string>
+        <string>@TAGENT_ROOT@/opennotebook/docker-compose.yml</string>
+    </array>
+
+    <key>WorkingDirectory</key>
+    <string>@TAGENT_ROOT@/opennotebook</string>
+
+    <key>RunAtLoad</key>
+    <true/>
+    <key>KeepAlive</key>
+    <dict>
+        <key>SuccessfulExit</key>
+        <false/>
+    </dict>
+    <key>ThrottleInterval</key>
+    <integer>30</integer>
+
+    <key>StandardOutPath</key>
+    <string>@TAGENT_ROOT@/TAgent重写版/logs/runtime/notebook.out.log</string>
+    <key>StandardErrorPath</key>
+    <string>@TAGENT_ROOT@/TAgent重写版/logs/runtime/notebook.err.log</string>
+</dict>
+</plist>

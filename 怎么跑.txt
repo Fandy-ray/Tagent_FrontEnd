@@ -1,0 +1,108 @@
+交接包（无 Key、无 .env）
+
+一句话：装好 Docker Desktop，双击 start.bat（macOS 双击 start.command），
+       登记模型，打开 http://localhost:5173
+
+──────────────────────────────────────────────
+
+0) 前提：Docker Desktop 能正常启动
+   OpenNotebook 跑在 Docker 里（opennotebook/docker-compose.yml）。
+
+   macOS：装 Docker Desktop（Apple 芯片选 Apple Silicon 版），或 OrbStack / colima。
+   另外还要 uv 和 Node 22：
+       brew install uv node@22
+   没有 Homebrew 就：curl -LsSf https://astral.sh/uv/install.sh | sh   （装完新开一个终端）
+
+   Windows：如果 Docker 报「未检测到虚拟化支持」：多半 BIOS 是好的，缺的是 Windows 组件。
+   以管理员身份运行：  wsl --install --no-distribution   然后重启电脑。
+   自查：wsl --status，报 WSL_E_WSL_OPTIONAL_COMPONENT_REQUIRED 就是这个原因。
+
+   国内先配镜像加速（镜像有 GB 级）：
+   Docker Desktop → Settings → Docker Engine，JSON 里加 registry-mirrors，
+   细节见 opennotebook/readme.md 第三步。
+
+1) 双击 start.bat（macOS 双击 start.command）
+   会依次拉起：OpenNotebook(8502 页面 / 5055 接口) → basic-agent(5001) → 前端(5173)。
+   首次要拉 Docker 镜像 + 装 Python/Node 依赖，慢，属正常。
+   Docker 起不来时脚本会说明原因并继续起另外两个 —— 那种情况下答疑只用本地教材。
+
+   停止：双击 stop.bat / stop.command（会连容器一起停，笔记数据保留）。
+
+   macOS 双击没反应？多半是解压时丢了可执行权限。在交接包目录开「终端」跑一次：
+       chmod +x start.command stop.command
+   提示「身份不明的开发者」：右键该文件 -> 打开 -> 打开。
+   不想双击也行：./start.command  或  bash TAgent重写版/scripts/start.sh
+
+2) 登记模型（必做）
+   用自己的 DeepSeek Key，不要用别人的。管理 token 在 TAgent重写版/.env.runtime
+   的 AGENT_ADMIN_TOKEN（启动脚本会自动生成，不用手填）。
+
+   macOS / Linux（在交接包根目录跑）：
+
+   TOKEN=$(grep '^AGENT_ADMIN_TOKEN=' TAgent重写版/.env.runtime | cut -d= -f2-)
+   curl -X POST http://127.0.0.1:5001/admin/model-providers \
+     -H "X-Agent-Admin-Token: $TOKEN" -H 'Content-Type: application/json' \
+     -d '{"name":"DeepSeek","served_model_id":"deepseek",
+          "base_url":"https://api.deepseek.com","upstream_model":"deepseek-chat",
+          "auth_mode":"bearer","api_key":"你自己的-sk-xxx","temperature":0.1}'
+
+   Windows PowerShell：
+
+   $token = (Get-Content 'TAgent重写版\.env.runtime' | Where-Object { $_ -match '^AGENT_ADMIN_TOKEN=' }) -replace '^AGENT_ADMIN_TOKEN=',''
+   $body = @{
+     name = 'DeepSeek'; served_model_id = 'deepseek'
+     base_url = 'https://api.deepseek.com'; upstream_model = 'deepseek-chat'
+     auth_mode = 'bearer'; api_key = '你自己的-sk-xxx'; temperature = 0.1
+   } | ConvertTo-Json
+
+   Invoke-RestMethod -Uri 'http://127.0.0.1:5001/admin/model-providers' -Method Post `
+     -Headers @{ 'X-Agent-Admin-Token' = $token } -ContentType 'application/json' -Body $body
+
+   没登记的话前端顶栏是「选择模型」，答疑和出题都会失败。
+
+3) 让 OpenNotebook 复用同一个 Key（可选，推荐）
+   登记过一次就不用再填第二遍。打开 http://localhost:8502
+   Models -> Add Configuration -> OpenAI Compatible：
+
+     Base URL : http://host.docker.internal:5001/v1/raw
+     Model    : deepseek
+     API Key  : local（随便填，这条通道不校验，真 Key 在 basic-agent 那边）
+
+   然后 Sync Models，把 deepseek 指派为 Chat Model。
+
+   !! 一定要填 /v1/raw，不能填 /v1 !!
+   /v1 是 TAgent 的 RAG 答疑通道，每次调用都会把课程教材注入 prompt，
+   OpenNotebook 拿它做摘要会跑偏。/v1/raw 才是原样转发。
+
+   Embedding 是可选的，不配也能跑：
+   TAgent 先试向量检索，OpenNotebook 没配 embedding 会返回 400，
+   然后自动退回全文检索，仍然能检索到内容，只是变成关键词匹配。
+   （实测过：vector -> 400，text -> 200）
+
+   想要语义检索再配，两条路：
+   A. 装 Ollama（免费离线，约 1.5G）：https://ollama.com/download
+      装完新开终端跑  ollama pull mxbai-embed-large
+      OpenNotebook 里 Models -> Add Configuration -> Ollama
+      Base URL 填 http://host.docker.internal:11434（不是 localhost:11434）
+   B. 阿里云百炼（不用装东西）：OpenAI Compatible
+      Base URL https://dashscope.aliyuncs.com/compatible-mode/v1
+      Model text-embedding-v3，填你的 DashScope Key
+
+4) 打开 http://localhost:5173
+
+──────────────────────────────────────────────
+
+自检
+   http://localhost:5001/knowledge   看 notebook_reachable 是不是 true
+   （若笔记本明明起着却还是 false：多半有个旧的 basic-agent 残留进程占着 5001，
+     先 stop.bat / stop.command，确认 5001 释放了再重启。
+     macOS 查占用：lsof -nP -iTCP:5001 -sTCP:LISTEN
+     若占用者是 ControlCenter，那是「隔空播放接收器」，去系统设置里关掉。）
+   （8502 是 OpenNotebook 的页面，5055 才是接口。填错了不报错，
+     只是笔记本里的内容一条都检索不到，答疑会静悄悄退回本地教材。）
+
+说明
+   答疑可流式输出，右上角可选真实笔记本。多本管理：选哪一本就只检索哪一本。
+   笔记数据存在 opennotebook/notebook_data 和 surreal_data，换机器要一起搬。
+
+更多见 README.md

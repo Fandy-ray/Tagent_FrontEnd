@@ -1,0 +1,36 @@
+[project]
+name = "tagent-basic-agent"
+version = "0.1.0"
+description = "TAgent RAG and assessment service"
+requires-python = ">=3.12,<3.13"
+dependencies = [
+    "faiss-cpu==1.14.3",
+    "flask==2.3.3",
+    "httpx==0.28.1",
+    "langchain-community==0.4.2",
+    "langchain-core==1.4.7",
+    "langchain-huggingface>=1.2.0,<2",
+    "langchain-openai==1.1.0",
+    "langchain-text-splitters==1.1.2",
+    "langgraph==1.0.0",
+    "openai==2.9.0",
+    "pdf2image==1.17.0",
+    "pydantic==2.12.5",
+    "python-dotenv==1.2.1",
+    "sentence-transformers==5.5.1",
+    "tqdm==4.68.4",
+    "waitress>=3,<4",
+]
+
+[dependency-groups]
+dev = ["pytest==9.0.2"]
+
+[tool.uv]
+package = false
+
+[tool.pytest.ini_options]
+python_files = ["test_*.py"]
+testpaths = ["."]
+# basic-agent 带连字符不能当包名，靠 pythonpath 让 app.* 可导入，
+# 取代过去每个测试文件里手写的 sys.path.insert。
+pythonpath = ["."]

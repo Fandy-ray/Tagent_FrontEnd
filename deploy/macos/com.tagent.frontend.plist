@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  TAgent 前端 tagentnote —— Vite dev server（5173）
+
+  为什么部署也跑 dev server 而不是 build：/agent-api -> 127.0.0.1:5001 的
+  反向代理只存在于 Vite dev server 里（见 tagentnote/vite.config.ts），
+  生产构建没有它，前端所有后端请求都会 404。
+
+  launchd 没有单元间的依赖顺序（KeepAlive 的 OtherJobEnabled 也不是干这个的）。
+  这里不做等待：后端没起来时前端页面照样能开，请求先 502，后端就绪后自动恢复。
+-->
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.tagent.frontend</string>
+
+    <!--
+      直接用 node 跑 vite，不经 npm：npm 会再派生一个子进程，
+      launchd 盯着的就成了 npm 那一层，停止时容易留下孤儿占着 5173。
+    -->
+    <key>ProgramArguments</key>
+    <array>
+        <string>@NODE_BIN@</string>
+        <string>@TAGENT_ROOT@/tagentnote/node_modules/vite/bin/vite.js</string>
+        <string>dev</string>
+        <string>--port</string>
+        <string>5173</string>
+        <string>--strictPort</string>
+        <string>--host</string>
+        <string>@BIND_HOST@</string>
+    </array>
+
+    <key>WorkingDirectory</key>
+    <string>@TAGENT_ROOT@/tagentnote</string>
+
+    <key>EnvironmentVariables</key>
+    <dict>
+        <!-- node 可能装在 Homebrew/nvm 目录里，launchd 的默认 PATH 找不到 -->
+        <key>PATH</key>
+        <string>@NODE_DIR@:/usr/bin:/bin:/usr/sbin:/sbin:/opt/homebrew/bin:/usr/local/bin</string>
+    </dict>
+
+    <key>RunAtLoad</key>
+    <true/>
+    <key>KeepAlive</key>
+    <dict>
+        <key>SuccessfulExit</key>
+        <false/>
+    </dict>
+    <key>ThrottleInterval</key>
+    <integer>10</integer>
+
+    <key>StandardOutPath</key>
+    <string>@TAGENT_ROOT@/TAgent重写版/logs/runtime/tagentnote.out.log</string>
+    <key>StandardErrorPath</key>
+    <string>@TAGENT_ROOT@/TAgent重写版/logs/runtime/tagentnote.err.log</string>
+
+    <key>ProcessType</key>
+    <string>Interactive</string>
+</dict>
+</plist>

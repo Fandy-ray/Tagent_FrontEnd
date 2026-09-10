@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  TAgent basic-agent —— 检索 / 答疑 / 出卷判卷（127.0.0.1:5001）
+
+  占位符由 install.sh 替换后装到 ~/Library/LaunchAgents/。
+  LaunchAgent（用户级）而不是 LaunchDaemon（系统级）：不需要 sudo，
+  登录后自动起；缺点是必须登录才跑，服务器场景见 README 里的说明。
+-->
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.tagent.basic-agent</string>
+
+    <key>ProgramArguments</key>
+    <array>
+        <string>@TAGENT_ROOT@/TAgent重写版/basic-agent/.venv/bin/python</string>
+        <string>main.py</string>
+    </array>
+
+    <key>WorkingDirectory</key>
+    <string>@TAGENT_ROOT@/TAgent重写版/basic-agent</string>
+
+    <!--
+      main.py 自己会用 python-dotenv 读 ../.env.runtime，所以密钥不用写进
+      这个 plist（plist 是明文且会被备份，不该放 token）。
+      这里只钉死监听地址和端口：dotenv 不覆盖已存在的环境变量，所以这两条
+      是最终裁决 —— 前端的 /agent-api 代理写死了 5001，两边必须一致。
+    -->
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>BASIC_AGENT_HOST</key>
+        <string>@BIND_HOST@</string>
+        <key>BASIC_AGENT_PORT</key>
+        <string>5001</string>
+        <key>USE_WAITRESS</key>
+        <string>1</string>
+        <key>PATH</key>
+        <string>/usr/bin:/bin:/usr/sbin:/sbin:/opt/homebrew/bin:/usr/local/bin</string>
+    </dict>
+
+    <key>RunAtLoad</key>
+    <true/>
+    <!--
+      KeepAlive.SuccessfulExit=false：非正常退出才拉起，正常退出（launchctl
+      stop / 自己 exit 0）就不管。用裸 <true/> 的话连手动停都会被立刻拉回来。
+    -->
+    <key>KeepAlive</key>
+    <dict>
+        <key>SuccessfulExit</key>
+        <false/>
+    </dict>
+    <!-- 崩溃重启的最小间隔，避免起不来时疯狂刷日志 -->
+    <key>ThrottleInterval</key>
+    <integer>10</integer>
+
+    <key>StandardOutPath</key>
+    <string>@TAGENT_ROOT@/TAgent重写版/logs/runtime/basic-agent.out.log</string>
+    <key>StandardErrorPath</key>
+    <string>@TAGENT_ROOT@/TAgent重写版/logs/runtime/basic-agent.err.log</string>
+
+    <key>ProcessType</key>
+    <string>Interactive</string>
+</dict>
+</plist>
