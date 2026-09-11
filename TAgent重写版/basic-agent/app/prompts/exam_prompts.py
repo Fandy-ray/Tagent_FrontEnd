@@ -47,35 +47,88 @@ def _covered_block(covered: list[str]) -> str:
     listed = "\n".join(f"- {item}" for item in covered)
     return f"\n本卷前面已考查以下知识点，本段必须避开、另选考点：\n{listed}\n"
 
-def build_cloze_prompt(context: str, topic: str | None, covered: list[str]) -> str:
-    topic_line = f"本卷主题聚焦：{topic}\n" if topic else ""
+def build_cloze_prompt(
+    context: str,
+    topic: str | None,
+    covered: list[str],
+    *,
+    count_range: tuple[int, int] = CLOZE_COUNT_RANGE,
+    deck_mode: bool = False,
+) -> str:
+    """填空段的 prompt。整卷调用方不传关键字参数，行为与改造前逐字一致。
+
+    闪卡（deck_mode=True）只有两处差异：题量换成分片的区间，去掉"分值合计
+    /归一到 100 分"那一条（闪卡不计分，留着是假信息）。其余规则一个字都没动
+    ——config.py 里 EXAM_LLM_TIMEOUT 那段压测结论是精简 prompt 反而更慢、
+    考点更容易撞车。
+    """
+    scope = "本组" if deck_mode else "本卷"
+    topic_line = f"{scope}主题聚焦：{topic}\n" if topic else ""
+
+    rules = [
+        f"填空题 {count_range[0]}~{count_range[1]} 道；text 恰好包含一个 ____；"
+        "公式、单位和大小写敏感答案使用 exact，普通文字使用 text。"
+    ]
+    if not deck_mode:
+        rules.append(
+            f"points 必须为正数，合计约 {TYPE_SHARE_BOUNDS['cloze'][0]}~"
+            f"{TYPE_SHARE_BOUNDS['cloze'][1]} 分，服务端会归一到 100 分。"
+        )
+        rules.append("title 给整张试卷起名，简洁概括本卷考查范围。")
+    else:
+        rules.append("title 给这组闪卡起名，简洁概括本组考查范围。")
+    numbered = "\n".join(f"{index + 1}. {rule}" for index, rule in enumerate(rules))
+
     return f"""你是教学出卷助手。请仅依据参考材料出**填空题**，直接输出一个 JSON 对象，不要输出其他文字。
 
 JSON 结构示例（字段名必须完全一致）：
 {_CLOZE_JSON_SPEC}
 
 出卷约束：
-1. 填空题 {CLOZE_COUNT_RANGE[0]}~{CLOZE_COUNT_RANGE[1]} 道；text 恰好包含一个 ____；公式、单位和大小写敏感答案使用 exact，普通文字使用 text。
-2. points 必须为正数，合计约 {TYPE_SHARE_BOUNDS['cloze'][0]}~{TYPE_SHARE_BOUNDS['cloze'][1]} 分，服务端会归一到 100 分。
-3. title 给整张试卷起名，简洁概括本卷考查范围。
+{numbered}
 {_COMMON_RULES}
 - ____ 只能挖**唯一确定**的名词、公式或数值；凡是可以有多种合理表述的位置一律不要挖空。
   accept 必须穷举所有等价写法（全称、简称、符号、常见同义词），否则学生答对也会被判错。
+  accept 里的公式同样要用 $...$ 包裹（否则前端渲染不出来，学生看到的是一串反斜杠）；
+  且必须另给至少一条**学生真能打出来的纯文字或符号写法**（例如 ρ=λ/μ），否则没人答得对。
 - explanation 一句话说明即可，不要长篇展开。
 {_covered_block(covered)}{topic_line}
 参考材料：
 {context}"""
 
-def build_choice_prompt(context: str, topic: str | None, covered: list[str]) -> str:
-    topic_line = f"本卷主题聚焦：{topic}\n" if topic else ""
+def build_choice_prompt(
+    context: str,
+    topic: str | None,
+    covered: list[str],
+    *,
+    count_range: tuple[int, int] = CHOICE_COUNT_RANGE,
+    deck_mode: bool = False,
+) -> str:
+    """选择段的 prompt。整卷调用方不传关键字参数，输出与改造前逐字一致。
+
+    闪卡（deck_mode=True）只改题量区间、去掉分值那一条；其余规则一个字不动，
+    理由同 build_cloze_prompt。
+    """
+    scope = "本组" if deck_mode else "本卷"
+    topic_line = f"{scope}主题聚焦：{topic}\n" if topic else ""
+
+    rules = [
+        f"选择题 {count_range[0]}~{count_range[1]} 道，每题恰好 4 个选项，correct_index 为 0~3。"
+    ]
+    if not deck_mode:
+        rules.append(
+            f"points 必须为正数，合计约 {TYPE_SHARE_BOUNDS['choice'][0]}~"
+            f"{TYPE_SHARE_BOUNDS['choice'][1]} 分，服务端会归一到 100 分。"
+        )
+    numbered = "\n".join(f"{index + 1}. {rule}" for index, rule in enumerate(rules))
+
     return f"""你是教学出卷助手。请仅依据参考材料出**选择题**，直接输出一个 JSON 对象，不要输出其他文字。
 
 JSON 结构示例（字段名必须完全一致）：
 {_CHOICE_JSON_SPEC}
 
 出卷约束：
-1. 选择题 {CHOICE_COUNT_RANGE[0]}~{CHOICE_COUNT_RANGE[1]} 道，每题恰好 4 个选项，correct_index 为 0~3。
-2. points 必须为正数，合计约 {TYPE_SHARE_BOUNDS['choice'][0]}~{TYPE_SHARE_BOUNDS['choice'][1]} 分，服务端会归一到 100 分。
+{numbered}
 {_COMMON_RULES}
 - 四个选项互斥、长度相近，只有一个明确正确；不要出"以上都对/都不对"，不要让干扰项也说得通。
 - explanation 一句话说明即可，不要长篇展开。

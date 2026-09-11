@@ -95,6 +95,15 @@ def generate_exam():
     return envelope(result, provider)
 
 
+@blueprint.post("/quiz/flash/generate")
+def generate_flash():
+    provider, payload = _envelope()
+    result = get_exam_service().generate_flash_deck(
+        exam_topic(payload), provider, notebook_ids=optional_notebook_ids(payload)
+    )
+    return envelope(result, provider)
+
+
 @blueprint.post("/quiz/exam/review")
 def review_exam():
     provider, payload = _envelope()

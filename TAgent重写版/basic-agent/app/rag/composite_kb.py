@@ -9,6 +9,8 @@ from __future__ import annotations
 import logging
 from typing import Any
 
+from app.config import EXAM_CONTEXT_SEPARATOR
+
 
 log = logging.getLogger(__name__)
 
@@ -90,7 +92,7 @@ class CompositeKnowledgeBase:
                 continue
             if context and context.strip():
                 parts.append(context.strip())
-        return "\n\n---\n\n".join(parts)
+        return EXAM_CONTEXT_SEPARATOR.join(parts)
 
     def quiz_documents(self, *, max_documents: int = 2, notebook_ids: list[str] | None = None):
         from app.rag.knowledge_base import select_quiz_documents

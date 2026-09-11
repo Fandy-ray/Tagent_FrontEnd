@@ -297,3 +297,27 @@ def test_empty_content_retries_then_fails_generic():
 def test_extract_json_strips_code_fence():
     assert extract_json('```json\n{"a": 1}\n```') == '{"a": 1}'
     assert extract_json('{"a": 1}') == '{"a": 1}'
+
+
+def test_connection_error_is_not_reported_as_a_structure_problem():
+    """连不上上游和"上游回了但结构不对"要分开说，否则会把人引去查 prompt。"""
+    from app.infra.llm_json import call_json_llm
+
+    class Unreachable:
+        def bind(self, **_kwargs):
+            return self
+
+        async def ainvoke(self, _prompt):
+            raise openai.APIConnectionError(request=None)
+
+    with pytest.raises(UpstreamLLMError) as excinfo:
+        call_json_llm(
+            Unreachable(),
+            "prompt",
+            Payload,
+            attempt_timeout=1.0,
+            budget_seconds=30.0,
+        )
+
+    assert "连不上模型服务" in str(excinfo.value)
+    assert "结构异常" not in str(excinfo.value)

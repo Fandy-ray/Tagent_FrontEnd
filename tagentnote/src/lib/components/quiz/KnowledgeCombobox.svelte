@@ -184,6 +184,12 @@
 				}}
 				onkeydown={(event) => {
 					if (event.key === 'Enter') {
+						// 中文输入法按回车是在确认候选词，不是提交。少了这句，
+						// 打「排队论」的过程中就会莫名其妙开始出题。
+						if (event.isComposing) {
+							return;
+						}
+
 						open = false;
 						onSubmit();
 					}
