@@ -67,10 +67,14 @@
 	<div class="flip-inner" class:is-flipped={flipped}>
 		<!-- 正面 -->
 		<section
-			class="flip-face overflow-hidden rounded-2xl border border-gray-700 bg-[#242424] shadow-sm"
+			class="flip-face rounded-2xl border border-gray-700 bg-[#242424] shadow-sm"
 			aria-hidden={flipped}
 		>
-			<div class="absolute top-0 bottom-0 left-0 w-1 bg-blue-500"></div>
+			<!-- 竖条要被圆角裁住，但 overflow-hidden 不能待在 .flip-face 上（见 <style> 里的说明），
+			     所以单独套一层只管裁剪的壳。 -->
+			<div class="pointer-events-none absolute inset-0 overflow-hidden rounded-2xl">
+				<div class="absolute top-0 bottom-0 left-0 w-1 bg-blue-500"></div>
+			</div>
 
 			{#if coverClickable}
 				<button
@@ -174,10 +178,12 @@
 
 		<!-- 反面 -->
 		<section
-			class="flip-face flip-back overflow-hidden rounded-2xl border border-gray-700 bg-[#242424] shadow-sm"
+			class="flip-face flip-back rounded-2xl border border-gray-700 bg-[#242424] shadow-sm"
 			aria-hidden={!flipped}
 		>
-			<div class={`absolute top-0 bottom-0 left-0 w-1 ${stripeClass}`}></div>
+			<div class="pointer-events-none absolute inset-0 overflow-hidden rounded-2xl">
+				<div class={`absolute top-0 bottom-0 left-0 w-1 ${stripeClass}`}></div>
+			</div>
 
 			<div
 				class="flex h-full min-h-0 flex-col [justify-content:safe_center] overflow-y-auto p-5 pl-7"
@@ -284,6 +290,16 @@
 		transform: rotateY(180deg);
 	}
 
+	/*
+	   这两面**不能**自己带 overflow:hidden。Safari 上一旦 backface-visibility:hidden
+	   的元素同时有 overflow:hidden（或自带裁剪的圆角），backface 就会失效：正面不
+	   藏起来，而是**镜像着**叠在反面上——选项和「答对了」反着写，还和反面文字错位
+	   （用户实拍到过；Chromium 同视口复现不出来，所以只在部分浏览器上能看见）。
+	   需要裁剪的东西请套一层自己的壳，见上面那两个 .pointer-events-none 的裁剪层。
+
+	   也别改用 opacity/visibility 去兜底藏另一面：试过，Chromium 会有一两秒画不出
+	   刚露出来的那一面（opacity 已经是 1、位置也对，就是不画），整张卡空白。
+	*/
 	.flip-face {
 		position: absolute;
 		inset: 0;
