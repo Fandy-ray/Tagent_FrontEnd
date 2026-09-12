@@ -449,7 +449,8 @@
 				event.preventDefault();
 				if (!sidebarOpen) sidebarOpen = true;
 				queueMicrotask(() => {
-					document.getElementById('sidebar-search-button')?.click();
+					const btn = document.getElementById('sidebar-search-button');
+					btn?.click();
 				});
 				return;
 			}
@@ -1614,6 +1615,7 @@
 			{activeChatId}
 			{selectedFolderId}
 			chats={sidebarChats}
+			searchChats={chats}
 			{folders}
 			modelId={selectedModelId}
 			userName={userSettings.displayName}

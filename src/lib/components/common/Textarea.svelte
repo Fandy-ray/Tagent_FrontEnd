@@ -3,13 +3,15 @@
 		value?: string;
 		placeholder?: string;
 		className?: string;
+		rows?: number;
 	};
 
 	let {
 		value = $bindable(''),
 		placeholder = '',
-		className = ''
+		className = '',
+		rows = 3
 	}: Props = $props();
 </script>
 
-<textarea class={className} {placeholder} bind:value rows="3"></textarea>
+<textarea class={className} {placeholder} {rows} bind:value></textarea>

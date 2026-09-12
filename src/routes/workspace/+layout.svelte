@@ -4,13 +4,14 @@
 	import { onMount } from 'svelte';
 
 	import MockSidebar from '$lib/components/chat/MockSidebar.svelte';
-	import { loadQaChats } from '$lib/data/qaConversations';
+	import { loadQaChats, type QaChat } from '$lib/data/qaConversations';
 
 	let { children } = $props();
 
 	let sidebarOpen = $state(true);
 	let modelId = $state($page.url.searchParams.get('model') ?? '');
 	let chats = $state<{ id: string; title: string; updatedAt: number }[]>([]);
+	let searchChats = $state<QaChat[]>([]);
 	let activeChatId = $state<string | null>($page.url.searchParams.get('chat'));
 
 	const tabs = [
@@ -38,6 +39,7 @@
 
 	onMount(() => {
 		const stored = loadQaChats();
+		searchChats = stored.chats;
 		chats = stored.chats.map((chat) => ({
 			id: chat.id,
 			title: chat.title,
@@ -69,6 +71,7 @@
 		<MockSidebar
 			{activeChatId}
 			{chats}
+			{searchChats}
 			{modelId}
 			activeNav="workspace"
 			onHome={() => goto('/agent-select')}

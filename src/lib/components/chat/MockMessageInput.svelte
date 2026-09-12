@@ -2,6 +2,7 @@
 	import PlusAlt from '$lib/components/icons/PlusAlt.svelte';
 	import ComponentIcon from '$lib/components/icons/Component.svelte';
 	import VoiceIcon from '$lib/components/icons/Voice.svelte';
+	import { listPrompts } from '$lib/data/workspaceResources';
 	import InputMenu, { type InputAttachment } from './MessageInput/InputMenu.svelte';
 	import IntegrationsMenu from './MessageInput/IntegrationsMenu.svelte';
 	import VoiceRecording from './MessageInput/VoiceRecording.svelte';
@@ -69,6 +70,7 @@
 	let selectedToolIds = $state<string[]>([]);
 	let recording = $state(false);
 	let callOpen = $state(false);
+	let commandIndex = $state(0);
 
 	const canSendWhileGenerating = $derived(enableMessageQueue && generating);
 	const showVoiceMode = $derived(!prompt.trim() && attachments.length === 0 && !generating);
@@ -83,6 +85,42 @@
 		const q = prompt.trim();
 		return suggestions.find((s) => s.startsWith(q) && s !== q) ?? '';
 	});
+
+	const slashQuery = $derived.by(() => {
+		const m = prompt.match(/^\/([^\s]*)$/);
+		return m ? m[1].toLowerCase() : null;
+	});
+
+	const slashCommands = $derived.by(() => {
+		if (slashQuery === null) return [];
+		return listPrompts()
+			.filter((p) => p.isActive !== false)
+			.filter((p) => p.command.replace(/^\/+/, '').toLowerCase().includes(slashQuery))
+			.sort((a, b) => a.title.localeCompare(b.title, 'zh-CN'));
+	});
+
+	$effect(() => {
+		void slashCommands;
+		commandIndex = 0;
+	});
+
+	const applySlashPrompt = (item: (typeof slashCommands)[number]) => {
+		let content = item.content || '';
+		// Simple {{var}} → leave for user to fill; replace common system vars
+		const now = new Date();
+		content = content
+			.replaceAll('{{CURRENT_DATE}}', now.toLocaleDateString())
+			.replaceAll('{{CURRENT_TIME}}', now.toLocaleTimeString())
+			.replaceAll('{{CURRENT_DATETIME}}', now.toLocaleString());
+		prompt = content;
+		queueMicrotask(() => {
+			const el = textareaElement;
+			if (!el) return;
+			el.focus();
+			const len = el.value.length;
+			el.setSelectionRange(len, len);
+		});
+	};
 
 	const buildPayload = (content: string) => {
 		const parts: string[] = [];
@@ -112,6 +150,30 @@
 			event.preventDefault();
 			onStop();
 			return;
+		}
+
+		if (slashCommands.length > 0) {
+			if (event.key === 'ArrowDown') {
+				event.preventDefault();
+				commandIndex = Math.min(commandIndex + 1, slashCommands.length - 1);
+				return;
+			}
+			if (event.key === 'ArrowUp') {
+				event.preventDefault();
+				commandIndex = Math.max(commandIndex - 1, 0);
+				return;
+			}
+			if (event.key === 'Enter' || event.key === 'Tab') {
+				event.preventDefault();
+				const item = slashCommands[commandIndex];
+				if (item) applySlashPrompt(item);
+				return;
+			}
+			if (event.key === 'Escape') {
+				event.preventDefault();
+				prompt = '';
+				return;
+			}
 		}
 
 		if (event.key === 'ArrowUp' && !prompt.trim() && lastUserMessage) {
@@ -324,6 +386,33 @@
 		{/if}
 
 		<div class="relative max-h-[18rem] min-h-[3rem] overflow-y-auto">
+			{#if slashCommands.length > 0}
+				<div
+					class="absolute bottom-full left-0 z-20 mb-2 max-h-56 w-full max-w-md overflow-y-auto rounded-xl border border-gray-800 bg-gray-850 py-1 shadow-lg"
+				>
+					<div class="px-3 py-1 text-xs text-gray-500">提示词</div>
+					{#each slashCommands as item, idx (item.id)}
+						<button
+							type="button"
+							class="flex w-full flex-col px-3 py-1.5 text-left transition {idx === commandIndex
+								? 'bg-gray-800'
+								: 'hover:bg-gray-800/70'}"
+							onclick={() => applySlashPrompt(item)}
+							onmousemove={() => {
+								commandIndex = idx;
+							}}
+						>
+							<div class="flex items-center gap-2 text-sm text-white">
+								<span class="font-medium">{item.title}</span>
+								<span class="text-xs text-gray-500">/{item.command.replace(/^\/+/, '')}</span>
+							</div>
+							{#if item.content}
+								<div class="line-clamp-1 text-xs text-gray-500">{item.content}</div>
+							{/if}
+						</button>
+					{/each}
+				</div>
+			{/if}
 			{#if autocompleteHint}
 				<div class="pointer-events-none absolute top-3 left-3 right-3 truncate text-sm leading-6 text-gray-600" aria-hidden="true">
 					<span class="invisible">{prompt}</span><span>{autocompleteHint.slice(prompt.length)}</span>

@@ -2,6 +2,9 @@
 	import FolderModal, { type FolderFormValue } from './FolderModal.svelte';
 	import RecursiveFolder from './RecursiveFolder.svelte';
 	import UserMenu from '$lib/components/layout/UserMenu.svelte';
+	import SearchModal from '$lib/components/layout/SearchModal.svelte';
+	import Search from '$lib/components/icons/Search.svelte';
+	import type { QaChat } from '$lib/data/qaConversations';
 	import type { QaFolder } from '$lib/data/qaFolders';
 
 	export type ChatSummary = {
@@ -17,6 +20,7 @@
 		activeChatId?: string | null;
 		selectedFolderId?: string | null;
 		chats?: ChatSummary[];
+		searchChats?: QaChat[];
 		folders?: QaFolder[];
 		modelId?: string;
 		userName?: string;
@@ -54,6 +58,7 @@
 		activeChatId = null,
 		selectedFolderId = null,
 		chats = [],
+		searchChats = [],
 		folders = [],
 		modelId = '',
 		userName = 'Tagent',
@@ -87,8 +92,7 @@
 		onOpenWorkspaceKnowledge = () => {}
 	}: Props = $props();
 
-	let searchOpen = $state(false);
-	let searchQuery = $state('');
+	let showSearch = $state(false);
 	let showFolders = $state(
 		typeof localStorage !== 'undefined'
 			? localStorage.getItem('sidebar-folders-folder-state') !== 'false'
@@ -112,12 +116,10 @@
 	let deleteContents = $state(true);
 
 	const sortedChats = $derived([...chats].sort((a, b) => b.updatedAt - a.updatedAt));
-
-	const filteredChats = $derived(
-		searchQuery.trim()
-			? sortedChats.filter((chat) => chat.title.includes(searchQuery.trim()))
-			: sortedChats
-	);
+	const filteredChats = $derived(sortedChats);
+	const isMac =
+		typeof navigator !== 'undefined' ? /Mac|iPhone|iPad/i.test(navigator.userAgent) : false;
+	const searchChatsForModal = $derived(searchChats.length > 0 ? searchChats : []);
 
 	const rootFolders = $derived(
 		folders
@@ -343,25 +345,22 @@
 				id="sidebar-search-button"
 				class="group flex w-full items-center gap-3 rounded-2xl px-2.5 py-2 text-gray-200 outline-none transition hover:bg-gray-900"
 				onclick={() => {
-					searchOpen = !searchOpen;
-					if (!searchOpen) searchQuery = '';
-					else queueMicrotask(() => document.getElementById('sidebar-search-input')?.focus());
+					showSearch = true;
 				}}
+				draggable="false"
+				aria-label="搜索"
 			>
-				<svg
-					class="size-[18px] shrink-0"
-					viewBox="0 0 24 24"
-					fill="none"
-					stroke="currentColor"
-					stroke-width="2"
-					stroke-linecap="round"
-					stroke-linejoin="round"
-					aria-hidden="true"
+				<div class="self-center">
+					<Search strokeWidth="2" className="size-[18px]" />
+				</div>
+				<div class="flex flex-1 translate-y-[0.5px] self-center">
+					<div class="self-center text-sm">搜索</div>
+				</div>
+				<span
+					class="invisible rounded border border-white/10 px-1.5 py-0.5 text-[10px] text-gray-500 group-hover:visible"
 				>
-					<circle cx="11" cy="11" r="7"></circle>
-					<path d="m20 20-3.5-3.5"></path>
-				</svg>
-				<span class="flex-1 text-left text-sm">搜索</span>
+					{isMac ? '⌘' : 'Ctrl'} K
+				</span>
 			</button>
 
 			<button type="button" class={navClass('notes')} onclick={onOpenNotes} title="打开笔记">
@@ -408,14 +407,6 @@
 				<span class="flex-1 text-left text-sm">工作空间</span>
 			</button>
 
-			{#if searchOpen}
-				<input
-					id="sidebar-search-input"
-					class="mb-1 w-full rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2 text-sm text-gray-100 outline-none placeholder:text-gray-500 focus:border-white/20"
-					placeholder="搜索对话"
-					bind:value={searchQuery}
-				/>
-			{/if}
 		</nav>
 
 		<section class="mt-0.5 px-0.5 pb-1">
@@ -593,8 +584,6 @@
 					<p class="px-2.5 py-6 text-xs leading-5 text-gray-500">
 						{#if chats.length === 0}
 							还没有对话。提问后会出现在这里，刷新后仍会保留。
-						{:else if searchQuery.trim()}
-							没有匹配的对话
 						{:else}
 							对话都在分组中。点击上方分组查看。
 						{/if}
@@ -649,6 +638,24 @@
 		</div>
 	</footer>
 </aside>
+
+<SearchModal
+	bind:show={showSearch}
+	chats={searchChatsForModal}
+	{folders}
+	onClose={() => {
+		showSearch = false;
+	}}
+	onSelectChat={(chatId) => {
+		onSelectChat(chatId);
+	}}
+	onNewChat={() => {
+		onNewChat();
+	}}
+	onOpenNotes={() => {
+		onOpenNotes();
+	}}
+/>
 
 <FolderModal
 	open={folderModalOpen}
