@@ -1,180 +1,81 @@
 <script lang="ts">
-	import { browser } from '$app/environment';
 	import { onDestroy, onMount } from 'svelte';
 
-	import { generateExam, getAgentModels, reviewExam } from '$lib/apis/agent';
-	import KnowledgeCombobox from '$lib/components/quiz/KnowledgeCombobox.svelte';
+	import { generateExam, reviewExam } from '$lib/apis/agent';
+	import MathText from '$lib/components/MathText.svelte';
 	import {
-		findCollection,
-		parseSourceKey,
-		sourceKeysForCollection,
-		type KnowledgeCollection
-	} from '$lib/data/knowledge';
+		LETTERS,
+		SECTION_LABELS,
+		answerNavClass,
+		formatDuration,
+		hasAnswer,
+		resultNavClass,
+		verdictClass,
+		verdictLabel,
+		type ExamAnswers,
+		type ExamReview,
+		type PublicExam,
+		type PublicQuestion,
+		type ReviewResult
+	} from '$lib/data/exam';
 
-	type Phase = 'idle' | 'generating' | 'answering' | 'submitting' | 'result';
-	type QuestionType = 'cloze' | 'choice' | 'essay';
-	type Verdict = 'correct' | 'partial' | 'wrong' | 'unanswered';
-	type ExamAnswer = string | number | null;
-	type ExamAnswers = Record<string, ExamAnswer>;
+	type Phase = 'generating' | 'answering' | 'submitting' | 'result' | 'failed';
 
-	type AgentModel = {
-		id: string;
-		name: string;
-		tags?: Array<{
-			name: string;
-		}>;
-	};
-
-	type ClozeQuestion = {
-		id: string;
-		type: 'cloze';
-		points: number;
-		cue: string;
-		text: string;
-		answer: string;
-		explanation: string;
-	};
-
-	type ChoiceQuestion = {
-		id: string;
-		type: 'choice';
-		points: number;
-		question: string;
-		options: string[];
-		answer: number;
-		explanation: string;
-	};
-
-	type EssayQuestion = {
-		id: string;
-		type: 'essay';
-		points: number;
-		question: string;
-		answer: string;
-		keywords: string[];
-		explanation: string;
-	};
-
-	type PublicQuestion = ClozeQuestion | ChoiceQuestion | EssayQuestion;
-
-	type PublicExam = {
-		exam_id: string;
-		title: string;
-		cloze: ClozeQuestion[];
-		choice: ChoiceQuestion[];
-		essay: EssayQuestion[];
-	};
-
-	type ReviewResult = {
-		id: string;
-		type: QuestionType;
-		score: number;
-		points: number;
-		verdict: Verdict;
-		my_answer: string | number | null;
-		correct_answer: string;
-		feedback: string;
-		explanation: string;
-	};
-
-	type ExamSectionReview = {
-		earned: number;
-		max: number;
-	};
-
-	type ExamReview = {
-		total_score: number;
-		total_points: number;
-		overall_comment: string;
-		sections: Record<QuestionType, ExamSectionReview>;
-		results: ReviewResult[];
-	};
+	/** 客户端兜底上限；后端 EXAM_LLM_BUDGET=480s 已经封了顶，这条只防"再也不回话" */
+	const CLIENT_TIMEOUT_MS = 540_000;
 
 	type Props = {
-	fullPage?: boolean;
-	onClose?: (() => void) | null;
-	modelId?: string;
-	initialTopic?: string;
-};
-
-	let {
-	fullPage = false,
-	onClose = null,
-	modelId = '',
-	initialTopic = ''
-}: Props = $props();
-
-	const LETTERS = ['A', 'B', 'C', 'D'];
-
-	const SECTION_LABELS: Record<QuestionType, string> = {
-		cloze: '填空题',
-		choice: '选择题',
-		essay: '大题'
+		modelId: string;
+		topic: string;
+		notebookIds: string[];
+		wide: boolean;
+		onTitle: (title: string) => void;
+		onError: (message: string) => void;
+		onExit: () => void;
+		onSwitchToFlash: () => void;
 	};
 
-	// 模型列表只认 basic-agent 的 /v1/models，没登记就是空的。
-	let availableModels = $state<AgentModel[]>([]);
+	let { modelId, topic, notebookIds, wide, onTitle, onError, onExit, onSwitchToFlash }: Props =
+		$props();
 
-	let phase = $state<Phase>('idle');
+	// 只是生成中屏的静态说明，题量取自 app/schema/exam.py 的 *_COUNT_RANGE
+	const STAGES = [
+		{ name: '填空题', count: '8~10 道' },
+		{ name: '选择题', count: '6~8 道' },
+		{ name: '解答题', count: '2~3 道' }
+	];
+
+	let phase = $state<Phase>('generating');
 	let exam = $state<PublicExam | null>(null);
 	let review = $state<ExamReview | null>(null);
 	let answers = $state<ExamAnswers>({});
 
 	let pageIndex = $state(0);
 	let resultIndex = $state(0);
-	let topic = $state('');
-	let selectedSourceKeys = $state<string[]>([]);
-	let notebooks = $state<KnowledgeCollection[]>([]);
-	let errorMsg = $state('');
 
-	let selectedModelId = $state('');
-	let modelsLoading = $state(false);
+	// 出卷要等多久取决于接的是哪个模型（实测 DeepSeek 十秒上下，后端注释里那组
+	// 几十秒的旧数据出自另一个模型），所以屏上不写预期秒数、只报真实已用时——
+	// 一个不动的转圈太难熬，而写死的预期一旦不准就更难熬。
+	// 服务端不分段回报，这里也就只能报总用时。
+	let elapsed = $state(0);
+	let ticker: ReturnType<typeof setInterval> | null = null;
 
-	$effect(() => {
-		selectedModelId = modelId;
-	});
-
-	$effect(() => {
-		if (!initialTopic || notebooks.length === 0) {
-			return;
-		}
-
-		if (!topic) {
-			topic = initialTopic;
-		}
-
-		if (selectedSourceKeys.length > 0) {
-			return;
-		}
-
-		const collection = findCollection(initialTopic, notebooks);
-
-		if (collection) {
-			selectedSourceKeys = sourceKeysForCollection(collection.id, notebooks);
-		}
-	});
-
-	let panelWidth = $state(0);
-	let isFullscreen = $state(false);
-	let rootEl = $state<HTMLElement>();
-
-	let resizeObserver: ResizeObserver | null = null;
-	let generateTimer: number | null = null;
-	let submitTimer: number | null = null;
+	// 出卷这段等待里，用户完全可能返回首屏或改用闪卡。面板卸载了、
+	// 请求还在飞，回来时 onTitle/onError 会改到已经不属于它的外层状态
+	// （实测过：切到闪卡之后，标题被迟到的整卷标题覆盖）。所以每次请求都带一个
+	// controller，离场即 abort，回调里再判一次 aborted。
+	let controller: AbortController | null = null;
+	let failure = $state('');
 
 	let allQuestions = $derived<PublicQuestion[]>(
 		exam ? [...exam.cloze, ...exam.choice, ...exam.essay] : []
 	);
 
 	let questionById = $derived(
-		new Map<string, PublicQuestion>(
-			allQuestions.map((question) => [question.id, question])
-		)
+		new Map<string, PublicQuestion>(allQuestions.map((question) => [question.id, question]))
 	);
 
-	let currentQuestion = $derived<PublicQuestion | null>(
-		allQuestions[pageIndex] ?? null
-	);
+	let currentQuestion = $derived<PublicQuestion | null>(allQuestions[pageIndex] ?? null);
 
 	let currentResult = $derived<ReviewResult | null>(
 		resultIndex > 0 ? (review?.results[resultIndex - 1] ?? null) : null
@@ -184,57 +85,40 @@
 		currentResult ? (questionById.get(currentResult.id) ?? null) : null
 	);
 
-	let wide = $derived(panelWidth >= 760);
 	let totalCount = $derived(allQuestions.length);
-
-	const hasAnswer = (
-		question: PublicQuestion,
-		answerMap: ExamAnswers
-	) => {
-		const answer = answerMap[question.id];
-
-		if (question.type === 'choice') {
-			return typeof answer === 'number';
-		}
-
-		return typeof answer === 'string' && answer.trim() !== '';
-	};
 
 	let answeredCount = $derived(
 		allQuestions.filter((question) => hasAnswer(question, answers)).length
 	);
 
-	let progressPct = $derived(
-		totalCount > 0
-			? Math.round((answeredCount / totalCount) * 100)
-			: 0
-	);
+	let progressPct = $derived(totalCount > 0 ? Math.round((answeredCount / totalCount) * 100) : 0);
 
-	const clearTimers = () => {
-		if (generateTimer !== null) {
-			window.clearTimeout(generateTimer);
-			generateTimer = null;
-		}
-
-		if (submitTimer !== null) {
-			window.clearTimeout(submitTimer);
-			submitTimer = null;
+	const stopTicker = () => {
+		if (ticker !== null) {
+			clearInterval(ticker);
+			ticker = null;
 		}
 	};
 
 	const startGenerate = () => {
-		if (phase === 'generating') {
+		if (!modelId) {
+			onError('请先选择可用模型。');
+			onExit();
 			return;
 		}
 
-		if (!selectedModelId) {
-			errorMsg = '请先选择可用模型。';
-			return;
-		}
+		controller?.abort();
+		const own = new AbortController();
+		controller = own;
+		const signal = own.signal;
 
-		clearTimers();
+		let timedOut = false;
+		const ceiling = setTimeout(() => {
+			timedOut = true;
+			own.abort();
+		}, CLIENT_TIMEOUT_MS);
 
-		errorMsg = '';
+		failure = '';
 		exam = null;
 		review = null;
 		answers = {};
@@ -242,25 +126,47 @@
 		resultIndex = 0;
 		phase = 'generating';
 
-		const notebookIds = [
-			...new Set(
-				selectedSourceKeys
-					.map((key) => parseSourceKey(key)?.collectionId)
-					.filter((id): id is string => Boolean(id))
-			)
-		];
+		elapsed = 0;
+		stopTicker();
+		ticker = setInterval(() => {
+			elapsed += 1;
+		}, 1000);
 
-		void generateExam(selectedModelId, topic, notebookIds)
+		void generateExam(modelId, topic, notebookIds, signal)
 			.then((data) => {
-				exam = data as PublicExam;
+				clearTimeout(ceiling);
+
+				if (signal.aborted) {
+					return;
+				}
+
+				stopTicker();
+				exam = data;
+				onTitle(data.title);
 				answers = {};
 				pageIndex = 0;
 				resultIndex = 0;
 				phase = 'answering';
 			})
 			.catch((error: unknown) => {
-				errorMsg = error instanceof Error ? error.message : '出卷失败，请重试。';
-				phase = 'idle';
+				clearTimeout(ceiling);
+
+				if (timedOut) {
+					stopTicker();
+					failure = '等了 9 分钟还没出卷，basic-agent 可能没在正常回话。';
+					phase = 'failed';
+					return;
+				}
+
+				if (signal.aborted) {
+					return;
+				}
+
+				stopTicker();
+				// 就地停下，别弹回模式选择首屏：最常见的失败是 429（并发闸门满），
+				// 弹回去只会让人觉得"点一下自己退回来了"，还得重走一遍选择流程。
+				failure = error instanceof Error ? error.message : '出卷失败，请重试。';
+				phase = 'failed';
 			});
 	};
 
@@ -269,139 +175,46 @@
 			return;
 		}
 
-		clearTimers();
-
-		errorMsg = '';
 		phase = 'submitting';
 
-		void reviewExam(selectedModelId, exam.exam_id, answers)
+		controller?.abort();
+		controller = new AbortController();
+		const signal = controller.signal;
+
+		void reviewExam(modelId, exam.exam_id, answers, signal)
 			.then((data) => {
-				// agent.ts 把 results 声明成 Record<string, unknown>[]（后端用 pydantic
-				// 保证形状），这里按本组件的具体类型读，所以要经 unknown 中转。
-				review = data as unknown as ExamReview;
+				if (signal.aborted) {
+					return;
+				}
+
+				review = data;
 				resultIndex = 0;
 				phase = 'result';
 			})
 			.catch((error: unknown) => {
-				errorMsg = error instanceof Error ? error.message : '判卷失败，请重试。';
+				if (signal.aborted) {
+					return;
+				}
+
+				onError(error instanceof Error ? error.message : '判卷失败，请重试。');
 				phase = 'answering';
 			});
 	};
 
-	const restart = () => {
-		clearTimers();
-
-		exam = null;
-		review = null;
-		answers = {};
-		pageIndex = 0;
-		resultIndex = 0;
-		topic = '';
-		errorMsg = '';
-		phase = 'idle';
-	};
-
 	const goToQuestion = (index: number) => {
-		pageIndex = Math.max(
-			0,
-			Math.min(index, Math.max(0, allQuestions.length - 1))
-		);
+		pageIndex = Math.max(0, Math.min(index, Math.max(0, allQuestions.length - 1)));
 	};
 
 	const goToResult = (index: number) => {
-		resultIndex = Math.max(
-			0,
-			Math.min(index, review?.results.length ?? 0)
-		);
-	};
-
-	const answerNavClass = (
-		question: PublicQuestion,
-		index: number,
-		currentIndex: number,
-		answerMap: ExamAnswers
-	) =>
-		index === currentIndex
-			? 'bg-blue-500 text-white border-blue-500'
-			: hasAnswer(question, answerMap)
-				? 'bg-emerald-950/40 text-emerald-300 border-emerald-900'
-				: 'bg-gray-800 text-gray-400 border-gray-700';
-
-	const resultNavClass = (item: ReviewResult) => {
-		if (item.verdict === 'correct') {
-			return 'bg-emerald-950/40 text-emerald-300 border-emerald-900';
-		}
-
-		if (item.verdict === 'partial') {
-			return 'bg-amber-950/40 text-amber-300 border-amber-900';
-		}
-
-		if (item.verdict === 'unanswered') {
-			return 'bg-gray-800 text-gray-400 border-gray-700';
-		}
-
-		return 'bg-red-950/40 text-red-300 border-red-900';
-	};
-
-	const verdictClass = (verdict: Verdict) => {
-		if (verdict === 'correct') {
-			return 'text-emerald-400';
-		}
-
-		if (verdict === 'partial') {
-			return 'text-amber-400';
-		}
-
-		if (verdict === 'unanswered') {
-			return 'text-gray-500';
-		}
-
-		return 'text-red-400';
-	};
-
-	const verdictLabel = (verdict: Verdict) => {
-		const labels: Record<Verdict, string> = {
-			correct: '✓ 正确',
-			partial: '◐ 部分得分',
-			wrong: '✗ 错误',
-			unanswered: '未作答'
-		};
-
-		return labels[verdict];
-	};
-
-	const onFullscreenChange = () => {
-		isFullscreen = document.fullscreenElement === rootEl;
-	};
-
-	const toggleFullscreen = async () => {
-		if (!rootEl) {
-			return;
-		}
-
-		if (document.fullscreenElement === rootEl) {
-			await document.exitFullscreen().catch(() => {});
-			return;
-		}
-
-		await rootEl.requestFullscreen().catch(() => {});
+		resultIndex = Math.max(0, Math.min(index, review?.results.length ?? 0));
 	};
 
 	const onKeydown = (event: KeyboardEvent) => {
-		if (
-			event.key !== 'ArrowLeft' &&
-			event.key !== 'ArrowRight'
-		) {
+		if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') {
 			return;
 		}
 
-		if (
-			event.isComposing ||
-			event.ctrlKey ||
-			event.altKey ||
-			event.metaKey ||
-			event.shiftKey
-		) {
+		if (event.isComposing || event.ctrlKey || event.altKey || event.metaKey || event.shiftKey) {
 			return;
 		}
 
@@ -409,19 +222,14 @@
 
 		if (
 			target instanceof Element &&
-			target.closest(
-				'input, textarea, select, button, [contenteditable="true"]'
-			)
+			target.closest('input, textarea, select, button, [contenteditable="true"]')
 		) {
 			return;
 		}
 
 		const offset = event.key === 'ArrowRight' ? 1 : -1;
 
-		if (
-			(phase === 'answering' || phase === 'submitting') &&
-			allQuestions.length > 0
-		) {
+		if ((phase === 'answering' || phase === 'submitting') && allQuestions.length > 0) {
 			event.preventDefault();
 			goToQuestion(pageIndex + offset);
 			return;
@@ -434,163 +242,26 @@
 	};
 
 	onMount(() => {
-		document.addEventListener(
-			'fullscreenchange',
-			onFullscreenChange
-		);
-
 		window.addEventListener('keydown', onKeydown);
-
-		if (rootEl) {
-			resizeObserver = new ResizeObserver(([entry]) => {
-				panelWidth = Math.round(entry.contentRect.width);
-			});
-
-			resizeObserver.observe(rootEl);
-
-			panelWidth = Math.round(
-				rootEl.getBoundingClientRect().width
-			);
-		}
-
-		modelsLoading = true;
-		void getAgentModels()
-			.then((list) => {
-				availableModels = list.data.map((model) => ({
-					id: model.id,
-					name: model.name || model.id,
-					tags: []
-				}));
-
-				if (!availableModels.some((model) => model.id === selectedModelId)) {
-					selectedModelId = availableModels[0]?.id ?? '';
-				}
-			})
-			.catch(() => {
-				availableModels = [];
-				selectedModelId = '';
-				errorMsg = '读不到 basic-agent 的模型列表，请确认它已经启动。';
-			})
-			.finally(() => {
-				modelsLoading = false;
-			});
+		startGenerate();
 	});
 
 	onDestroy(() => {
-		clearTimers();
-		resizeObserver?.disconnect();
+		stopTicker();
+		controller?.abort();
 
-		// onDestroy 在 SSR 渲染完也会跑一次，那边没有 document。
-		if (!browser) {
+		// onDestroy 在 SSR 渲染完也会跑一次，那边没有 window。
+		if (typeof window === 'undefined') {
 			return;
 		}
 
-		document.removeEventListener(
-			'fullscreenchange',
-			onFullscreenChange
-		);
-
 		window.removeEventListener('keydown', onKeydown);
-
-		if (document.fullscreenElement === rootEl) {
-			document.exitFullscreen().catch(() => {});
-		}
 	});
 </script>
 
-<div
-	bind:this={rootEl}
-	class="flex h-full min-h-0 flex-col bg-[#242424] text-gray-100"
->
-	<div
-		class="flex shrink-0 items-center justify-between border-b border-white/[0.08] px-3.5 pt-3 pb-2"
-	>
-		<div class="flex min-w-0 items-baseline gap-2">
-			<div class="truncate font-semibold">
-				{exam?.title ?? '智能测评'}
-			</div>
-
-			<div class="whitespace-nowrap text-xs text-gray-500">
-				AI 智能试卷
-			</div>
-		</div>
-
-		<div class="flex min-w-0 items-center gap-1.5">
-			<select
-				class="h-8 min-w-0 max-w-52 rounded-lg border border-white/[0.18] bg-[#242424] px-2 text-xs text-gray-100 outline-none focus:border-blue-400 disabled:cursor-not-allowed disabled:opacity-60"
-				bind:value={selectedModelId}
-				disabled={modelsLoading || phase !== 'idle' || availableModels.length === 0}
-				aria-label="测评模型"
-				title={phase === 'idle' ? '选择测评模型' : '本试卷已锁定出卷模型'}
-			>
-				{#each availableModels as model (model.id)}
-					<option value={model.id}>
-						{model.name || model.id}
-					</option>
-				{/each}
-			</select>
-
-			{#if !fullPage}
-				<button
-					type="button"
-					class="rounded-lg p-1.5 text-gray-400 transition hover:bg-gray-800 hover:text-white"
-					onclick={toggleFullscreen}
-					aria-label={isFullscreen ? '退出全屏' : '全屏'}
-					title={isFullscreen ? '退出全屏' : '全屏'}
-				>
-					<svg
-						class="size-4"
-						viewBox="0 0 24 24"
-						fill="none"
-						stroke="currentColor"
-						stroke-width="1.5"
-						aria-hidden="true"
-					>
-						{#if isFullscreen}
-							<path
-								stroke-linecap="round"
-								stroke-linejoin="round"
-								d="M9 9V4.5M9 9H4.5M9 9 3.75 3.75M9 15v4.5M9 15H4.5M9 15l-5.25 5.25M15 9h4.5M15 9V4.5M15 9l5.25-5.25M15 15h4.5M15 15v4.5m0-4.5 5.25 5.25"
-							></path>
-						{:else}
-							<path
-								stroke-linecap="round"
-								stroke-linejoin="round"
-								d="M3.75 3.75v4.5m0-4.5h4.5m-4.5 0L9 9M3.75 20.25v-4.5m0 4.5h4.5m-4.5 0L9 15M20.25 3.75h-4.5m4.5 0v4.5m0-4.5L15 9m5.25 11.25h-4.5m4.5 0v-4.5m0 4.5L15 15"
-							></path>
-						{/if}
-					</svg>
-				</button>
-
-				{#if onClose}
-					<button
-						type="button"
-						class="rounded-lg p-1.5 text-gray-400 transition hover:bg-gray-800 hover:text-white"
-						onclick={() => onClose?.()}
-						aria-label="关闭"
-					>
-						<svg
-							class="size-4"
-							viewBox="0 0 24 24"
-							fill="none"
-							stroke="currentColor"
-							stroke-width="1.5"
-							aria-hidden="true"
-						>
-							<path
-								stroke-linecap="round"
-								stroke-linejoin="round"
-								d="M6 18 18 6M6 6l12 12"
-							></path>
-						</svg>
-					</button>
-				{/if}
-			{/if}
-		</div>
-	</div>
-
+<div class="flex h-full min-h-0 flex-col">
 	{#if phase === 'answering' || phase === 'submitting'}
-		<div class="shrink-0 px-3.5 pt-2">
+		<div class="shrink-0 pb-2">
 			<div class="h-1.5 overflow-hidden rounded-full bg-gray-800">
 				<div
 					class="h-full rounded-full bg-gradient-to-r from-blue-500 to-sky-400 transition-all duration-300"
@@ -605,73 +276,112 @@
 		</div>
 	{/if}
 
-	{#if errorMsg}
-		<div
-			class="mx-3.5 mt-2 shrink-0 rounded-lg bg-red-950/40 px-3 py-2 text-sm text-red-400"
-		>
-			{errorMsg}
-		</div>
-	{/if}
-
-	<div class="flex min-h-0 flex-1 flex-col px-3.5 py-3">
-		{#if phase === 'idle'}
-			<div class="flex h-full flex-col items-center justify-center gap-4 px-4 text-center">
-				<div class="text-4xl">📝</div>
-
-				<div class="text-lg font-semibold">
-					AI 智能试卷
-				</div>
-
-				<p class="max-w-xs text-sm text-gray-400">
-					基于课程知识库生成一套包含<b>闪卡填空、选择题、大题</b>的测验卷，提交后自动判分并给出解析。
-				</p>
-
-				<KnowledgeCombobox
-					bind:value={topic}
-					bind:selectedKeys={selectedSourceKeys}
-					bind:collections={notebooks}
-					placeholder="输入主题，或选择笔记本与来源"
-					onSubmit={startGenerate}
-				/>
-
-				<p class="max-w-md text-[11px] text-gray-500">
-					选项来自笔记本模块里已有的笔记本和来源，可多选。
-				</p>
-
-				<button
-					type="button"
-					class="rounded-xl bg-white px-6 py-2.5 text-sm font-medium text-gray-900 transition hover:bg-gray-200"
-					onclick={startGenerate}
+	<div class="flex min-h-0 flex-1 flex-col">
+		{#if phase === 'failed'}
+			<div class="flex h-full flex-col items-center justify-center gap-4 px-6 text-center">
+				<svg
+					class="size-8 text-amber-400"
+					viewBox="0 0 24 24"
+					fill="none"
+					stroke="currentColor"
+					stroke-width="1.5"
+					stroke-linecap="round"
+					stroke-linejoin="round"
+					aria-hidden="true"
 				>
-					生成试卷
-				</button>
+					<path d="M12 9v4"></path>
+					<path d="M12 17h.01"></path>
+					<path
+						d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"
+					></path>
+				</svg>
+
+				<div class="text-sm font-medium">这一轮没能出卷</div>
+
+				<p class="max-w-sm text-sm leading-relaxed text-gray-400">{failure}</p>
+
+				{#if failure.includes('过多')}
+					<p class="max-w-sm text-xs leading-relaxed text-gray-500">
+						服务端同时只接两个出题/判分请求，等十几秒再重试就好。
+					</p>
+				{/if}
+
+				<div class="mt-1 flex gap-2">
+					<button
+						type="button"
+						class="rounded-xl bg-white px-5 py-2.5 text-sm font-medium text-gray-900 transition hover:bg-gray-200"
+						onclick={startGenerate}
+					>
+						重试
+					</button>
+
+					<button
+						type="button"
+						class="rounded-xl border border-gray-700 px-5 py-2.5 text-sm text-gray-400 transition hover:bg-gray-800 hover:text-gray-200"
+						onclick={onExit}
+					>
+						返回模式选择
+					</button>
+				</div>
 			</div>
 		{:else if phase === 'generating'}
-			<div class="flex h-full flex-col items-center justify-center gap-4 px-4 text-center">
+			<div class="flex h-full flex-col items-center justify-center gap-4 px-6 text-center">
 				<svg
 					class="size-8 animate-spin text-blue-500"
 					viewBox="0 0 24 24"
 					fill="none"
 					aria-hidden="true"
 				>
-					<circle
-						class="opacity-25"
-						cx="12"
-						cy="12"
-						r="10"
-						stroke="currentColor"
-						stroke-width="4"
+					<circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"
 					></circle>
 
-					<path
-						class="opacity-75"
-						fill="currentColor"
-						d="M4 12a8 8 0 0 1 8-8v4a4 4 0 0 0-4 4H4z"
+					<path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 0 1 8-8v4a4 4 0 0 0-4 4H4z"
 					></path>
 				</svg>
 
-				<div class="text-sm text-gray-400">
-					正在检索知识库并生成试卷，预计需要 30~60 秒…
+				<div class="font-mono text-3xl font-bold">{formatDuration(elapsed)}</div>
+
+				<div class="text-sm text-gray-400">正在生成整卷</div>
+
+				<div class="flex w-full max-w-sm flex-col gap-2.5">
+					{#each STAGES as stage (stage.name)}
+						<div>
+							<div class="mb-1.5 flex justify-between">
+								<span class="text-[13px]">
+									{stage.name}
+									<span class="font-mono text-gray-500">{stage.count}</span>
+								</span>
+
+								<span class="font-mono text-[11px] text-gray-500">并行进行中</span>
+							</div>
+
+							<div class="indeterminate h-1 overflow-hidden rounded-full bg-gray-800"></div>
+						</div>
+					{/each}
+				</div>
+
+				<p class="max-w-sm text-xs leading-relaxed text-gray-500">
+					三段同时向模型发问。要等三段全部回来才能把分值归一到 100
+					分，所以中途没有可以展示的分段进度 —— 这里只报总用时。
+				</p>
+
+				<div
+					class="mt-1 flex w-full max-w-sm items-center justify-between gap-3 border-t border-gray-800 pt-4 text-left"
+				>
+					<div class="min-w-0">
+						<div class="text-[13px] font-medium">等不及？</div>
+						<div class="mt-0.5 text-xs text-gray-500">
+							闪卡只出能本地判定的题型（填空 + 选择），答完当场就知道对错，不用再等一轮模型批改。
+						</div>
+					</div>
+
+					<button
+						type="button"
+						class="shrink-0 rounded-xl border border-gray-700 px-4 py-2 text-[13px] whitespace-nowrap transition hover:bg-gray-800"
+						onclick={onSwitchToFlash}
+					>
+						改用闪卡
+					</button>
 				</div>
 			</div>
 		{:else if (phase === 'answering' || phase === 'submitting') && exam && currentQuestion}
@@ -696,9 +406,7 @@
 
 							<div
 								class={`h-full min-h-0 ${
-									wide
-										? 'grid grid-cols-[minmax(0,1fr)_minmax(0,1.05fr)]'
-										: 'flex flex-col'
+									wide ? 'grid grid-cols-[minmax(0,1fr)_minmax(0,1.05fr)]' : 'flex flex-col'
 								}`}
 							>
 								<section
@@ -728,7 +436,7 @@
 
 										<div class="text-lg leading-relaxed font-medium">
 											{#each currentQuestion.text.split('____') as part, index}
-												{part}
+												<MathText value={part} />
 
 												{#if index < currentQuestion.text.split('____').length - 1}
 													<span
@@ -741,7 +449,7 @@
 										</div>
 									{:else}
 										<div class="text-lg leading-relaxed font-medium">
-											{currentQuestion.question}
+											<MathText value={currentQuestion.question} />
 										</div>
 									{/if}
 								</section>
@@ -785,9 +493,7 @@
 														answers = {
 															...answers,
 															[currentQuestion.id]:
-																answers[currentQuestion.id] === index
-																	? null
-																	: index
+																answers[currentQuestion.id] === index ? null : index
 														};
 													}}
 												>
@@ -795,7 +501,7 @@
 														{LETTERS[index]}
 													</span>
 
-													{option}
+													<MathText value={option} />
 												</button>
 											{/each}
 										</div>
@@ -819,8 +525,7 @@
 													...answers,
 													[currentQuestion.id]: event.currentTarget.value
 												};
-											}}
-										></textarea>
+											}}></textarea>
 									{/if}
 								</section>
 							</div>
@@ -852,9 +557,7 @@
 								onclick={() => goToQuestion(index)}
 								aria-current={index === pageIndex ? 'page' : undefined}
 								aria-label={`跳到第 ${index + 1} 题 ${question.id}`}
-								title={`${question.id} · ${
-									hasAnswer(question, answers) ? '已作答' : '未作答'
-								}`}
+								title={`${question.id} · ${hasAnswer(question, answers) ? '已作答' : '未作答'}`}
 							>
 								{#if wide}
 									{question.id}
@@ -893,9 +596,7 @@
 						<div
 							class="flex h-full max-h-[640px] w-full flex-col items-center justify-center overflow-y-auto rounded-2xl border border-gray-700 bg-[#242424] px-5 text-center"
 						>
-							<div
-								class="mb-3 font-mono text-xs tracking-[0.2em] text-gray-500 uppercase"
-							>
+							<div class="mb-3 font-mono text-xs tracking-[0.2em] text-gray-500 uppercase">
 								Exam completed
 							</div>
 
@@ -913,9 +614,7 @@
 
 							<div class="mt-5 flex flex-wrap justify-center gap-2 font-mono text-xs text-gray-400">
 								{#each Object.entries(review.sections) as [sectionType, section]}
-									<div
-										class="rounded-xl border border-gray-700 bg-gray-800 px-3 py-2"
-									>
+									<div class="rounded-xl border border-gray-700 bg-gray-800 px-3 py-2">
 										{sectionType === 'cloze'
 											? '填空题'
 											: sectionType === 'choice'
@@ -933,9 +632,7 @@
 						>
 							<div
 								class={`h-full min-h-0 ${
-									wide
-										? 'grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)]'
-										: 'flex flex-col'
+									wide ? 'grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)]' : 'flex flex-col'
 								}`}
 							>
 								<section
@@ -951,11 +648,7 @@
 											{SECTION_LABELS[currentResult.type]}
 										</span>
 
-										<span
-											class={`text-xs font-semibold ${verdictClass(
-												currentResult.verdict
-											)}`}
-										>
+										<span class={`text-xs font-semibold ${verdictClass(currentResult.verdict)}`}>
 											{verdictLabel(currentResult.verdict)} ·
 											{currentResult.score}/{currentResult.points}
 										</span>
@@ -968,11 +661,11 @@
 											</div>
 
 											<div class="leading-relaxed font-medium">
-												{currentResultQuestion.text}
+												<MathText value={currentResultQuestion.text} />
 											</div>
 										{:else if currentResultQuestion.type === 'choice'}
 											<div class="leading-relaxed font-medium">
-												{currentResultQuestion.question}
+												<MathText value={currentResultQuestion.question} />
 											</div>
 
 											<div class="mt-3 space-y-1 text-xs text-gray-400">
@@ -982,13 +675,13 @@
 															{LETTERS[index]}
 														</span>
 
-														{option}
+														<MathText value={option} />
 													</div>
 												{/each}
 											</div>
 										{:else}
 											<div class="leading-relaxed font-medium">
-												{currentResultQuestion.question}
+												<MathText value={currentResultQuestion.question} />
 											</div>
 										{/if}
 									{:else}
@@ -998,9 +691,7 @@
 									{/if}
 
 									<div class="mt-5 rounded-xl bg-gray-800 p-3">
-										<div class="mb-1 text-[11px] font-semibold text-gray-500">
-											我的答案
-										</div>
+										<div class="mb-1 text-[11px] font-semibold text-gray-500">我的答案</div>
 
 										<div class="text-sm leading-relaxed">
 											{currentResult.my_answer !== null &&
@@ -1012,45 +703,31 @@
 									</div>
 								</section>
 
-								<section
-									class="min-h-0 min-w-0 flex-1 space-y-3 overflow-y-auto p-4"
-								>
-									<div
-										class="rounded-xl border border-emerald-900/60 bg-emerald-950/30 p-3"
-									>
-										<div
-											class="mb-1 text-[11px] font-semibold text-emerald-400"
-										>
-											参考答案
-										</div>
+								<section class="min-h-0 min-w-0 flex-1 space-y-3 overflow-y-auto p-4">
+									<div class="rounded-xl border border-emerald-900/60 bg-emerald-950/30 p-3">
+										<div class="mb-1 text-[11px] font-semibold text-emerald-400">参考答案</div>
 
 										<div class="text-sm leading-relaxed">
-											{currentResult.correct_answer}
+											<MathText value={currentResult.correct_answer} />
 										</div>
 									</div>
 
 									{#if currentResult.feedback}
 										<div class="rounded-xl bg-gray-800 p-3">
-											<div class="mb-1 text-[11px] font-semibold text-gray-500">
-												评语
-											</div>
+											<div class="mb-1 text-[11px] font-semibold text-gray-500">评语</div>
 
 											<div class="text-sm leading-relaxed">
-												{currentResult.feedback}
+												<MathText value={currentResult.feedback} />
 											</div>
 										</div>
 									{/if}
 
 									{#if currentResult.explanation}
-										<div
-											class="rounded-xl border border-blue-900/60 bg-blue-950/30 p-3"
-										>
-											<div class="mb-1 text-[11px] font-semibold text-blue-400">
-												解析
-											</div>
+										<div class="rounded-xl border border-blue-900/60 bg-blue-950/30 p-3">
+											<div class="mb-1 text-[11px] font-semibold text-blue-400">解析</div>
 
 											<div class="text-sm leading-relaxed text-gray-300">
-												{currentResult.explanation}
+												<MathText value={currentResult.explanation} />
 											</div>
 										</div>
 									{/if}
@@ -1111,7 +788,7 @@
 				<button
 					type="button"
 					class="shrink-0 rounded-xl bg-white px-4 py-2.5 text-sm font-medium text-gray-900 transition hover:bg-gray-200"
-					onclick={restart}
+					onclick={onExit}
 				>
 					再来一套
 				</button>
@@ -1119,3 +796,36 @@
 		{/if}
 	</div>
 </div>
+
+<style>
+	/* 三段是真并行、服务端又不分段回报，所以用不定进度条：能表达"在跑"，
+	   又不假装知道跑到哪了。 */
+	.indeterminate {
+		position: relative;
+	}
+
+	.indeterminate::after {
+		content: '';
+		position: absolute;
+		inset: 0 auto 0 0;
+		width: 38%;
+		border-radius: 999px;
+		background: linear-gradient(to right, #3b82f6, #38bdf8);
+		animation: exam-stage-slide 1.9s ease-in-out infinite;
+	}
+
+	@keyframes exam-stage-slide {
+		0% {
+			transform: translateX(-105%);
+		}
+		100% {
+			transform: translateX(275%);
+		}
+	}
+
+	@media (prefers-reduced-motion: reduce) {
+		.indeterminate::after {
+			animation-duration: 6s;
+		}
+	}
+</style>

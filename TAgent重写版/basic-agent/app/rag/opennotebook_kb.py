@@ -13,7 +13,7 @@ from typing import Any
 import httpx
 from langchain_core.documents import Document
 
-from app.config import EXAM_CONTEXT_CHAR_LIMIT, EXAM_SAMPLE_K
+from app.config import EXAM_CONTEXT_CHAR_LIMIT, EXAM_CONTEXT_SEPARATOR, EXAM_SAMPLE_K
 from app.rag.knowledge_base import select_quiz_documents
 
 
@@ -112,7 +112,7 @@ class OpenNotebookKnowledgeBase:
             if content:
                 parts.append(content)
                 total += len(content)
-        return "\n\n---\n\n".join(parts)
+        return EXAM_CONTEXT_SEPARATOR.join(parts)
 
     def close(self) -> None:
         if self._owns_client and self._client is not None:

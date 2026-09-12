@@ -1,4 +1,4 @@
-"""整卷生成与判卷的公开通道。"""
+"""整卷生成与判卷、闪卡生成的公开通道。"""
 
 from __future__ import annotations
 
@@ -19,6 +19,17 @@ def generate_exam():
     payload = exam_json_body()
     provider = select_provider(payload.get("model"))
     result = get_exam_service().generate_exam(
+        exam_topic(payload), provider, notebook_ids=optional_notebook_ids(payload)
+    )
+    return envelope(result, provider)
+
+
+@blueprint.post("/quiz/flash/generate")
+def generate_flash():
+    """闪卡：只出能本地判定的题型（填空 + 选择）、不计分、判定在前端做，所以没有配套的 review 接口。"""
+    payload = exam_json_body()
+    provider = select_provider(payload.get("model"))
+    result = get_exam_service().generate_flash_deck(
         exam_topic(payload), provider, notebook_ids=optional_notebook_ids(payload)
     )
     return envelope(result, provider)

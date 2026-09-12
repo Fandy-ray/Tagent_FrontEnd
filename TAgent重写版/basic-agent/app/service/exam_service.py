@@ -1,7 +1,9 @@
 """整卷服务：三段并发出卷、本地+LLM 分批判卷。
 
-关键约束（改动前务必读 app/config.py 里的压测注释）：
+关键约束（改动前务必读 app/config.py 里的压测注释，连同开头那段"数据出处"警示
+一起读——里面的秒数是导入前某个未记录模型上的旧值，只能当相对结论用）：
 - 出卷按题型分三段并发，整卷一次性输出会顶穿单次调用超时；
+- 闪卡只出能本地判定的题型（填空 + 选择），按材料分片并发（generate_flash_deck），卡组不计分；
 - 判卷先本地判客观题，只把语义题按题型分批送给模型；
 - 试卷缓存里锁定了出卷用的模型，判卷必须用同一个，否则 ModelMismatchError。
 """
@@ -15,6 +17,7 @@ from concurrent.futures import ThreadPoolExecutor
 from typing import Any
 
 from app.config import (
+    EXAM_CONTEXT_SEPARATOR,
     EXAM_LLM_BUDGET,
     EXAM_LLM_TIMEOUT,
     EXAM_MIN_ATTEMPT_TIMEOUT,
@@ -23,8 +26,21 @@ from app.config import (
     GRADE_LLM_BUDGET,
     GRADE_LLM_TIMEOUT,
     GRADE_MIN_ATTEMPT_TIMEOUT,
+    FLASH_CONTEXT_CHAR_LIMIT,
+    FLASH_DECK_MIN_CARDS,
+    FLASH_LLM_BUDGET,
+    FLASH_LLM_TIMEOUT,
+    FLASH_MIN_ATTEMPT_TIMEOUT,
+    FLASH_CHOICE_SHARDS,
+    FLASH_CLOZE_SHARDS,
+    FLASH_SHARD_CARD_RANGE,
+    FLASH_SHARD_COUNT,
 )
-from app.errors.exam_errors import InvalidExamRequestError, ModelMismatchError
+from app.errors.exam_errors import (
+    InvalidExamRequestError,
+    ModelMismatchError,
+    UpstreamLLMError,
+)
 from app.infra.llm_json import call_json_llm
 from app.prompts.exam_prompts import (
     build_choice_prompt,
@@ -52,8 +68,18 @@ from app.schema.exam import (
     validate_grade_batch,
     verdict_from_score,
 )
+from app.schema.flash import (
+    DraftFlashChoice,
+    FlashChoiceShardDraft,
+    FlashClozeShardDraft,
+    PublicFlashDeck,
+    dedupe_cards,
+    interleave,
+    normalize_deck,
+    to_public_deck,
+)
 from app.schema.provider import ModelProvider
-from app.util.text import chunked
+from app.util.text import chunked, deal_shards
 
 
 class ExamService:
@@ -78,9 +104,12 @@ class ExamService:
         110s、拆两段 100s 都仍被截断，前端拿到 504）；分三段后每段只有 2~3 千
         token，都能在超时内跑完，且某段不合法时只重试那一段。
 
-        并发的依据（各 5 轮 A/B 压测，同材料同模型）：
+        并发的依据（各 5 轮 A/B 压测，同材料同模型；**那轮的模型与日期仓库里没记**，
+        详见 app/config.py 开头的出处警示）：
             整卷中位耗时  串行 193.7s → 并行 68.4s（-65%）
             跨题型考点重复 串行 3.60  → 并行 0.75
+        这里要保留的是**结论**（并发更快、且考点更不重复），不是那两个绝对秒数：
+        2026-09-11 在 DeepSeek 上复测，同样走并发，整卷出卷只要 8~9s。
         并行的每一轮都快过串行最快的一轮。原本串行是为了把"前面已考的知识点"
         传给后面几段以避免重复，但数据显示带上这份清单反而重复更多（怀疑模型
         会照着清单把题抄回来），所以连同 covered 一起去掉——它既没帮上忙，
@@ -91,6 +120,7 @@ class ExamService:
         # 注意：闸门按"一次出卷"计名额，而一次出卷现在会并发发出 3 次上游调用。
         # 即上游并发峰值 = EXAM_MAX_CONCURRENT_LLM × 3（默认 2×3=6），
         # 不再等于闸门容量本身。调整闸门容量时按这个倍数换算。
+        # 闪卡（generate_flash_deck）走的是同一个倍数：FLASH_SHARD_COUNT 也是 3。
         with self.llm_gate.acquire():
             context = self.knowledge_base.sample_exam_context(topic, notebook_ids=notebook_ids)
             stages = (
@@ -142,6 +172,116 @@ class ExamService:
             StoredExam(exam=exam, served_model_id=provider.served_model_id),
         )
         return to_public(exam)
+
+    def generate_flash_deck(
+        self,
+        topic: str | None,
+        provider: ModelProvider,
+        notebook_ids: list[str] | None = None,
+    ) -> PublicFlashDeck:
+        """闪卡组：填空 + 选择两类，按材料分片并发，卡组不计分。
+
+        与 generate_exam 的分段是同一条思路再往下切一层。整卷的填空段一次要
+        8~10 张、配 4500 字上下文；闪卡把"每次调用的输出量"和"上下文长度"同时
+        砍到三分之一——每片 3~4 张配 ~1600 字材料，几片并发。
+
+        分片的材料**互不相同**：sample_exam_context 返回的是若干片段用
+        EXAM_CONTEXT_SEPARATOR 拼起来的，这里切回去轮流发牌。这是并发分片不撞
+        考点的主要手段——整卷那边实测过"把已考知识点清单塞回 prompt"，结果是
+        重复更多，所以不走那条路，改在事后 dedupe_cards 兜底。
+
+        大题不进闪卡：写一段话没法当场判，而"当场知道对错"正是闪卡的全部意义。
+        """
+        operation_started = time.monotonic()
+        deadline = operation_started + FLASH_LLM_BUDGET
+        with self.llm_gate.acquire():
+            context = self.knowledge_base.sample_exam_context(topic, notebook_ids=notebook_ids)
+            shards = deal_shards(
+                context,
+                FLASH_SHARD_COUNT,
+                separator=EXAM_CONTEXT_SEPARATOR,
+                char_limit=FLASH_CONTEXT_CHAR_LIMIT,
+            )
+            if not shards:
+                raise InvalidExamRequestError(
+                    "所选知识范围里没有可出题的材料，请换一个笔记本或来源"
+                )
+
+            cloze_stage = (build_cloze_prompt, FlashClozeShardDraft)
+            choice_stage = (build_choice_prompt, FlashChoiceShardDraft)
+            stages = [cloze_stage] * FLASH_CLOZE_SHARDS + [choice_stage] * FLASH_CHOICE_SHARDS
+
+            lo, hi = FLASH_SHARD_CARD_RANGE
+            if len(shards) < len(stages):
+                # 知识库太小、切不出这么多片。宁可少发几次，也不能让两片拿同一份
+                # 材料——那等于自找重复。填空优先，还剩位置再给选择留一片。
+                keep = len(shards)
+                stages = [cloze_stage] if keep == 1 else [cloze_stage] * (keep - 1) + [choice_stage]
+                # 每片多出几张，卡组规模才不会跟着分片数一起缩水
+                scale = FLASH_SHARD_COUNT / keep
+                lo = min(int(round(lo * scale)), 10)
+                hi = min(int(round(hi * scale)), 12)
+
+            started = time.monotonic()
+            budget = max(0.0, deadline - started)
+            # 与 generate_exam 同一套余量算法：call_json_llm 在
+            # remaining < attempt_timeout + 5 时直接判预算不足抛 504，
+            # 这里的 -15 就是留给它的余量，别减小。
+            attempt_timeout = min(
+                FLASH_LLM_TIMEOUT, max(FLASH_MIN_ATTEMPT_TIMEOUT, budget - 15.0)
+            )
+
+            def run_shard(job):
+                (build_prompt, model_cls), shard_context = job
+                client = self.client_factory.get(
+                    provider,
+                    timeout_seconds=int(attempt_timeout),
+                    max_retries=0,
+                ).bind(max_tokens=2500)
+                return call_json_llm(
+                    client,
+                    build_prompt(
+                        shard_context, topic, [], count_range=(lo, hi), deck_mode=True
+                    ),
+                    model_cls,
+                    attempt_timeout=attempt_timeout,
+                    budget_seconds=budget,
+                    start_time=started,
+                )
+
+            jobs = list(zip(stages, shards))
+            with ThreadPoolExecutor(max_workers=len(jobs)) as pool:
+                # 任何一片抛错都在这里原样冒出来（504/502/429 的语义保持不变）
+                parts = list(pool.map(run_shard, jobs))
+
+            cloze_cards = [
+                card for part in parts if isinstance(part, FlashClozeShardDraft)
+                for card in part.cloze
+            ]
+            choice_cards = [
+                card for part in parts if isinstance(part, FlashChoiceShardDraft)
+                for card in part.choice
+            ]
+
+            # 先跨类型去重（同一个考点出成填空还是选择都算重复，填空先到先得），
+            # 再交错，顺序才不会被去重打乱。
+            kept = dedupe_cards(cloze_cards + choice_cards)
+            if len(kept) < FLASH_DECK_MIN_CARDS:
+                # 各片撞考点撞得太狠，剩下的卡组不值得刷
+                raise UpstreamLLMError("生成的闪卡重复太多，请重试")
+
+            cards = interleave(
+                [card for card in kept if not isinstance(card, DraftFlashChoice)],
+                [card for card in kept if isinstance(card, DraftFlashChoice)],
+            )
+            deck = normalize_deck(cards, parts[0].title, str(uuid.uuid4()))
+
+        # 卡组**不进任何缓存**：答案随 to_public_deck 一起发给了前端，判定也在
+        # 浏览器本地做，服务端没有任何一条路径会再读它。真要加回服务端复核，
+        # 那时再开一个独立的 ExamCache 实例——绝不能借用 exam_cache，
+        # review_exam 会对取出的对象调 all_questions()，卡组掉进去就是类型混淆。
+        return to_public_deck(deck)
+
     def _grade_batches(
         self,
         llm_items: list[dict[str, Any]],

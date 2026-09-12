@@ -22,6 +22,7 @@ from app.config import (
     DEFAULT_KNOWLEDGE_FILE,
     DEFAULT_TEXT_DB_DIR,
     EXAM_CONTEXT_CHAR_LIMIT,
+    EXAM_CONTEXT_SEPARATOR,
     EXAM_SAMPLE_K,
 )
 from app.util.markdown_sanitizer import clean_reference_for_display, truncate_markdown_fragment
@@ -180,7 +181,7 @@ class KnowledgeBase:
                 total += len(content)
             if len(parts) >= EXAM_SAMPLE_K:
                 break
-        return "\n\n---\n\n".join(parts)
+        return EXAM_CONTEXT_SEPARATOR.join(parts)
 
 
 def display_document(document: Document) -> str:

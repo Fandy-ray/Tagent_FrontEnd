@@ -209,4 +209,8 @@ def call_json_llm(
             last_err = e
             continue
 
+    # 连不上上游和"上游回了但结构不对"是两码事。以前一律报"输出结构异常"，
+    # 会把人引去查 prompt，而真正该查的是网络或 base_url/Key。
+    if isinstance(last_err, openai.APIConnectionError):
+        raise UpstreamLLMError("连不上模型服务，请检查网络，或确认模型的地址与 Key 可用") from last_err
     raise UpstreamLLMError("AI 输出结构异常，请稍后重试") from last_err
