@@ -1,11 +1,16 @@
 import { browser } from '$app/environment';
 
 import type { Citation } from '$lib/data/knowledge';
+import type { PaperTask } from '$lib/data/paperWorkflow';
+
+export type AssistMode = 'qa' | 'paper';
 
 export type QaMessage = {
 	id: string;
 	role: 'user' | 'assistant';
 	content: string;
+	/** 卡片操作只展示简短标签，真正发送给 Agent 的请求保存在这里。 */
+	requestContent?: string;
 	model?: string;
 	citations?: Citation[];
 	streaming?: boolean;
@@ -20,6 +25,8 @@ export type QaChat = {
 	collectionId?: string;
 	folderId?: string | null;
 	tags?: string[];
+	mode?: AssistMode;
+	paperTask?: PaperTask;
 	archived?: boolean;
 	messages: QaMessage[];
 };
@@ -36,6 +43,7 @@ const snapshotMessage = (message: QaMessage): QaMessage => ({
 	id: message.id,
 	role: message.role,
 	content: message.content,
+	requestContent: message.requestContent,
 	model: message.model,
 	citations: message.citations?.map((citation) => ({ ...citation })),
 	followUps: message.followUps?.slice(),
@@ -50,6 +58,24 @@ const snapshotChat = (chat: QaChat): QaChat => ({
 	collectionId: chat.collectionId,
 	folderId: chat.folderId ?? null,
 	tags: chat.tags ? [...chat.tags] : undefined,
+	mode: chat.mode,
+	paperTask: chat.paperTask
+		? {
+				...chat.paperTask,
+				context: chat.paperTask.context
+					? {
+							...chat.paperTask.context,
+							attachedNotes: Object.fromEntries(
+								Object.entries(chat.paperTask.context.attachedNotes ?? {}).map(([key, notes]) => [
+									key,
+									notes?.map((note) => ({ ...note })) ?? []
+								])
+							),
+							attachedFiles: chat.paperTask.context.attachedFiles?.map((file) => ({ ...file })) ?? []
+						}
+					: undefined
+			}
+		: undefined,
 	archived: chat.archived,
 	messages: chat.messages.map(snapshotMessage)
 });

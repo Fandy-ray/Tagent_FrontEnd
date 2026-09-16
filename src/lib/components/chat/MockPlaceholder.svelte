@@ -152,7 +152,7 @@
 		</div>
 	</div>
 
-	{#if !chatLanding}
+	{#if !chatLanding && mode === 'qa'}
 		<div class="mx-auto mt-2 max-w-2xl">
 			<div class="mx-5">
 				<MockSuggestions inputValue={prompt} {mode} onSelect={selectSuggestion} />

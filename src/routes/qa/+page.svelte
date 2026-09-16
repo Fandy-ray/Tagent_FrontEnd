@@ -12,9 +12,8 @@
 		type NotebookSummary
 	} from '$lib/apis/opennotebook';
 	import MockMessageInput from '$lib/components/chat/MockMessageInput.svelte';
-	import MockMessages, {
-		type MockMessage
-	} from '$lib/components/chat/MockMessages.svelte';
+	import PaperTaskCard from '$lib/components/chat/PaperTaskCard.svelte';
+	import MockMessages, { type MockMessage } from '$lib/components/chat/MockMessages.svelte';
 	import ChatControlsPanel from '$lib/components/chat/ChatControlsPanel.svelte';
 	import MockNavbar from '$lib/components/chat/MockNavbar.svelte';
 	import MockPlaceholder from '$lib/components/chat/MockPlaceholder.svelte';
@@ -32,6 +31,18 @@
 	} from '$lib/data/chatControls';
 	import type { KnowledgeCollection } from '$lib/data/knowledge';
 	import { loadQaChats, saveQaChats, type QaChat } from '$lib/data/qaConversations';
+	import {
+		buildPaperPrompt,
+		DEFAULT_PAPER_CONTEXT,
+		DEFAULT_PAPER_TASK,
+		paperIntentDisplay,
+		paperIntentFromPrompt,
+		paperChatTitle,
+		type PaperIntent,
+		type PaperContext,
+		type PaperSection,
+		type PaperTask
+	} from '$lib/data/paperWorkflow';
 	import {
 		collectFolderTreeIds,
 		createQaFolder,
@@ -52,6 +63,7 @@
 	} from '$lib/data/userSettings';
 
 	type AssistMode = 'qa' | 'paper';
+	type QueuedPrompt = { requestContent: string; displayContent: string };
 
 	let sidebarOpen = $state(true);
 	let activeChatId = $state<string | null>(null);
@@ -62,7 +74,7 @@
 		$page.url.searchParams.get('mode') === 'paper' ? 'paper' : 'qa'
 	);
 	let temporaryChat = $state($page.url.searchParams.get('temporary-chat') === 'true');
-	let messageQueue = $state<string[]>([]);
+	let messageQueue = $state<QueuedPrompt[]>([]);
 	let changelogOpen = $state(false);
 	let dictationEnabled = $state(false);
 	let controlsOpen = $state(false);
@@ -76,6 +88,7 @@
 	let notebooks = $state<NotebookSummary[]>([]);
 	let collections = $state<KnowledgeCollection[]>([]);
 	let notebooksLoading = $state(true);
+	let paperTaskSyncTimer: number | null = null;
 	let generationSeq = 0;
 	let abortController: AbortController | null = null;
 	let saveOpen = $state(false);
@@ -83,13 +96,25 @@
 	let saveContent = $state('');
 	let saveToast = $state('');
 	let chats = $state<QaChat[]>([]);
+	let paperTitle = $state($page.url.searchParams.get('paper_title') ?? '');
+	let paperKeywords = $state($page.url.searchParams.get('paper_keywords') ?? '');
+	let paperSection = $state<PaperSection>(
+		($page.url.searchParams.get('paper_section') as PaperSection) || DEFAULT_PAPER_TASK.section
+	);
+	let paperContext = $state<PaperContext>({ ...DEFAULT_PAPER_CONTEXT });
 	let settingsOpen = $state(false);
 	let archivedOpen = $state(false);
 	let shortcutsOpen = $state(false);
 	let userSettings = $state<UserSettings>(loadUserSettings());
 
+	// 两种助手模式使用独立的会话空间。旧数据没有 mode 时按课程答疑处理，
+	// 这样升级前已有的普通对话仍然可以正常显示。
+	const modeChats = $derived(
+		chats.filter((chat) => (chat.mode ?? 'qa') === assistMode)
+	);
+
 	const sidebarChats = $derived(
-		chats
+		modeChats
 			.filter((chat) => !chat.archived)
 			.map((chat) => ({
 				id: chat.id,
@@ -100,7 +125,7 @@
 	);
 
 	const archivedChats = $derived(
-		chats
+		modeChats
 			.filter((chat) => chat.archived)
 			.map((chat) => ({
 				id: chat.id,
@@ -112,6 +137,32 @@
 
 	const currentModelName = $derived(
 		modelOptions.find((model) => model.id === selectedModelId)?.name ?? selectedModelId
+	);
+
+	const paperSourceName = $derived(
+		collectionId
+			? (notebooks.find((item) => item.id === collectionId)?.name ?? '当前笔记本')
+			: notebooksLoading
+				? '正在读取笔记本…'
+				: notebooks.length > 0
+					? '全部笔记本'
+					: '未绑定知识库'
+	);
+
+	const paperTask = $derived<PaperTask>({
+		title: paperTitle,
+		keywords: paperKeywords,
+		section: paperSection,
+		context: paperContext
+	});
+
+	const attachedPaperNotebookIds = $derived(
+		assistMode === 'paper'
+			? Object.values(paperContext.attachedNotes ?? {})
+					.flatMap((notes) => notes ?? [])
+					.map((note) => note.notebookId)
+					.filter(Boolean)
+			: []
 	);
 
 	const pageTitle = $derived.by(() => {
@@ -130,9 +181,7 @@
 		folders.find((folder) => folder.id === selectedFolderId)?.name ?? ''
 	);
 
-	const selectedFolder = $derived(
-		folders.find((folder) => folder.id === selectedFolderId) ?? null
-	);
+	const selectedFolder = $derived(folders.find((folder) => folder.id === selectedFolderId) ?? null);
 
 	const effectiveBackgroundUrl = $derived(
 		selectedFolder?.backgroundImageUrl || userSettings.backgroundImageUrl
@@ -303,11 +352,7 @@
 
 	const buildFollowUps = (question: string, _answer: string): string[] => {
 		const base = question.replace(/\s+/g, ' ').slice(0, 24);
-		return [
-			`请更详细地解释「${base}」`,
-			'用例子说明一下',
-			'相关还有哪些知识点？'
-		].filter(Boolean);
+		return [`请更详细地解释「${base}」`, '用例子说明一下', '相关还有哪些知识点？'].filter(Boolean);
 	};
 
 	const buildTags = (question: string): string[] => {
@@ -341,12 +386,31 @@
 		if (!temporaryChat) {
 			// 仅当 URL 显式带 chat= 时恢复；从智能体入口进入应是全新空对话画面
 			const urlChat = $page.url.searchParams.get('chat');
+			const requestedMode = $page.url.searchParams.has('mode') ? assistMode : null;
 			const restoreId =
-				urlChat && stored.chats.some((chat) => chat.id === urlChat) ? urlChat : null;
+				urlChat &&
+				stored.chats.some(
+					(chat) =>
+						chat.id === urlChat &&
+						(requestedMode === null || (chat.mode ?? 'qa') === requestedMode)
+				)
+					? urlChat
+					: null;
 			if (restoreId) {
 				const chat = stored.chats.find((item) => item.id === restoreId);
 				activeChatId = restoreId;
-				messages = chat?.messages.map((message) => ({ ...message })) ?? [];
+				messages = restoreChatMessages(chat);
+				if (!$page.url.searchParams.has('mode') && chat?.mode) {
+					assistMode = chat.mode;
+				}
+				if (chat?.paperTask && !$page.url.searchParams.has('paper_title')) {
+					paperTitle = chat.paperTask.title;
+					paperKeywords = chat.paperTask.keywords;
+					paperSection = chat.paperTask.section;
+				}
+				if (chat?.paperTask?.context) {
+					paperContext = { ...DEFAULT_PAPER_CONTEXT, ...chat.paperTask.context };
+				}
 				if (!collectionId && chat?.collectionId) {
 					collectionId = chat.collectionId;
 				}
@@ -423,9 +487,7 @@
 			const target = event.target as HTMLElement | null;
 			const tag = target?.tagName?.toLowerCase() ?? '';
 			const inEditable =
-				tag === 'input' ||
-				tag === 'textarea' ||
-				Boolean(target?.isContentEditable);
+				tag === 'input' || tag === 'textarea' || Boolean(target?.isContentEditable);
 
 			if (matchShortcut(event, ['mod', 'slash'])) {
 				event.preventDefault();
@@ -461,7 +523,10 @@
 				return;
 			}
 
-			if (matchShortcut(event, ['mod', 'shift', 'quote']) || matchShortcut(event, ['mod', 'shift', "'"])) {
+			if (
+				matchShortcut(event, ['mod', 'shift', 'quote']) ||
+				matchShortcut(event, ['mod', 'shift', "'"])
+			) {
 				event.preventDefault();
 				toggleTemporaryChat();
 				return;
@@ -494,7 +559,10 @@
 				return;
 			}
 
-			if (matchShortcut(event, ['mod', 'shift', 'semicolon']) || matchShortcut(event, ['mod', 'shift', ';'])) {
+			if (
+				matchShortcut(event, ['mod', 'shift', 'semicolon']) ||
+				matchShortcut(event, ['mod', 'shift', ';'])
+			) {
 				event.preventDefault();
 				void copyLastCodeBlock();
 				return;
@@ -580,6 +648,26 @@
 			streaming: false
 		}));
 
+	const restoreChatMessages = (chat: QaChat | undefined) => {
+		const task = chat?.paperTask ?? paperTask;
+
+		return cloneMessages(chat?.messages ?? []).map((message) => {
+			if (chat?.mode !== 'paper' || message.role !== 'user' || message.requestContent) {
+				return message;
+			}
+
+			const intent = paperIntentFromPrompt(message.content);
+
+			return intent
+				? {
+						...message,
+						content: paperIntentDisplay(intent, task.section),
+						requestContent: message.content
+					}
+				: message;
+		});
+	};
+
 	const isTemporarySession = () =>
 		temporaryChat || (typeof activeChatId === 'string' && activeChatId.startsWith('local:'));
 
@@ -598,6 +686,8 @@
 						title: title || chat.title,
 						updatedAt: Date.now(),
 						collectionId: collectionId || chat.collectionId,
+						mode: assistMode,
+						paperTask: assistMode === 'paper' ? { ...paperTask } : chat.paperTask,
 						messages: snapshot
 					}
 				: chat
@@ -616,6 +706,13 @@
 		}
 		if (assistMode === 'paper') {
 			params.set('mode', 'paper');
+			if (paperTitle.trim()) {
+				params.set('paper_title', paperTitle.trim());
+			}
+			if (paperKeywords.trim()) {
+				params.set('paper_keywords', paperKeywords.trim());
+			}
+			params.set('paper_section', paperSection);
 		}
 		if (temporaryChat) {
 			params.set('temporary-chat', 'true');
@@ -646,8 +743,45 @@
 		bumpGeneration();
 		finishStreamingMessages();
 		generating = false;
+		commitActive();
+		// 切换模式即进入另一套会话空间，避免把论文内容继续留在课程答疑里。
+		activeChatId = null;
+		messages = [];
+		prompt = '';
+		selectedFolderId = null;
 		assistMode = mode;
+		if (mode === 'paper' && !paperSection) {
+			paperSection = DEFAULT_PAPER_TASK.section;
+		}
+		persistChats(null);
 		syncUrl();
+	};
+
+	const handlePaperTaskChange = (next: PaperTask) => {
+		paperTitle = next.title;
+		paperKeywords = next.keywords;
+		paperSection = next.section;
+		paperContext = { ...DEFAULT_PAPER_CONTEXT, ...(next.context ?? {}) };
+		if (assistMode === 'paper') {
+			if (paperTaskSyncTimer !== null) {
+				window.clearTimeout(paperTaskSyncTimer);
+			}
+			paperTaskSyncTimer = window.setTimeout(() => {
+				commitActive();
+				syncUrl();
+				paperTaskSyncTimer = null;
+			}, 250);
+		}
+	};
+
+	const runPaperIntent = (intent: PaperIntent) => {
+		if (assistMode !== 'paper') {
+			return;
+		}
+		submitPrompt(
+			buildPaperPrompt(intent, paperTask),
+			paperIntentDisplay(intent, paperTask.section)
+		);
 	};
 
 	const returnToSelect = () => {
@@ -707,7 +841,10 @@
 				}, 2800);
 				return;
 			}
-			const merged = [...incoming.map((chat) => ({ ...chat, archived: chat.archived ?? false })), ...chats];
+			const merged = [
+				...incoming.map((chat) => ({ ...chat, archived: chat.archived ?? false })),
+				...chats
+			];
 			const seen = new Set<string>();
 			chats = merged.filter((chat) => {
 				if (!chat?.id || seen.has(chat.id)) return false;
@@ -916,7 +1053,16 @@
 		temporaryChat = false;
 		const chat = chats.find((item) => item.id === chatId);
 		activeChatId = chatId;
-		messages = cloneMessages(chat?.messages ?? []);
+		messages = restoreChatMessages(chat);
+		if (chat?.mode) {
+			assistMode = chat.mode;
+		}
+		if (chat?.paperTask) {
+			paperTitle = chat.paperTask.title;
+			paperKeywords = chat.paperTask.keywords;
+			paperSection = chat.paperTask.section;
+			paperContext = { ...DEFAULT_PAPER_CONTEXT, ...(chat.paperTask.context ?? {}) };
+		}
 		if (chat?.collectionId) {
 			collectionId = chat.collectionId;
 		}
@@ -962,9 +1108,14 @@
 		const firstUser = messages.find((message) => message.role === 'user');
 		const chat: QaChat = {
 			id,
-			title: clipTitle(firstUser?.content ?? '临时对话'),
+			title:
+				assistMode === 'paper'
+					? paperChatTitle(paperTask, clipTitle(firstUser?.content ?? '论文辅助'))
+					: clipTitle(firstUser?.content ?? '临时对话'),
 			updatedAt: Date.now(),
 			collectionId,
+			mode: assistMode,
+			paperTask: assistMode === 'paper' ? { ...paperTask } : undefined,
 			messages: cloneMessages(messages)
 		};
 
@@ -1047,10 +1198,15 @@
 		const title =
 			chats.find((chat) => chat.id === activeChatId)?.title?.replace(/[\\/:*?"<>|]/g, '_') ||
 			'chat';
-		const mime = userSettings.stylizedPdfExport ? 'text/markdown;charset=utf-8' : 'text/plain;charset=utf-8';
+		const mime = userSettings.stylizedPdfExport
+			? 'text/markdown;charset=utf-8'
+			: 'text/plain;charset=utf-8';
 		const ext = userSettings.stylizedPdfExport ? 'md' : 'txt';
 		const body = userSettings.stylizedPdfExport
-			? `# ${title}\n\n${text.split('\n').map((line) => line).join('\n\n')}`
+			? `# ${title}\n\n${text
+					.split('\n')
+					.map((line) => line)
+					.join('\n\n')}`
 			: text;
 		const blob = new Blob([body], { type: mime });
 		const href = URL.createObjectURL(blob);
@@ -1169,19 +1325,39 @@
 			})
 			.join('\n');
 
-		saveTitle = clipTitle(question);
-		saveContent = [
-			'## 问',
-			'',
-			question || '（无对应提问）',
-			'',
-			'## 答',
-			'',
-			assistant.content,
-			citations ? `\n## 引用\n\n${citations}` : ''
-		]
-			.join('\n')
-			.trim();
+		if (assistMode === 'paper') {
+			saveTitle = `${paperChatTitle(paperTask, '论文草稿')}·${paperTask.section}`;
+			saveContent = [
+				`# ${paperTask.title.trim() || '课程论文草稿'}`,
+				'',
+				`> 当前章节：${paperTask.section}`,
+				paperTask.keywords.trim() ? `> 关键词：${paperTask.keywords.trim()}` : '',
+				'',
+				`## ${paperTask.section}`,
+				'',
+				assistant.content,
+				citations ? `\n## 参考资料\n\n${citations}` : '',
+				'',
+				'<!-- 由 TAgentNote 论文辅助模式生成，请结合课程资料和实验数据继续修改。 -->'
+			]
+				.filter(Boolean)
+				.join('\n')
+				.trim();
+		} else {
+			saveTitle = clipTitle(question);
+			saveContent = [
+				'## 问',
+				'',
+				question || '（无对应提问）',
+				'',
+				'## 答',
+				'',
+				assistant.content,
+				citations ? `\n## 引用\n\n${citations}` : ''
+			]
+				.join('\n')
+				.trim();
+		}
 		saveOpen = true;
 	};
 
@@ -1192,7 +1368,18 @@
 		let created = false;
 		const searchController = new AbortController();
 		const searchTimer = window.setTimeout(() => searchController.abort(), 4000);
-		const hitsPromise = searchKnowledge(question, {
+		const citationQuery =
+			assistMode === 'paper'
+				? [
+						paperTask.title,
+						paperTask.keywords,
+						paperTask.section,
+						...Object.values(paperTask.context ?? {})
+					]
+						.filter(Boolean)
+						.join(' ')
+				: question;
+		const hitsPromise = searchKnowledge(citationQuery, {
 			limit: 8,
 			signal: searchController.signal
 		})
@@ -1232,11 +1419,13 @@
 			const folderNotebookIds = (selectedFolder?.knowledgeItems ?? [])
 				.filter((item) => item.type === 'collection')
 				.map((item) => item.id);
-			const notebookIds = folderNotebookIds.length
-				? folderNotebookIds
-				: collectionId
-					? [collectionId]
-					: undefined;
+			const notebookIds = Array.from(
+				new Set([
+					...folderNotebookIds,
+					...(collectionId ? [collectionId] : []),
+					...attachedPaperNotebookIds
+				])
+			);
 
 			const result = await streamAgentChat(
 				question,
@@ -1268,7 +1457,7 @@
 					agentCitations: result.citations,
 					retrievedContext: result.retrievedContext,
 					searchHits: hits,
-					question,
+					question: citationQuery,
 					answer: result.content,
 					collections,
 					notebook
@@ -1311,7 +1500,11 @@
 						playNotificationSound();
 					}
 				}
-				if (userSettings.notificationEnabled && typeof Notification !== 'undefined' && Notification.permission === 'granted') {
+				if (
+					userSettings.notificationEnabled &&
+					typeof Notification !== 'undefined' &&
+					Notification.permission === 'granted'
+				) {
 					try {
 						new Notification('TAgentNote', { body: '回复已生成' });
 					} catch {
@@ -1323,7 +1516,7 @@
 			if (messageQueue.length > 0) {
 				const next = messageQueue[0];
 				messageQueue = messageQueue.slice(1);
-				void tick().then(() => submitPrompt(next));
+				void tick().then(() => submitPrompt(next.requestContent, next.displayContent));
 			}
 		} finally {
 			searchController.abort();
@@ -1333,8 +1526,9 @@
 		}
 	};
 
-	const submitPrompt = (content: string) => {
+	const submitPrompt = (content: string, displayContent = content) => {
 		const trimmedContent = content.trim();
+		const trimmedDisplayContent = displayContent.trim() || trimmedContent;
 
 		if (!trimmedContent) {
 			return;
@@ -1344,7 +1538,10 @@
 			if (!userSettings.enableMessageQueue) {
 				return;
 			}
-			messageQueue = [...messageQueue, trimmedContent];
+			messageQueue = [
+				...messageQueue,
+				{ requestContent: trimmedContent, displayContent: trimmedDisplayContent }
+			];
 			prompt = '';
 			saveToast = `已加入队列（${messageQueue.length}）`;
 			window.setTimeout(() => {
@@ -1365,7 +1562,8 @@
 		const userMessage: MockMessage = {
 			id: `user-${Date.now()}`,
 			role: 'user',
-			content: trimmedContent
+			content: trimmedDisplayContent,
+			requestContent: trimmedContent
 		};
 
 		messages = [...messages, userMessage];
@@ -1381,10 +1579,20 @@
 				chats = [
 					{
 						id: activeChatId,
-						title: userSettings.titleAutoGenerate ? clipTitle(trimmedContent) : '新对话',
+						title:
+							assistMode === 'paper'
+								? paperChatTitle(
+										paperTask,
+										userSettings.titleAutoGenerate ? clipTitle(trimmedContent) : '论文辅助'
+									)
+								: userSettings.titleAutoGenerate
+									? clipTitle(trimmedContent)
+									: '新对话',
 						updatedAt: Date.now(),
 						collectionId,
 						folderId: selectedFolderId,
+						mode: assistMode,
+						paperTask: assistMode === 'paper' ? { ...paperTask } : undefined,
 						messages: [userMessage]
 					},
 					...chats
@@ -1438,7 +1646,7 @@
 
 		for (let index = messageIndex - 1; index >= 0; index -= 1) {
 			if (messages[index].role === 'user') {
-				lastUserQuestion = messages[index].content;
+				lastUserQuestion = messages[index].requestContent || messages[index].content;
 				break;
 			}
 		}
@@ -1493,7 +1701,7 @@
 		let lastUserQuestion = '';
 		for (let index = messageIndex - 1; index >= 0; index -= 1) {
 			if (messages[index].role === 'user') {
-				lastUserQuestion = messages[index].content;
+				lastUserQuestion = messages[index].requestContent || messages[index].content;
 				break;
 			}
 		}
@@ -1521,16 +1729,24 @@
 			void scrollToBottom();
 		};
 
-		const continuePrompt = [
-			'请在不重复已有内容的前提下，继续完成下面的回答。',
-			'',
-			lastUserQuestion ? `【用户问题】\n${lastUserQuestion}` : '',
-			`【已有回答】\n${existing}`,
-			'',
-			'【要求】直接从断点继续写，不要复述开头或重复已有段落。'
-		]
-			.filter(Boolean)
-			.join('\n');
+		const continueLines: string[] =
+			assistMode === 'paper'
+				? [
+						`请继续撰写论文的“${paperSection}”章节，不要切换到其他章节。`,
+						`【论文任务】\n${paperTask.title || '未命名论文'}\n关键词：${paperTask.keywords || '未填写'}`,
+						lastUserQuestion ? `【本次写作要求】\n${lastUserQuestion}` : '',
+						`【已有章节内容】\n${existing}`,
+						'【要求】从已有内容的断点继续，保持论文语气和 Markdown 结构，不要重复已经写过的段落；缺少数据时标记“待补充”。'
+					]
+				: [
+						'请在不重复已有内容的前提下，继续完成下面的回答。',
+						'',
+						lastUserQuestion ? `【用户问题】\n${lastUserQuestion}` : '',
+						`【已有回答】\n${existing}`,
+						'',
+						'【要求】直接从断点继续写，不要复述开头或重复已有段落。'
+					];
+		const continuePrompt = continueLines.filter(Boolean).join('\n');
 
 		void (async () => {
 			try {
@@ -1540,11 +1756,13 @@
 				const folderNotebookIds = (selectedFolder?.knowledgeItems ?? [])
 					.filter((item) => item.type === 'collection')
 					.map((item) => item.id);
-				const notebookIds = folderNotebookIds.length
-					? folderNotebookIds
-					: collectionId
-						? [collectionId]
-						: undefined;
+				const notebookIds = Array.from(
+					new Set([
+						...folderNotebookIds,
+						...(collectionId ? [collectionId] : []),
+						...attachedPaperNotebookIds
+					])
+				);
 
 				const result = await streamAgentChat(
 					continuePrompt,
@@ -1580,7 +1798,10 @@
 				commitActive();
 				void scrollToBottom();
 			} catch (error: unknown) {
-				if (seq !== generationSeq || (error instanceof DOMException && error.name === 'AbortError')) {
+				if (
+					seq !== generationSeq ||
+					(error instanceof DOMException && error.name === 'AbortError')
+				) {
 					return;
 				}
 				messages = messages.map((message) =>
@@ -1598,6 +1819,9 @@
 	};
 
 	onDestroy(() => {
+		if (paperTaskSyncTimer !== null) {
+			window.clearTimeout(paperTaskSyncTimer);
+		}
 		if (!isTemporarySession()) {
 			commitActive();
 		}
@@ -1615,7 +1839,7 @@
 			{activeChatId}
 			{selectedFolderId}
 			chats={sidebarChats}
-			searchChats={chats}
+			searchChats={modeChats}
 			{folders}
 			modelId={selectedModelId}
 			userName={userSettings.displayName}
@@ -1718,13 +1942,29 @@
 				}}
 			/>
 
+			{#if assistMode === 'paper'}
+				<div
+					class="min-h-0 max-h-[calc(100vh-4rem)] shrink-0 overflow-y-auto overscroll-contain border-b border-white/[0.06] bg-[#171717] px-3 py-2 md:px-5"
+				>
+					<PaperTaskCard
+						bind:title={paperTitle}
+						bind:keywords={paperKeywords}
+						bind:section={paperSection}
+						bind:context={paperContext}
+						sourceName={paperSourceName}
+						{collections}
+						compact={messages.length > 0}
+						onChange={handlePaperTaskChange}
+						onIntent={runPaperIntent}
+					/>
+				</div>
+			{/if}
+
 			<div
 				class="relative flex min-h-0 flex-1 flex-col overflow-hidden"
-				dir={
-					userSettings.chatDirection === 'auto'
-						? undefined
-						: (userSettings.chatDirection.toLowerCase() as 'ltr' | 'rtl')
-				}
+				dir={userSettings.chatDirection === 'auto'
+					? undefined
+					: (userSettings.chatDirection.toLowerCase() as 'ltr' | 'rtl')}
 				style={effectiveBackgroundUrl
 					? `background-image:url(${effectiveBackgroundUrl});background-size:cover;background-position:center;`
 					: undefined}
@@ -1750,32 +1990,32 @@
 							</div>
 						{/if}
 						<div class="flex min-h-0 w-full flex-1 items-center">
-						<MockPlaceholder
-							modelName={currentModelName}
-							bind:prompt
-							{generating}
-							mode={assistMode}
-							{temporaryChat}
-							landingPageMode={userSettings.landingPageMode}
-							ctrlEnterToSend={userSettings.ctrlEnterToSend}
-							largeTextAsFile={userSettings.largeTextAsFile}
-							enableMessageQueue={userSettings.enableMessageQueue}
-							showFormattingToolbar={userSettings.showFormattingToolbar}
-							richTextInput={userSettings.richTextInput}
-							promptAutocomplete={userSettings.promptAutocomplete}
-							imageCompression={userSettings.imageCompression}
-							imageCompressionSize={userSettings.imageCompressionSize}
-							insertSuggestionPrompt={userSettings.insertSuggestionPrompt}
-							lastUserMessage={lastUserMessage}
-							speechAutoSend={userSettings.speechAutoSend}
-							webSearchAlways={userSettings.webSearchAlways}
-							knowledgeOptions={inputKnowledgeOptions}
-							noteOptions={inputNoteOptions}
-							chatOptions={inputChatOptions}
-							onSubmit={submitPrompt}
-							onStop={stopResponse}
-							onToast={toast}
-						/>
+							<MockPlaceholder
+								modelName={currentModelName}
+								bind:prompt
+								{generating}
+								mode={assistMode}
+								{temporaryChat}
+								landingPageMode={userSettings.landingPageMode}
+								ctrlEnterToSend={userSettings.ctrlEnterToSend}
+								largeTextAsFile={userSettings.largeTextAsFile}
+								enableMessageQueue={userSettings.enableMessageQueue}
+								showFormattingToolbar={userSettings.showFormattingToolbar}
+								richTextInput={userSettings.richTextInput}
+								promptAutocomplete={userSettings.promptAutocomplete}
+								imageCompression={userSettings.imageCompression}
+								imageCompressionSize={userSettings.imageCompressionSize}
+								insertSuggestionPrompt={userSettings.insertSuggestionPrompt}
+								{lastUserMessage}
+								speechAutoSend={userSettings.speechAutoSend}
+								webSearchAlways={userSettings.webSearchAlways}
+								knowledgeOptions={inputKnowledgeOptions}
+								noteOptions={inputNoteOptions}
+								chatOptions={inputChatOptions}
+								onSubmit={submitPrompt}
+								onStop={stopResponse}
+								onToast={toast}
+							/>
 						</div>
 					</div>
 				{:else}
@@ -1816,6 +2056,7 @@
 							insertFollowUpPrompt={userSettings.insertFollowUpPrompt}
 							onRegenerate={regenerateResponse}
 							onContinue={continueResponse}
+							continueLabel={assistMode === 'paper' ? `继续写${paperSection}` : '继续回答'}
 							onEditMessage={editMessage}
 							onSaveToNotebook={openSaveToNotebook}
 							onToast={toast}
@@ -1855,7 +2096,9 @@
 					<div
 						class="relative z-10 shrink-0 bg-gradient-to-t from-gray-900 via-gray-900 to-transparent px-4 pt-4 pb-2"
 					>
-						<div class={`mx-auto w-full ${userSettings.widescreenMode ? 'max-w-full' : 'max-w-3xl'}`}>
+						<div
+							class={`mx-auto w-full ${userSettings.widescreenMode ? 'max-w-full' : 'max-w-3xl'}`}
+						>
 							<MockMessageInput
 								bind:prompt
 								placeholder="有什么我能帮您的吗？"
@@ -1868,7 +2111,7 @@
 								promptAutocomplete={userSettings.promptAutocomplete}
 								imageCompression={userSettings.imageCompression}
 								imageCompressionSize={userSettings.imageCompressionSize}
-								lastUserMessage={lastUserMessage}
+								{lastUserMessage}
 								speechAutoSend={userSettings.speechAutoSend}
 								webSearchAlways={userSettings.webSearchAlways}
 								knowledgeOptions={inputKnowledgeOptions}
@@ -1967,10 +2210,14 @@
 
 {#if changelogOpen}
 	<div class="fixed inset-0 z-[80] flex items-center justify-center bg-black/60 p-4">
-		<div class="w-full max-w-md rounded-2xl border border-white/10 bg-[#1f1f1f] p-5 text-left shadow-xl">
+		<div
+			class="w-full max-w-md rounded-2xl border border-white/10 bg-[#1f1f1f] p-5 text-left shadow-xl"
+		>
 			<h2 class="text-lg font-semibold text-white">新功能介绍</h2>
 			<p class="mt-2 text-sm leading-6 text-gray-400">
-				界面设置已对齐 Open WebUI：支持消息队列、追问提示、产物预览、格式工具栏、图像压缩与通知音等。可在「设置 → 界面」中逐项开关。
+				界面设置已对齐 Open
+				WebUI：支持消息队列、追问提示、产物预览、格式工具栏、图像压缩与通知音等。可在「设置 →
+				界面」中逐项开关。
 			</p>
 			<button
 				type="button"

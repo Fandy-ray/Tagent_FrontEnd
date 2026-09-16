@@ -28,6 +28,7 @@
 		onCopy?: (content: string) => void;
 		onRegenerate?: (messageId: string) => void;
 		onContinue?: (messageId: string) => void;
+		continueLabel?: string;
 		onEditMessage?: (messageId: string, content: string) => void;
 		onSaveToNotebook?: (messageId: string) => void;
 		onQuickAction?: (prompt: string) => void;
@@ -58,6 +59,7 @@
 		onCopy = () => {},
 		onRegenerate = () => {},
 		onContinue = () => {},
+		continueLabel = '继续回答',
 		onEditMessage = () => {},
 		onSaveToNotebook = () => {},
 		onQuickAction = () => {},
@@ -72,7 +74,12 @@
 	let speechUtterance: SpeechSynthesisUtterance | null = null;
 
 	const defaultActions = [
-		{ id: 'ask', label: '提问', input: true, prompt: '{{SELECTED_CONTENT}}\n\n\n{{INPUT_CONTENT}}' },
+		{
+			id: 'ask',
+			label: '提问',
+			input: true,
+			prompt: '{{SELECTED_CONTENT}}\n\n\n{{INPUT_CONTENT}}'
+		},
 		{ id: 'explain', label: '解释', input: false, prompt: '{{SELECTED_CONTENT}}\n\n\n解释' }
 	];
 
@@ -92,7 +99,10 @@
 	};
 
 	const speakMessage = (messageId: string, content: string) => {
-		const text = content.replace(/```[\s\S]*?```/g, ' ').replace(/[#>*_`]/g, '').trim();
+		const text = content
+			.replace(/```[\s\S]*?```/g, ' ')
+			.replace(/[#>*_`]/g, '')
+			.trim();
 		if (!text) {
 			onToast('没有可朗读的内容');
 			return;
@@ -179,11 +189,17 @@
 	});
 </script>
 
-<div class={`mx-auto w-full px-4 pt-4 pb-28 md:px-6 ${widescreenMode ? 'max-w-full' : 'max-w-3xl'}`}>
+<div
+	class={`mx-auto w-full px-4 pt-4 pb-28 md:px-6 ${widescreenMode ? 'max-w-full' : 'max-w-3xl'}`}
+>
 	<div class="flex flex-col gap-7">
 		{#each messages as message (message.id)}
 			{#if message.role === 'user'}
-				<article class="group flex w-full justify-end" data-message-id={message.id} id={`message-${message.id}`}>
+				<article
+					class="group flex w-full justify-end"
+					data-message-id={message.id}
+					id={`message-${message.id}`}
+				>
 					<div class="max-w-[90%]">
 						{#if showUsername && userName}
 							<div class="mb-1 text-right text-xs text-gray-500">{userName}</div>
@@ -224,8 +240,12 @@
 					</div>
 				</article>
 			{:else}
-				<article class="group flex w-full" data-message-id={message.id} id={`message-${message.id}`}>
-					<div class="mr-3 mt-1 hidden shrink-0 sm:flex">
+				<article
+					class="group flex w-full"
+					data-message-id={message.id}
+					id={`message-${message.id}`}
+				>
+					<div class="mt-1 mr-3 hidden shrink-0 sm:flex">
 						<div
 							class="flex size-8 items-center justify-center rounded-full bg-white text-[9px] font-black text-black"
 						>
@@ -246,8 +266,7 @@
 									bind:value={editDraft}
 									rows="6"
 									class="w-full resize-y rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2 text-sm leading-6 text-gray-100 outline-none"
-									aria-label="编辑回答"
-								></textarea>
+									aria-label="编辑回答"></textarea>
 								<div class="mt-2 flex justify-end gap-2">
 									<button
 										type="button"
@@ -332,7 +351,13 @@
 										title="编辑"
 										aria-label="编辑回答"
 									>
-										<svg class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3">
+										<svg
+											class="size-4"
+											viewBox="0 0 24 24"
+											fill="none"
+											stroke="currentColor"
+											stroke-width="2.3"
+										>
 											<path
 												stroke-linecap="round"
 												stroke-linejoin="round"
@@ -348,7 +373,13 @@
 										title="复制"
 										aria-label="复制回答"
 									>
-										<svg class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3">
+										<svg
+											class="size-4"
+											viewBox="0 0 24 24"
+											fill="none"
+											stroke="currentColor"
+											stroke-width="2.3"
+										>
 											<path
 												stroke-linecap="round"
 												stroke-linejoin="round"
@@ -366,7 +397,13 @@
 										aria-label={speakingId === message.id ? '停止朗读' : '朗读回答'}
 									>
 										{#if speakingId === message.id}
-											<svg class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3">
+											<svg
+												class="size-4"
+												viewBox="0 0 24 24"
+												fill="none"
+												stroke="currentColor"
+												stroke-width="2.3"
+											>
 												<path
 													stroke-linecap="round"
 													stroke-linejoin="round"
@@ -374,7 +411,13 @@
 												></path>
 											</svg>
 										{:else}
-											<svg class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3">
+											<svg
+												class="size-4"
+												viewBox="0 0 24 24"
+												fill="none"
+												stroke="currentColor"
+												stroke-width="2.3"
+											>
 												<path
 													stroke-linecap="round"
 													stroke-linejoin="round"
@@ -395,7 +438,13 @@
 										title="有帮助"
 										aria-label="有帮助"
 									>
-										<svg class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3">
+										<svg
+											class="size-4"
+											viewBox="0 0 24 24"
+											fill="none"
+											stroke="currentColor"
+											stroke-width="2.3"
+										>
 											<path
 												stroke-linecap="round"
 												stroke-linejoin="round"
@@ -415,7 +464,13 @@
 										title="没有帮助"
 										aria-label="没有帮助"
 									>
-										<svg class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3">
+										<svg
+											class="size-4"
+											viewBox="0 0 24 24"
+											fill="none"
+											stroke="currentColor"
+											stroke-width="2.3"
+										>
 											<path
 												stroke-linecap="round"
 												stroke-linejoin="round"
@@ -430,10 +485,16 @@
 											id="continue-response-button"
 											class="rounded-lg p-1.5 transition hover:bg-white/[0.06] hover:text-white"
 											onclick={() => onContinue(message.id)}
-											title="继续回答"
-											aria-label="继续回答"
+											title={continueLabel}
+											aria-label={continueLabel}
 										>
-											<svg class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3">
+											<svg
+												class="size-4"
+												viewBox="0 0 24 24"
+												fill="none"
+												stroke="currentColor"
+												stroke-width="2.3"
+											>
 												<path
 													stroke-linecap="round"
 													stroke-linejoin="round"
@@ -457,7 +518,13 @@
 											aria-label="重新生成回答"
 											disabled={generating}
 										>
-											<svg class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3">
+											<svg
+												class="size-4"
+												viewBox="0 0 24 24"
+												fill="none"
+												stroke="currentColor"
+												stroke-width="2.3"
+											>
 												<path
 													stroke-linecap="round"
 													stroke-linejoin="round"
@@ -474,9 +541,16 @@
 										title="加入笔记本"
 										aria-label="将这轮问答加入笔记本"
 									>
-										<svg class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+										<svg
+											class="size-4"
+											viewBox="0 0 24 24"
+											fill="none"
+											stroke="currentColor"
+											stroke-width="1.8"
+										>
 											<path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path>
-											<path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path>
+											<path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"
+											></path>
 											<path d="M12 7v6"></path>
 											<path d="M9 10h6"></path>
 										</svg>
@@ -492,7 +566,7 @@
 
 		{#if generating && !messages.some((message) => message.streaming)}
 			<article class="flex w-full">
-				<div class="mr-3 mt-1 hidden shrink-0 sm:flex">
+				<div class="mt-1 mr-3 hidden shrink-0 sm:flex">
 					<div
 						class="flex size-8 items-center justify-center rounded-full bg-white text-[9px] font-black text-black"
 					>
@@ -509,11 +583,9 @@
 
 					<div class="flex items-center gap-1.5 py-2">
 						<span class="thinking-dot size-1.5 rounded-full bg-gray-400"></span>
-						<span
-							class="thinking-dot size-1.5 rounded-full bg-gray-400 [animation-delay:150ms]"
+						<span class="thinking-dot size-1.5 rounded-full bg-gray-400 [animation-delay:150ms]"
 						></span>
-						<span
-							class="thinking-dot size-1.5 rounded-full bg-gray-400 [animation-delay:300ms]"
+						<span class="thinking-dot size-1.5 rounded-full bg-gray-400 [animation-delay:300ms]"
 						></span>
 					</div>
 				</div>
@@ -540,5 +612,4 @@
 	.thinking-dot {
 		animation: thinking 1.2s infinite ease-in-out;
 	}
-
 </style>
