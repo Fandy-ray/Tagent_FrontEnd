@@ -214,6 +214,9 @@
 	{#if detailsOpen}
 		<div class="mt-3">
 			<div class="mb-2 text-xs font-medium text-gray-400">第二步 · 当前章节</div>
+			<p class="mb-2 text-[11px] text-gray-500">
+				章节按钮是帮你写这一节，结果以对话回答给出；要打分和逐句批注，把整篇正文粘进下方输入框点「交稿批改」。
+			</p>
 			<div class="flex flex-wrap gap-2">
 				{#each PAPER_SECTIONS as item}
 					<button
