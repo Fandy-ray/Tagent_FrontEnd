@@ -1,0 +1,16 @@
+<script lang="ts">
+	import { goto } from '$app/navigation';
+	import { onMount } from 'svelte';
+
+	onMount(() => {
+		void goto('/welcome', { replaceState: true });
+	});
+</script>
+
+<svelte:head>
+	<title>系统建模与仿真智能教学平台</title>
+</svelte:head>
+
+<div class="flex min-h-screen items-center justify-center bg-gray-950 text-gray-300">
+	正在进入平台……
+</div>
