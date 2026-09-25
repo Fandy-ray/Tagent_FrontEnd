@@ -161,6 +161,7 @@ def test_services_warm_up_does_not_kill_process():
         chat=None,
         quiz=None,
         exam=None,
+        essay=None,
         knowledge_base=Boom(),
         client_factory=None,
     ).warm_up()

@@ -4,9 +4,16 @@ from __future__ import annotations
 
 from flask import Blueprint
 
-from app.api.deps import get_exam_service, select_provider
+from app.api.deps import get_essay_service, get_exam_service, select_provider
 from app.api.response import envelope
-from app.api.validators import exam_json_body, exam_review_payload, exam_topic, optional_notebook_ids
+from app.api.validators import (
+    annotate_payload,
+    essay_text,
+    exam_json_body,
+    exam_review_payload,
+    exam_topic,
+    optional_notebook_ids,
+)
 from app.errors.api_errors import ModelNotFoundError
 from app.errors.exam_errors import ExamGoneError
 
@@ -45,4 +52,44 @@ def review_exam():
         raise ExamGoneError("出卷模型已不可用，请重新生成试卷") from exc
     exam_id, answers = exam_review_payload(payload)
     result = get_exam_service().review_exam(exam_id, answers, provider)
+    return envelope(result, provider)
+
+
+@blueprint.post("/quiz/exam/annotate")
+def annotate_essay_answer():
+    """整卷大题的逐句批注 —— **按需**，不进判卷流程。
+
+    判卷本身已经要等一轮模型；再给每道大题各发一轮，等待就翻倍了。而绝大多数
+    学生只会细看自己答得差的那一两道，所以改成点开哪道才批哪道，不点就不花。
+    这是「渐进式披露」管到调用层：省得最彻底的那一轮是根本没发出去的那轮。
+    """
+    payload = exam_json_body()
+    provider = select_provider(payload.get("model"))
+    exam_id, question_id, answer = annotate_payload(payload)
+    question, rubric = get_exam_service().essay_question_for_annotation(
+        exam_id, question_id, provider
+    )
+    annotations = get_essay_service().annotate_answer(answer, question, rubric, provider)
+    # envelope 只对**顶层**值调 model_dump，dict 里裹着的 pydantic 对象它看不见，
+    # 直接交给 jsonify 会 TypeError。所以这里自己摊平。
+    return envelope(
+        {
+            "question_id": question_id,
+            "annotations": [item.model_dump() for item in annotations],
+        },
+        provider,
+    )
+
+
+@blueprint.post("/essay/review")
+def review_essay():
+    """论文辅助：三维并发打分 + 条件下钻出高亮。"""
+    payload = exam_json_body()
+    provider = select_provider(payload.get("model"))
+    result = get_essay_service().review_paper(
+        essay_text(payload),
+        exam_topic(payload),
+        provider,
+        notebook_ids=optional_notebook_ids(payload),
+    )
     return envelope(result, provider)

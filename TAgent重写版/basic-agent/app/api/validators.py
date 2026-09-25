@@ -24,6 +24,9 @@ ALLOWED_ROLES = {"system", "user", "assistant", "tool"}
 MAX_EXAM_BODY_BYTES = 256 * 1024
 MAX_TOPIC_LENGTH = 100
 MAX_ANSWER_LENGTH = 5000
+# 原始字符上限，比 ESSAY_MAX_CHARS（去空白后的字数）宽松：这里只防着把一兆
+# 字符塞进切分器，真正的业务上下限在 service 里按去空白字数判。
+MAX_ESSAY_RAW_CHARS = 20000
 
 
 def json_body() -> dict:
@@ -159,3 +162,46 @@ def exam_review_payload(payload: dict[str, Any]) -> tuple[str, dict[str, object]
         if isinstance(answer, str) and len(answer) > MAX_ANSWER_LENGTH:
             raise InvalidExamRequestError(f"{question_id} 的答案不能超过 {MAX_ANSWER_LENGTH} 字")
     return exam_id, answers
+
+
+def essay_text(payload: dict[str, Any]) -> str:
+    """论文正文。长度的**业务**上下限在 service 里判（要按去空白后的字数算），
+    这里只挡住明显不合法的类型和离谱长度，免得把一兆字符塞进切分器。"""
+    value = payload.get("text")
+    if not isinstance(value, str):
+        raise InvalidExamRequestError("text 必须是字符串")
+    value = value.strip()
+    if not value:
+        raise InvalidExamRequestError("请先粘贴要批改的正文")
+    if len(value) > MAX_ESSAY_RAW_CHARS:
+        raise InvalidExamRequestError(f"正文不能超过 {MAX_ESSAY_RAW_CHARS} 个字符")
+    return value
+
+
+def annotate_payload(payload: dict[str, Any]) -> tuple[str, str, str]:
+    """整卷大题按需批注：(exam_id, question_id, answer)。
+
+    题干与评分要点**不从请求里取**，而是拿 exam_id + question_id 回缓存查——
+    客户端传来的参考答案一律不可信。答案本身是学生自己的文本，由他提供没问题：
+    批注不参与算分，分数在 review 那一步就定死了。
+    """
+    exam_id = payload.get("exam_id")
+    if not isinstance(exam_id, str):
+        raise InvalidExamRequestError("exam_id 必须是 UUID 字符串")
+    try:
+        uuid.UUID(exam_id)
+    except (ValueError, AttributeError) as exc:
+        raise InvalidExamRequestError("exam_id 必须是有效 UUID") from exc
+
+    question_id = payload.get("question_id")
+    if not isinstance(question_id, str) or not question_id.strip():
+        raise InvalidExamRequestError("question_id 必须是题号字符串")
+    if len(question_id) > 40:
+        raise InvalidExamRequestError("question_id 不合法")
+
+    answer = payload.get("answer")
+    if not isinstance(answer, str):
+        raise InvalidExamRequestError("answer 必须是字符串")
+    if len(answer) > MAX_ANSWER_LENGTH:
+        raise InvalidExamRequestError(f"答案不能超过 {MAX_ANSWER_LENGTH} 字")
+    return exam_id, question_id.strip(), answer.strip()

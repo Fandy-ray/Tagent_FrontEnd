@@ -26,6 +26,7 @@ class Services:
     chat: "object"
     quiz: "object"
     exam: "object"
+    essay: "object"
     knowledge_base: "object"
     client_factory: "object"
 
@@ -57,20 +58,26 @@ def build_services(settings: AgentConfig, *, warm_up: bool = True) -> Services:
     # 延迟 import：这几个模块会拉起 langchain/langgraph，
     # 只想构造 app 做单测时不该付这个代价。
     from app.infra.model_client_factory import ModelClientFactory
+    from app.repository.exam_cache import LLMGate
     from app.service.chat_service import ChatService
+    from app.service.essay_service import EssayService
     from app.service.exam_service import ExamService
     from app.service.quiz_service import QuizService
 
     knowledge_base = build_knowledge_base(settings)
     client_factory = ModelClientFactory()
+    # 闸门**必须**由出卷判卷与论文批改共用：它计的是"这台机器同时压着多少次
+    # 上游调用"，各建一份就等于把容量悄悄翻倍，限流也就名存实亡了。
+    llm_gate = LLMGate(max_concurrent=settings.exam_max_concurrent_llm)
 
     services = Services(
         chat=ChatService(knowledge_base, client_factory),
         quiz=QuizService(knowledge_base, client_factory),
-        exam=ExamService(
-            knowledge_base,
-            client_factory,
-            max_concurrent_llm=settings.exam_max_concurrent_llm,
+        exam=ExamService(knowledge_base, client_factory, llm_gate=llm_gate),
+        essay=EssayService(
+            knowledge_base=knowledge_base,
+            client_factory=client_factory,
+            llm_gate=llm_gate,
         ),
         knowledge_base=knowledge_base,
         client_factory=client_factory,

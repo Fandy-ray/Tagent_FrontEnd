@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 from typing import Any
 
 
@@ -55,3 +56,117 @@ def deal_shards(text: str, shard_count: int, *, separator: str, char_limit: int)
         if kept:
             shards.append(separator.join(kept))
     return shards
+
+
+# ====================== 句子切分（逐句批注的唯一事实源） ======================
+#
+# 高亮要能落回原文，靠的**不是**让模型回引文或字符下标——模型会改写引文，
+# 下标更是算不准。做法反过来：这里先把正文切好、编好号（P2S3），把带号的
+# 正文喂给模型，模型只回编号；高亮时拿编号查这里存下的 (start, end)。
+# 零匹配、零猜测。
+#
+# 所以这个函数是**唯一事实源**：前端绝不能自己再切一遍，两边规则差一条，
+# 所有高亮就整体错位。切分结果连同区间一起下发。
+
+SENTENCE_END = "。！？!?…"
+
+# 成对符号：在它们内部出现的句末标点不算句子结束（引文里的问号最常见）
+_PAIRS = {
+    "（": "）", "(": ")", "【": "】", "[": "]", "《": "》",
+    "「": "」", "『": "』", "“": "”", "‘": "’",
+}
+# 句末标点后面紧跟的收尾符号要一起收进这句，不能留给下一句开头
+_TRAILING = "”’」』）)】]》\"'"
+
+
+@dataclass(frozen=True)
+class Sentence:
+    """一个句子及其在**原文**中的区间。恒等式：source[start:end] == text。"""
+
+    id: str          # "P2S3"：第 2 段第 3 句
+    paragraph: int   # 段号，从 1 起
+    index: int       # 段内句号，从 1 起
+    start: int       # 原文下标，含
+    end: int         # 原文下标，不含
+    text: str
+
+
+def split_sentences(source: str) -> list[Sentence]:
+    """把正文切成带原文区间的句子。
+
+    只按 。！？!? 和省略号断句，**不按英文句点断**——小数（3.5）、缩写、
+    文件名、URL 都会被误伤，而中文学术写作本来就用。断句。分号同理不断：
+    它多半连接的是同一句话的两个分句，断开会切出一堆没法单独评的碎片。
+
+    成对符号内部不断句，句末标点后面的收尾引号/括号跟着前一句走。
+    段落按空行或换行切，段内没有句末标点时整段算一句。
+    """
+    sentences: list[Sentence] = []
+    if not source:
+        return sentences
+
+    paragraph_no = 0
+    for para_start, para_end in _paragraph_spans(source):
+        paragraph_no += 1
+        index = 0
+        for start, end in _sentence_spans(source, para_start, para_end):
+            index += 1
+            sentences.append(
+                Sentence(
+                    id=f"P{paragraph_no}S{index}",
+                    paragraph=paragraph_no,
+                    index=index,
+                    start=start,
+                    end=end,
+                    text=source[start:end],
+                )
+            )
+    return sentences
+
+
+def _paragraph_spans(source: str) -> list[tuple[int, int]]:
+    """按换行切段并去掉两端空白，返回**原文**下标区间；空段丢弃。"""
+    spans: list[tuple[int, int]] = []
+    cursor = 0
+    for chunk in source.split("\n"):
+        start, end = cursor, cursor + len(chunk)
+        cursor = end + 1  # 跳过 "\n"
+        while start < end and source[start].isspace():
+            start += 1
+        while end > start and source[end - 1].isspace():
+            end -= 1
+        if start < end:
+            spans.append((start, end))
+    return spans
+
+
+def _sentence_spans(source: str, para_start: int, para_end: int) -> list[tuple[int, int]]:
+    spans: list[tuple[int, int]] = []
+    stack: list[str] = []
+    start = para_start
+    position = para_start
+
+    while position < para_end:
+        char = source[position]
+        if stack and char == stack[-1]:
+            stack.pop()
+        elif char in _PAIRS:
+            stack.append(_PAIRS[char])
+        elif char in SENTENCE_END and not stack:
+            position += 1
+            # 连着的句末标点（？！、……）算同一个结尾
+            while position < para_end and source[position] in SENTENCE_END:
+                position += 1
+            # 收尾引号/括号跟着前一句
+            while position < para_end and source[position] in _TRAILING:
+                position += 1
+            spans.append((start, position))
+            while position < para_end and source[position].isspace():
+                position += 1
+            start = position
+            continue
+        position += 1
+
+    if start < para_end:  # 段尾没有句末标点的残句
+        spans.append((start, para_end))
+    return spans

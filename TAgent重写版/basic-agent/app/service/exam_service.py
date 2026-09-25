@@ -352,6 +352,25 @@ class ExamService:
                     overall_comment = batch.overall_comment.strip()
 
         return graded, overall_comment
+    def essay_question_for_annotation(
+        self, exam_id: str, question_id: str, provider: ModelProvider
+    ) -> tuple[str, str]:
+        """取某道大题的题干与评分要点，供逐句批注用。返回 (question, rubric)。
+
+        题干与要点一律**从缓存的私有试卷里取**，不接受客户端传值——那等于让
+        学生自己定评分标准。学生的作答由他自己传没问题：批注不参与算分，
+        分数在 review_exam 那一步就已经定死了。
+        """
+        cached = self.exam_cache.get_copy(exam_id)
+        exam: PrivateExam = cached.exam if isinstance(cached, StoredExam) else cached
+        if isinstance(cached, StoredExam) and provider.served_model_id != cached.served_model_id:
+            raise ModelMismatchError("批注模型必须与生成试卷时使用的模型一致")
+
+        for question in exam.essay:
+            if question.id == question_id:
+                return question.question, question.rubric
+        raise InvalidExamRequestError(f"{question_id} 不是这份试卷里的大题")
+
     def review_exam(
         self,
         exam_id: str,

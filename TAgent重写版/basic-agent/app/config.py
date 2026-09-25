@@ -237,3 +237,32 @@ FLASH_MIN_ATTEMPT_TIMEOUT = 25
 # 三个知识库实现拼接出卷上下文时用的分隔符。闪卡要按它把整段上下文切回
 # 独立片段再分发给各片，所以提到这里共享，而不是各自硬编码。
 EXAM_CONTEXT_SEPARATOR = "\n\n---\n\n"
+
+
+# ====================== 小论文批改 / 逐句批注 ======================
+#
+# 三个维度（切题与内容 / 论证与结构 / 语言与规范）并发发出，和出卷三段并行
+# 同一个量级；闸门按"一次批改"计名额，所以上游峰值 = 闸门容量 × 3。
+#
+# 逐句批注是**条件触发**的第四轮：只有当论证维度点名了可疑段落才发，且只把
+# 被点名的那几段铺进 prompt。整卷大题那边更进一步——批注根本不进判卷流程，
+# 学生点开某道题才单独发一轮，不点就一轮都不花。
+ESSAY_DIMENSION_COUNT = 3
+ESSAY_CONTEXT_CHAR_LIMIT = 1800
+ESSAY_LLM_TIMEOUT = 90
+ESSAY_LLM_BUDGET = 220
+ESSAY_MIN_ATTEMPT_TIMEOUT = 25
+
+# 正文长度闸。上限是为了别让一篇长文顶穿预算；下限是因为太短的东西没什么
+# 可批的，与其给一堆空泛评语不如直接告诉学生写够了再来。
+ESSAY_MAX_CHARS = 6000
+ESSAY_MIN_CHARS = 100
+
+# 被点名的段落最多下钻这么多段，再多就失去"渐进式披露"的意义了
+ESSAY_MAX_FLAGGED_PARAGRAPHS = 3
+
+# 整卷大题的逐句批注：答案本来就短，一轮足够，名额也比论文那边紧
+ANNOTATE_LLM_TIMEOUT = 45
+ANNOTATE_LLM_BUDGET = 70
+ANNOTATE_MIN_ATTEMPT_TIMEOUT = 20
+ANNOTATE_MIN_ANSWER_CHARS = 40

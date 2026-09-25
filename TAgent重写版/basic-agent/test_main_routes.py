@@ -72,7 +72,7 @@ class FakeAgentService:
 
 
 def fake_services(service=None) -> Services:
-    """把一个全能替身同时挂到 chat/quiz/exam 三个位置。
+    """把一个全能替身同时挂到 chat/quiz/exam/essay 四个位置。
 
     拆分后 controller 各自取自己的 service，测试不必为此拆成三个替身。
     """
@@ -81,6 +81,7 @@ def fake_services(service=None) -> Services:
         chat=service,
         quiz=service,
         exam=service,
+        essay=service,
         knowledge_base=service,
         client_factory=service,
     )

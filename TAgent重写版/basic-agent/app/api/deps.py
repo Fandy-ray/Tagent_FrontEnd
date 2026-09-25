@@ -40,6 +40,10 @@ def get_exam_service():
     return get_services().exam
 
 
+def get_essay_service():
+    return get_services().essay
+
+
 def invalidate_provider(model_id: str | None) -> None:
     services = current_app.extensions.get("services")
     if services is not None and hasattr(services, "invalidate_provider"):
