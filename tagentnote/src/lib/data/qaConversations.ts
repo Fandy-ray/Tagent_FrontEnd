@@ -1,5 +1,6 @@
 import { browser } from '$app/environment';
 
+import type { PaperCard } from '$lib/data/essay';
 import type { Citation } from '$lib/data/knowledge';
 import type { PaperTask } from '$lib/data/paperWorkflow';
 
@@ -16,6 +17,8 @@ export type QaMessage = {
 	streaming?: boolean;
 	followUps?: string[];
 	tags?: string[];
+	/** 论文模式的出题卡 / 批改卡：有它时渲染卡片而不是 Markdown（见 $lib/data/essay 的 PaperCard） */
+	paperCard?: PaperCard;
 };
 
 export type QaChat = {
@@ -48,6 +51,10 @@ const snapshotMessage = (message: QaMessage): QaMessage => ({
 	citations: message.citations?.map((citation) => ({ ...citation })),
 	followUps: message.followUps?.slice(),
 	tags: message.tags?.slice(),
+	// 页面里的消息是 $state 代理，structuredClone 会直接抛错；卡片本来就是纯 JSON，走一遍 JSON 最稳
+	paperCard: message.paperCard
+		? (JSON.parse(JSON.stringify(message.paperCard)) as PaperCard)
+		: undefined,
 	streaming: false
 });
 

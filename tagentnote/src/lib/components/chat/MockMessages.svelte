@@ -1,6 +1,9 @@
 <script lang="ts">
 	import MarkdownContent from '$lib/components/chat/MarkdownContent.svelte';
+	import PaperReviewCard from '$lib/components/chat/PaperReviewCard.svelte';
+	import PaperTopicCard from '$lib/components/chat/PaperTopicCard.svelte';
 	import CitationLinks from '$lib/components/sources/CitationLinks.svelte';
+	import type { EssayTopic } from '$lib/data/essay';
 	import type { QaMessage } from '$lib/data/qaConversations';
 
 	export type MockMessage = QaMessage;
@@ -34,6 +37,11 @@
 		onQuickAction?: (prompt: string) => void;
 		onFollowUp?: (prompt: string, insertOnly?: boolean) => void;
 		onToast?: (message: string) => void;
+		/** 任务卡上当前的论文题目，题目卡据此显示「已设为本次题目」 */
+		currentTopic?: string;
+		onAdoptTopic?: (topic: EssayTopic) => void;
+		/** 出题卡 / 批改卡上的「重新出题」「重新批改」 */
+		onRetryPaperCard?: (messageId: string) => void;
 	};
 
 	let {
@@ -64,7 +72,10 @@
 		onSaveToNotebook = () => {},
 		onQuickAction = () => {},
 		onFollowUp = () => {},
-		onToast = () => {}
+		onToast = () => {},
+		currentTopic = '',
+		onAdoptTopic = () => {},
+		onRetryPaperCard = () => {}
 	}: Props = $props();
 
 	let feedback = $state<Record<string, 'up' | 'down' | undefined>>({});
@@ -286,17 +297,35 @@
 							</div>
 						{:else}
 							<div class="w-full min-w-full">
-								<MarkdownContent
-									content={message.content}
-									streaming={message.streaming}
-									{collapseCodeBlocks}
-									{fadeStreaming}
-									{expandDetails}
-									{detectArtifacts}
-									{iframeSandboxAllowSameOrigin}
-									{iframeSandboxAllowForms}
-								/>
-								<CitationLinks citations={message.citations ?? []} />
+								{#if message.paperCard?.kind === 'review'}
+									<PaperReviewCard
+										id={message.id}
+										card={message.paperCard}
+										pending={!!message.streaming}
+										onRetry={() => onRetryPaperCard(message.id)}
+									/>
+								{:else if message.paperCard?.kind === 'topic'}
+									<PaperTopicCard
+										card={message.paperCard}
+										pending={!!message.streaming}
+										adopted={!!message.paperCard.topic &&
+											message.paperCard.topic.title === currentTopic.trim()}
+										onAdopt={onAdoptTopic}
+										onRetry={() => onRetryPaperCard(message.id)}
+									/>
+								{:else}
+									<MarkdownContent
+										content={message.content}
+										streaming={message.streaming}
+										{collapseCodeBlocks}
+										{fadeStreaming}
+										{expandDetails}
+										{detectArtifacts}
+										{iframeSandboxAllowSameOrigin}
+										{iframeSandboxAllowForms}
+									/>
+									<CitationLinks citations={message.citations ?? []} />
+								{/if}
 							</div>
 
 							{#if (message.followUps?.length ?? 0) > 0 && (keepFollowUpPrompts || message.id === lastAssistantId) && !message.streaming}
@@ -344,27 +373,29 @@
 										isLast ? 'visible' : 'invisible group-hover:visible'
 									}`}
 								>
-									<button
-										type="button"
-										class="rounded-lg p-1.5 transition hover:bg-white/[0.06] hover:text-white"
-										onclick={() => startEdit(message)}
-										title="编辑"
-										aria-label="编辑回答"
-									>
-										<svg
-											class="size-4"
-											viewBox="0 0 24 24"
-											fill="none"
-											stroke="currentColor"
-											stroke-width="2.3"
+									{#if !message.paperCard}
+										<button
+											type="button"
+											class="rounded-lg p-1.5 transition hover:bg-white/[0.06] hover:text-white"
+											onclick={() => startEdit(message)}
+											title="编辑"
+											aria-label="编辑回答"
 										>
-											<path
-												stroke-linecap="round"
-												stroke-linejoin="round"
-												d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L6.832 19.82a4.5 4.5 0 01-1.897 1.13l-2.685.8.8-2.685a4.5 4.5 0 011.13-1.897L16.863 4.487zm0 0L19.5 7.125"
-											></path>
-										</svg>
-									</button>
+											<svg
+												class="size-4"
+												viewBox="0 0 24 24"
+												fill="none"
+												stroke="currentColor"
+												stroke-width="2.3"
+											>
+												<path
+													stroke-linecap="round"
+													stroke-linejoin="round"
+													d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L6.832 19.82a4.5 4.5 0 01-1.897 1.13l-2.685.8.8-2.685a4.5 4.5 0 011.13-1.897L16.863 4.487zm0 0L19.5 7.125"
+												></path>
+											</svg>
+										</button>
+									{/if}
 
 									<button
 										type="button"
@@ -479,7 +510,7 @@
 										</svg>
 									</button>
 
-									{#if isLast && !generating}
+									{#if isLast && !generating && !message.paperCard}
 										<button
 											type="button"
 											id="continue-response-button"

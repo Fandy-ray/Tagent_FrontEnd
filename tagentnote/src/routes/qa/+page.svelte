@@ -3,7 +3,7 @@
 	import { page } from '$app/stores';
 	import { onDestroy, onMount, tick } from 'svelte';
 
-	import { getAgentModels, streamAgentChat } from '$lib/apis/agent';
+	import { generateEssayTopic, getAgentModels, reviewEssay, streamAgentChat } from '$lib/apis/agent';
 	import {
 		getSourceText,
 		listNotebookKnowledge,
@@ -23,6 +23,19 @@
 	import SettingsModal from '$lib/components/chat/SettingsModal.svelte';
 	import ShortcutsModal from '$lib/components/chat/ShortcutsModal.svelte';
 	import { buildQaCitations, enrichCitationsWithPages } from '$lib/data/citations';
+	import {
+		countCharacters,
+		ESSAY_CLIENT_TIMEOUT_MS,
+		ESSAY_TOPIC_MAX,
+		essayLengthGate,
+		essayTopicMarkdown,
+		paperReviewMarkdown,
+		paperSubmissionLabel,
+		pyStrip,
+		type EssayTopic,
+		type PaperCard
+	} from '$lib/data/essay';
+	import { essaySamples } from '$lib/data/samples';
 	import {
 		loadChatControls,
 		saveChatControls,
@@ -1361,6 +1374,32 @@
 		saveOpen = true;
 	};
 
+	/** 本次请求检索哪些笔记本：分组挂的 + 当前选中的 + 论文任务卡上挂了笔记的 */
+	const currentNotebookIds = () => {
+		const folderNotebookIds = (selectedFolder?.knowledgeItems ?? [])
+			.filter((item) => item.type === 'collection')
+			.map((item) => item.id);
+		return Array.from(
+			new Set([
+				...folderNotebookIds,
+				...(collectionId ? [collectionId] : []),
+				...attachedPaperNotebookIds
+			])
+		);
+	};
+
+	/** 论文模式的问题是几千字的任务 prompt，拿它检索等于没检索；另给后端一句「题目 + 关键词」 */
+	const paperRetrievalOptions = () => {
+		if (assistMode !== 'paper') {
+			return {};
+		}
+		const query = [paperTask.title, paperTask.keywords]
+			.map((part) => part.trim())
+			.filter(Boolean)
+			.join(' ');
+		return query ? { retrieval_query: query } : {};
+	};
+
 	const ask = async (question: string, seq: number) => {
 		const controller = new AbortController();
 		abortController = controller;
@@ -1416,16 +1455,7 @@
 			const folderPrompt = selectedFolder?.systemPrompt?.trim() ?? '';
 			const baseOptions = toAgentOptions(chatControls);
 			const mergedSystem = [folderPrompt, baseOptions.system].filter(Boolean).join('\n\n');
-			const folderNotebookIds = (selectedFolder?.knowledgeItems ?? [])
-				.filter((item) => item.type === 'collection')
-				.map((item) => item.id);
-			const notebookIds = Array.from(
-				new Set([
-					...folderNotebookIds,
-					...(collectionId ? [collectionId] : []),
-					...attachedPaperNotebookIds
-				])
-			);
+			const notebookIds = currentNotebookIds();
 
 			const result = await streamAgentChat(
 				question,
@@ -1435,6 +1465,7 @@
 				{
 					notebookIds,
 					mode: assistMode,
+					...paperRetrievalOptions(),
 					...baseOptions,
 					...(mergedSystem ? { system: mergedSystem } : {})
 				}
@@ -1526,6 +1557,43 @@
 		}
 	};
 
+	/** 还没有会话就新建一个（临时对话只给个本地 id）；已有会话就把当前消息落盘 */
+	const ensureActiveChat = (firstMessage: MockMessage, titleSeed: string) => {
+		if (!activeChatId) {
+			if (temporaryChat) {
+				activeChatId = `local:${Date.now()}`;
+				syncUrl();
+			} else {
+				activeChatId = `chat-${Date.now()}`;
+				chats = [
+					{
+						id: activeChatId,
+						title:
+							assistMode === 'paper'
+								? paperChatTitle(
+										paperTask,
+										userSettings.titleAutoGenerate ? clipTitle(titleSeed) : '论文辅助'
+									)
+								: userSettings.titleAutoGenerate
+									? clipTitle(titleSeed)
+									: '新对话',
+						updatedAt: Date.now(),
+						collectionId,
+						folderId: selectedFolderId,
+						mode: assistMode,
+						paperTask: assistMode === 'paper' ? { ...paperTask } : undefined,
+						messages: [firstMessage]
+					},
+					...chats
+				];
+				persistChats(activeChatId);
+				syncUrl();
+			}
+		} else if (!isTemporarySession()) {
+			commitActive(messages);
+		}
+	};
+
 	const submitPrompt = (content: string, displayContent = content) => {
 		const trimmedContent = content.trim();
 		const trimmedDisplayContent = displayContent.trim() || trimmedContent;
@@ -1570,39 +1638,7 @@
 		prompt = '';
 		generating = true;
 
-		if (!activeChatId) {
-			if (temporaryChat) {
-				activeChatId = `local:${Date.now()}`;
-				syncUrl();
-			} else {
-				activeChatId = `chat-${Date.now()}`;
-				chats = [
-					{
-						id: activeChatId,
-						title:
-							assistMode === 'paper'
-								? paperChatTitle(
-										paperTask,
-										userSettings.titleAutoGenerate ? clipTitle(trimmedContent) : '论文辅助'
-									)
-								: userSettings.titleAutoGenerate
-									? clipTitle(trimmedContent)
-									: '新对话',
-						updatedAt: Date.now(),
-						collectionId,
-						folderId: selectedFolderId,
-						mode: assistMode,
-						paperTask: assistMode === 'paper' ? { ...paperTask } : undefined,
-						messages: [userMessage]
-					},
-					...chats
-				];
-				persistChats(activeChatId);
-				syncUrl();
-			}
-		} else if (!isTemporarySession()) {
-			commitActive(messages);
-		}
+		ensureActiveChat(userMessage, trimmedContent);
 
 		void scrollToBottom();
 		void ask(trimmedContent, seq).catch((error: unknown) => {
@@ -1624,6 +1660,211 @@
 		});
 	};
 
+	// ====================== 论文模式：出题与交稿批改 ======================
+	// 这两样都不是流式文本，而是一条带 paperCard 的助手消息：先插一张「进行中」的卡，
+	// 请求回来后原地写回。停止、重新生成、刷新恢复都只看这张卡自己的状态。
+
+	const samples = essaySamples();
+	let sampleIndex = 0;
+
+	const patchMessage = (id: string, patch: Partial<MockMessage>) => {
+		messages = messages.map((message) => (message.id === id ? { ...message, ...patch } : message));
+	};
+
+	const pendingContent = (card: PaperCard) => (card.kind === 'topic' ? '正在出题……' : '正在批改……');
+
+	/** 发出卡片对应的请求，把结果写回这条消息。卡片自带重跑所需的全部参数 */
+	const runPaperCard = async (assistantId: string, card: PaperCard, seq: number) => {
+		const controller = new AbortController();
+		abortController = controller;
+		// 后端有自己的预算；这里只防后端整个没了响应，免得卡片永远转圈
+		let timedOut = false;
+		const timer = window.setTimeout(() => {
+			timedOut = true;
+			controller.abort();
+		}, ESSAY_CLIENT_TIMEOUT_MS);
+
+		let next: PaperCard;
+		let content: string;
+
+		try {
+			if (card.kind === 'topic') {
+				const topic = await generateEssayTopic(
+					selectedModelId,
+					card.hint,
+					currentNotebookIds(),
+					controller.signal
+				);
+				next = { ...card, topic, error: undefined };
+				content = essayTopicMarkdown(topic);
+			} else {
+				const review = await reviewEssay(
+					selectedModelId,
+					card.text,
+					card.topic || undefined,
+					currentNotebookIds(),
+					controller.signal
+				);
+				next = { ...card, review, error: undefined };
+				content = paperReviewMarkdown(review, card.topic, card.text);
+			}
+		} catch (error) {
+			// 停止了或开了新一轮：卡片已被 finishStreamingMessages 标成「没有完成」，不用再写
+			if (seq !== generationSeq) {
+				return;
+			}
+			const message = timedOut
+				? '等了太久还没有结果，后端可能卡住了，稍后再试。'
+				: error instanceof Error
+					? error.message
+					: '请求失败，请重试。';
+			next = { ...card, error: message };
+			content = message;
+		} finally {
+			window.clearTimeout(timer);
+			if (abortController === controller) {
+				abortController = null;
+			}
+		}
+
+		if (seq !== generationSeq) {
+			return;
+		}
+
+		patchMessage(assistantId, { paperCard: next, content, streaming: false, model: selectedModelId });
+		generating = false;
+		commitActive();
+		void scrollToBottom();
+
+		if (messageQueue.length > 0) {
+			const queued = messageQueue[0];
+			messageQueue = messageQueue.slice(1);
+			void tick().then(() => submitPrompt(queued.requestContent, queued.displayContent));
+		}
+	};
+
+	/** 追加「用户这一问 + 进行中的卡片」两条消息，然后发请求 */
+	const startPaperCard = (userContent: string, card: PaperCard, titleSeed: string) => {
+		const seq = bumpGeneration();
+		const now = Date.now();
+		const userMessage: MockMessage = { id: `user-${now}`, role: 'user', content: userContent };
+		const assistantId = `assistant-${now}`;
+
+		messages = [
+			...messages,
+			userMessage,
+			{
+				id: assistantId,
+				role: 'assistant',
+				model: selectedModelId,
+				content: pendingContent(card),
+				streaming: true,
+				paperCard: card
+			}
+		];
+		generating = true;
+		ensureActiveChat(userMessage, titleSeed);
+		void scrollToBottom();
+		void runPaperCard(assistantId, card, seq);
+	};
+
+	const proposeTopic = () => {
+		if (generating) {
+			toast('正在生成，等这一轮结束再出题');
+			return;
+		}
+
+		// 任务卡上的关键词当选题方向；后端对方向的长度上限与出卷主题相同
+		const hint = Array.from(paperKeywords.trim()).slice(0, ESSAY_TOPIC_MAX).join('');
+		startPaperCard(
+			hint ? `请按当前笔记本出一道小论文题（方向：${hint}）` : '请按当前笔记本出一道小论文题',
+			{ kind: 'topic', hint, topic: null },
+			'小论文出题'
+		);
+	};
+
+	const submitPaperForReview = (raw: string) => {
+		if (generating) {
+			toast('正在生成，等这一轮结束再交稿');
+			return;
+		}
+
+		// 批注下标相对后端 strip 之后的正文算，所以发出去的、卡片里存的都是这一份
+		const text = pyStrip(raw);
+		const gate = essayLengthGate(countCharacters(text));
+		if (!gate.ok) {
+			toast(gate.message);
+			return;
+		}
+
+		const topic = paperTitle.trim();
+		if (Array.from(topic).length > ESSAY_TOPIC_MAX) {
+			toast(`论文题目超过 ${ESSAY_TOPIC_MAX} 字，缩短一些再交`);
+			return;
+		}
+
+		prompt = '';
+		startPaperCard(
+			paperSubmissionLabel(text),
+			{ kind: 'review', text, topic, review: null },
+			topic || '小论文批改'
+		);
+	};
+
+	/** 卡片上的「重新出题 / 重新批改」和消息的「重新生成」：原地重跑，用卡片自存的参数 */
+	const rerunPaperCard = (messageId: string) => {
+		if (generating) {
+			return;
+		}
+
+		const card = messages.find((message) => message.id === messageId)?.paperCard;
+		if (!card) {
+			return;
+		}
+
+		const fresh: PaperCard =
+			card.kind === 'topic'
+				? { kind: 'topic', hint: card.hint, topic: null }
+				: { kind: 'review', text: card.text, topic: card.topic, review: null };
+		const seq = bumpGeneration();
+		patchMessage(messageId, { paperCard: fresh, content: pendingContent(fresh), streaming: true });
+		generating = true;
+		commitActive();
+		void runPaperCard(messageId, fresh, seq);
+	};
+
+	const adoptTopic = (topic: EssayTopic) => {
+		const requirements = topic.requirements.join('\n');
+		const existing = paperContext.courseRequirements.trim();
+		handlePaperTaskChange({
+			...paperTask,
+			title: topic.title,
+			context: {
+				...paperContext,
+				// 学生自己填过的课程要求不覆盖，把这道题的写作要求接在后面
+				courseRequirements: !existing
+					? requirements
+					: existing.includes(requirements)
+						? existing
+						: `${existing}\n${requirements}`
+			}
+		});
+		toast('已设为本次题目');
+	};
+
+	const fillSample = () => {
+		const sample = samples[sampleIndex % samples.length];
+		sampleIndex += 1;
+		prompt = sample.body;
+		// 范例是照着它自己的题目写的，换成它的题目，「切题与内容」才判得公平
+		if (sample.topic && sample.topic !== paperTitle.trim()) {
+			handlePaperTaskChange({ ...paperTask, title: sample.topic });
+			toast(`已填入范例：${sample.title}（论文题目也换成了范例的题目）`);
+			return;
+		}
+		toast(`已填入范例：${sample.title}`);
+	};
+
 	const stopResponse = () => {
 		bumpGeneration();
 		finishStreamingMessages();
@@ -1633,6 +1874,12 @@
 
 	const regenerateResponse = (messageId: string) => {
 		if (generating) {
+			return;
+		}
+
+		// 出题卡 / 批改卡不走对话流：原地用卡片自带的参数重跑
+		if (messages.some((message) => message.id === messageId && message.paperCard)) {
+			rerunPaperCard(messageId);
 			return;
 		}
 
@@ -1753,16 +2000,7 @@
 				const folderPrompt = selectedFolder?.systemPrompt?.trim() ?? '';
 				const baseOptions = toAgentOptions(chatControls);
 				const mergedSystem = [folderPrompt, baseOptions.system].filter(Boolean).join('\n\n');
-				const folderNotebookIds = (selectedFolder?.knowledgeItems ?? [])
-					.filter((item) => item.type === 'collection')
-					.map((item) => item.id);
-				const notebookIds = Array.from(
-					new Set([
-						...folderNotebookIds,
-						...(collectionId ? [collectionId] : []),
-						...attachedPaperNotebookIds
-					])
-				);
+				const notebookIds = currentNotebookIds();
 
 				const result = await streamAgentChat(
 					continuePrompt,
@@ -1772,6 +2010,7 @@
 					{
 						notebookIds,
 						mode: assistMode,
+						...paperRetrievalOptions(),
 						...baseOptions,
 						...(mergedSystem ? { system: mergedSystem } : {})
 					}
@@ -1956,6 +2195,7 @@
 						compact={messages.length > 0}
 						onChange={handlePaperTaskChange}
 						onIntent={runPaperIntent}
+						onProposeTopic={proposeTopic}
 					/>
 				</div>
 			{/if}
@@ -2013,6 +2253,8 @@
 								noteOptions={inputNoteOptions}
 								chatOptions={inputChatOptions}
 								onSubmit={submitPrompt}
+								onReview={assistMode === 'paper' ? submitPaperForReview : null}
+								onFillSample={assistMode === 'paper' && samples.length > 0 ? fillSample : null}
 								onStop={stopResponse}
 								onToast={toast}
 							/>
@@ -2055,6 +2297,9 @@
 							keepFollowUpPrompts={userSettings.keepFollowUpPrompts}
 							insertFollowUpPrompt={userSettings.insertFollowUpPrompt}
 							onRegenerate={regenerateResponse}
+							currentTopic={paperTitle}
+							onAdoptTopic={adoptTopic}
+							onRetryPaperCard={rerunPaperCard}
 							onContinue={continueResponse}
 							continueLabel={assistMode === 'paper' ? `继续写${paperSection}` : '继续回答'}
 							onEditMessage={editMessage}
@@ -2119,6 +2364,8 @@
 								chatOptions={inputChatOptions}
 								modelName={currentModelName}
 								onSubmit={submitPrompt}
+								onReview={assistMode === 'paper' ? submitPaperForReview : null}
+								onFillSample={assistMode === 'paper' && samples.length > 0 ? fillSample : null}
 								onStop={stopResponse}
 								onPasteAsFile={() => {
 									toast('内容已转为本地文件引用');

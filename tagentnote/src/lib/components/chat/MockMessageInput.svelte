@@ -2,6 +2,7 @@
 	import PlusAlt from '$lib/components/icons/PlusAlt.svelte';
 	import ComponentIcon from '$lib/components/icons/Component.svelte';
 	import VoiceIcon from '$lib/components/icons/Voice.svelte';
+	import { countCharacters, ESSAY_MAX_CHARS, ESSAY_MIN_CHARS } from '$lib/data/essay';
 	import { listPrompts } from '$lib/data/workspaceResources';
 	import InputMenu, { type InputAttachment } from './MessageInput/InputMenu.svelte';
 	import IntegrationsMenu from './MessageInput/IntegrationsMenu.svelte';
@@ -33,6 +34,13 @@
 		onPasteAsFile?: (file: File) => void;
 		onEditLastMessage?: (content: string) => void;
 		onToast?: (message: string) => void;
+		/**
+		 * 论文模式才传：显示「交稿批改」，把输入框里的**原始正文**交出去。
+		 * 不走 buildPayload——那个会加「[附件:…]」之类的前缀，批注下标就对不上原文了。
+		 */
+		onReview?: ((text: string) => void) | null;
+		/** 本机有范例论文时才传：显示「填入范例」，演示批改用 */
+		onFillSample?: (() => void) | null;
 	};
 
 	let {
@@ -59,7 +67,9 @@
 		onStop = () => {},
 		onPasteAsFile = () => {},
 		onEditLastMessage = () => {},
-		onToast = () => {}
+		onToast = () => {},
+		onReview = null,
+		onFillSample = null
 	}: Props = $props();
 
 	let textareaElement = $state<HTMLTextAreaElement | null>(null);
@@ -120,6 +130,26 @@
 			const len = el.value.length;
 			el.setSelectionRange(len, len);
 		});
+	};
+
+	// 字数按后端的算法（去空白后的码点数），和交稿时的长度闸是同一个数
+	const reviewChars = $derived(onReview ? countCharacters(prompt) : 0);
+	const reviewReady = $derived(reviewChars >= ESSAY_MIN_CHARS && reviewChars <= ESSAY_MAX_CHARS);
+	const reviewTitle = $derived(
+		reviewChars < ESSAY_MIN_CHARS
+			? `正文至少 ${ESSAY_MIN_CHARS} 字才能批改（现在 ${reviewChars} 字）`
+			: reviewChars > ESSAY_MAX_CHARS
+				? `超过单次批改上限 ${ESSAY_MAX_CHARS} 字，请删减或分段交`
+				: '把输入框里的正文交给批改：三个维度打分 + 逐句批注'
+	);
+
+	const submitReview = () => {
+		if (!onReview || disabled || generating) return;
+		if (!prompt.trim() && attachments.length > 0) {
+			onToast('交稿批改只认输入框里的正文：请把论文直接粘进输入框');
+			return;
+		}
+		onReview(prompt);
 	};
 
 	const buildPayload = (content: string) => {
@@ -489,6 +519,34 @@
 						</button>
 					{/if}
 				{:else}
+					{#if onReview}
+						{#if onFillSample && !prompt.trim()}
+							<button
+								type="button"
+								class="rounded-full px-2.5 py-1 text-xs text-gray-400 transition hover:bg-white/[0.06] hover:text-white"
+								onclick={onFillSample}
+								title="把本机的范例论文填进输入框，演示批改用"
+							>
+								填入范例
+							</button>
+						{/if}
+						{#if prompt.trim()}
+							<span
+								class={`text-[11px] tabular-nums ${reviewReady ? 'text-gray-500' : 'text-amber-300/80'}`}
+							>
+								{reviewChars.toLocaleString()} 字
+							</span>
+						{/if}
+						<button
+							type="button"
+							class="rounded-full border border-amber-300/40 px-3 py-1 text-xs font-medium text-amber-100 transition hover:bg-amber-300/10 disabled:cursor-not-allowed disabled:border-white/15 disabled:text-gray-500"
+							onclick={submitReview}
+							disabled={disabled || !reviewReady}
+							title={reviewTitle}
+						>
+							交稿批改
+						</button>
+					{/if}
 					<button
 						type="button"
 						class="flex size-8 items-center justify-center rounded-full text-white outline-none transition hover:bg-gray-800"

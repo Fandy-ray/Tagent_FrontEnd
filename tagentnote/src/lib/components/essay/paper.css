@@ -1,0 +1,113 @@
+/*
+	批改用的纸面：整套暗色界面里唯一的浅色面（答疑论文模式的题目卡与批改卡都用它）。
+	印出来的东西（评分栏、学生正文、字数）用宋体 + 墨色 + 格线绿；
+	模型判出来的东西（分数、勾叉、下划线、旁批）一律朱笔 + 楷体。
+	朱色只出现在纸上，不拿去当暗色界面的强调色。
+
+	ScoreSheet 与 AnnotatedText 靠继承读这里的变量，所以它们必须放在 .essay-paper 里面。
+*/
+.essay-paper {
+	--paper: #f1f3ec;
+	--rule: #ccd8c7;
+	--rule-strong: #9fb59f;
+	--rule-wash: rgba(159, 181, 159, 0.16);
+	--ink: #23251f;
+	--ink-soft: #5c6357;
+	--vermilion: #c23a2b;
+	--song:
+		'Songti SC', STSong, 'Noto Serif SC', 'Noto Serif CJK SC', 'Source Han Serif SC', SimSun, serif;
+	--kai: 'Kaiti SC', STKaiti, KaiTi, 'Noto Serif SC', serif;
+
+	color-scheme: light;
+	border-radius: 2px;
+	background: var(--paper);
+	color: var(--ink);
+	box-shadow:
+		0 0 0 1px rgba(255, 255, 255, 0.04),
+		0 24px 44px -28px rgba(0, 0, 0, 0.75);
+}
+
+.essay-paper ::selection {
+	color: inherit;
+	background: rgba(159, 181, 159, 0.45);
+}
+
+/* 纸头那行小字：「小论文题目」「小论文批改」 */
+.essay-paper .paper-eyebrow {
+	margin: 0;
+	font-family: var(--song);
+	font-size: 0.75rem;
+	letter-spacing: 0.3em;
+	color: var(--ink-soft);
+}
+
+/* 进行中：朱笔一行字，轻轻呼吸 */
+.essay-paper .paper-status {
+	margin: 1rem 0 0;
+	font-family: var(--kai);
+	font-size: 0.9375rem;
+	color: var(--vermilion);
+	animation: paper-breathe 1.6s ease-in-out infinite;
+}
+
+@keyframes paper-breathe {
+	50% {
+		opacity: 0.45;
+	}
+}
+
+/* 失败 / 没完成：左边一道朱线，右边一个「重来」 */
+.essay-paper .paper-notice {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 0.75rem;
+	margin-top: 1rem;
+	padding: 0.625rem 0.75rem;
+	border-left: 2px solid var(--vermilion);
+	background: rgba(194, 58, 43, 0.06);
+	font-family: var(--song);
+	font-size: 0.8125rem;
+	line-height: 1.7;
+	color: var(--ink);
+}
+
+.essay-paper .paper-notice p {
+	margin: 0;
+}
+
+.essay-paper .paper-button {
+	flex-shrink: 0;
+	padding: 0.25rem 0.75rem;
+	border: 1px solid var(--ink);
+	border-radius: 2px;
+	background: transparent;
+	color: var(--ink);
+	font-family: var(--song);
+	font-size: 0.8125rem;
+	transition:
+		background-color 0.15s ease,
+		color 0.15s ease;
+}
+
+.essay-paper .paper-button:hover:not(:disabled) {
+	background: var(--ink);
+	color: var(--paper);
+}
+
+.essay-paper .paper-button:disabled {
+	border-color: var(--rule-strong);
+	color: var(--ink-soft);
+	cursor: default;
+}
+
+.essay-paper .paper-button:focus-visible {
+	outline: 2px solid var(--vermilion);
+	outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.essay-paper .paper-status {
+		animation: none;
+	}
+}

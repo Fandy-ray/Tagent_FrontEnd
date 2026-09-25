@@ -30,6 +30,9 @@
 		onStop?: () => void;
 		onInsertSuggestion?: (content: string) => void;
 		onToast?: (message: string) => void;
+		/** 论文模式的「交稿批改」「填入范例」，原样转给输入框（见 MockMessageInput） */
+		onReview?: ((text: string) => void) | null;
+		onFillSample?: (() => void) | null;
 	};
 
 	let {
@@ -57,7 +60,9 @@
 		onSubmit = () => {},
 		onStop = () => {},
 		onInsertSuggestion = () => {},
-		onToast = () => {}
+		onToast = () => {},
+		onReview = null,
+		onFillSample = null
 	}: Props = $props();
 
 	const chatLanding = $derived(landingPageMode === 'chat');
@@ -147,6 +152,8 @@
 					{onSubmit}
 					{onStop}
 					{onToast}
+					{onReview}
+					{onFillSample}
 				/>
 			</div>
 		</div>

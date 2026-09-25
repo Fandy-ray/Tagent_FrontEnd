@@ -32,6 +32,8 @@
 			context: PaperContext;
 		}) => void;
 		onIntent?: (intent: PaperIntent) => void;
+		/** 传了才显示「让助手出题」：按当前笔记本出一道小论文题，出在对话里 */
+		onProposeTopic?: (() => void) | null;
 	};
 
 	let {
@@ -43,7 +45,8 @@
 		collections = [],
 		compact = false,
 		onChange = () => {},
-		onIntent = () => {}
+		onIntent = () => {},
+		onProposeTopic = null
 	}: Props = $props();
 
 	let detailsOpen = $state(true);
@@ -171,15 +174,31 @@
 	{#if detailsOpen}
 		<div class="mt-3 grid gap-3 md:grid-cols-[1.2fr_1fr]">
 			<div class="text-xs font-medium text-gray-400 md:col-span-2">第一步 · 论文基础</div>
-			<label class="block">
-				<span class="mb-1 block text-xs text-gray-500">论文题目</span>
+			<div class="block">
+				<div class="mb-1 flex items-center justify-between gap-2">
+					<label for="paper-task-title" class="block text-xs text-gray-500">论文题目</label>
+					{#if onProposeTopic}
+						<button
+							type="button"
+							class="text-xs text-amber-300/90 transition hover:text-amber-200"
+							onclick={onProposeTopic}
+							title="按当前笔记本的材料出一道小论文题"
+						>
+							让助手出题
+						</button>
+					{/if}
+				</div>
 				<input
+					id="paper-task-title"
 					class="h-9 w-full rounded-lg border border-white/10 bg-black/20 px-3 text-sm text-gray-100 outline-none placeholder:text-gray-600 focus:border-amber-300/50"
 					placeholder="例如：基于排队系统的服务窗口仿真优化"
 					bind:value={title}
 					oninput={emitChange}
 				/>
-			</label>
+				{#if onProposeTopic}
+					<p class="mt-1 text-[11px] text-gray-600">交稿批改时按这个题目判「切题与内容」。</p>
+				{/if}
+			</div>
 			<label class="block">
 				<span class="mb-1 block text-xs text-gray-500">关键词</span>
 				<input

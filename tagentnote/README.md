@@ -8,9 +8,9 @@
 |------|------|------|
 | 欢迎页 | `/welcome` | 平台入口与品牌展示 |
 | 智能体选择 | `/agent-select` | 选择模型与智能体类型 |
-| 答疑智能体 | `/qa` | 基于课程知识库的检索增强问答（当前为 Mock RAG） |
+| 答疑智能体 | `/qa` | 课程答疑（检索增强问答）；论文辅助模式：任务卡分步写作、让助手出题、交稿批改（三维打分 + 逐句批注，结果以试卷样式呈现） |
 | 笔记本 | `/notebook` | 嵌入 OpenNoteBook 知识工作空间 |
-| 测评智能体 | `/exam` | 生成知识测验并对作答评分 |
+| 测评智能体 | `/exam` | 闪卡模式（本地判定）与整卷模式（交卷后模型判分，大题可点开逐句批注） |
 
 ## 技术栈
 
@@ -47,7 +47,7 @@ npm run dev
 
 1. 本仓库前端：`npm run dev`（默认 `5173`）
 2. OpenNoteBook：按 https://gitee.com/kevin-zhengscuter/fixed_open_notebook 启动（默认 `8502`）
-3. basic-agent：`5000`，负责答疑检索和出题判卷
+3. basic-agent：`5001`（Vite 代理写死了这个端口），负责答疑检索、出题判卷与论文批改
 
 不启动 OpenNoteBook 时，笔记本页会提示服务未连接。不启动 basic-agent 时，答疑和测评会失败。
 
@@ -94,7 +94,7 @@ src/
 
 ## 说明
 
-- 答疑走 `POST /rag/query`，测评走 `/quiz/exam/generate` 与 `/quiz/exam/review`，由 Vite 代理到 basic-agent。
+- 答疑走 `POST /v1/chat/completions`（论文模式带 `mode: "paper"` 与 `retrieval_query`），测评走 `/quiz/exam/generate`、`/quiz/flash/generate`、`/quiz/exam/review`、`/quiz/exam/annotate`，论文辅助的出题与批改走 `/essay/topic`、`/essay/review`，均由 Vite 代理到 basic-agent。
 - 笔记本依赖外部 OpenNoteBook 服务；需先在本地或目标环境启动对应服务，并配置 `PUBLIC_OPENNOTEBOOK_URL`。
 - 播客功能本周在教学前端隐藏。若 OpenNoteBook 内仍露出播客入口，需 tagent 组在对端 UI 关闭。
 

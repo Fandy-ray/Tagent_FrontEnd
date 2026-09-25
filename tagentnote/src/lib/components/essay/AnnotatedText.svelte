@@ -11,6 +11,11 @@
 		onActivate?: (n: number | null) => void;
 		/** 批改结果刚到时让下划线依次落笔；重复渲染（例如切页回来）时不要再演一遍 */
 		animate?: boolean;
+		/**
+		 * 高亮与旁批互相引用的 id 前缀。同一页有好几份批改时（答疑里一篇篇交稿就会这样）
+		 * 必须各给各的，否则 note-mark-1 撞车，点旁批会跳到别的卷子上去。
+		 */
+		idPrefix?: string;
 		class?: string;
 	};
 
@@ -19,6 +24,7 @@
 		active = null,
 		onActivate = () => {},
 		animate = false,
+		idPrefix = 'note',
 		class: className = ''
 	}: Props = $props();
 
@@ -60,13 +66,13 @@
 		<p>
 			{#each paragraph.segments as segment, index (index)}
 				{#if segment.kind === 'text'}{segment.text}{:else}<mark
-						id={`note-mark-${segment.note.n}`}
+						id={`${idPrefix}-mark-${segment.note.n}`}
 						class={segment.note.kind}
 						class:active={active === segment.note.n}
 						data-note={segment.note.n}
 						style={`--order: ${segment.note.n}`}
 						tabindex="-1"
-						aria-describedby={`note-${segment.note.n}`}>{segment.text}</mark
+						aria-describedby={`${idPrefix}-${segment.note.n}`}>{segment.text}</mark
 					><sup data-note={segment.note.n} style={`--order: ${segment.note.n}`}
 						>{circled(segment.note.n)}</sup
 					>{/if}

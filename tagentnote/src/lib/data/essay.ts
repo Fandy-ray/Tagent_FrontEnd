@@ -1,5 +1,5 @@
 /**
- * 小论文批改（/essay）与整卷大题逐句批注共用的类型与纯函数。
+ * 小论文批改（答疑 · 论文辅助模式）与整卷大题逐句批注共用的类型与纯函数。
  *
  * 类型按后端实际下发的字段声明，见 app/schema/essay.py 的 PaperReview / Annotation。
  *
@@ -106,7 +106,7 @@ export type LengthGate =
 /** 交稿前的长度闸，文案与后端 InvalidExamRequestError 的说法对齐 */
 export const essayLengthGate = (characters: number): LengthGate => {
 	if (characters === 0) {
-		return { ok: false, tooLong: false, message: '先把正文写在稿纸上' };
+		return { ok: false, tooLong: false, message: '先把论文正文粘进输入框' };
 	}
 
 	if (characters < ESSAY_MIN_CHARS) {
@@ -338,3 +338,99 @@ export const weakestDimension = (dimensions: DimensionResult[]) =>
 		(weakest, item) => (!weakest || item.score_ratio < weakest.score_ratio ? item : weakest),
 		null
 	);
+
+// ====================== 答疑 · 论文辅助模式 ======================
+
+/** 后端 /essay/topic 的返回，见 app/schema/essay.py 的 EssayTopic */
+export type EssayTopic = {
+	title: string;
+	requirements: string[];
+	suggested_chars: number;
+	/** 后端按检索结果算：false 表示没检索到笔记本材料，题目是按课程通用内容出的 */
+	grounded: boolean;
+};
+
+/**
+ * 论文模式对话里的两种卡片，挂在消息的 paperCard 上，随会话一起存进 localStorage。
+ *
+ * review 卡的 text 必须是**发给后端的原文一字不差**（pyStrip 之后）：批注下标相对它算，
+ * 刷新页面以后要靠它重新 placeAnnotations。卡片自带重跑所需的全部参数。
+ */
+export type PaperCard =
+	| { kind: 'topic'; hint: string; topic: EssayTopic | null; error?: string }
+	| { kind: 'review'; text: string; topic: string; review: PaperReview | null; error?: string };
+
+/** 批改是三维并发、可能再下钻一轮，后端预算 220 秒；前端多留些给网络，再久就当后端没了响应 */
+export const ESSAY_CLIENT_TIMEOUT_MS = 260_000;
+
+/** 后端目前把「切题与内容」的评语当总评下发，和评分栏里那条重复；只有总评另有内容时才单独写 */
+export const extraOverallComment = (review: PaperReview) => {
+	const comment = review.overall_comment.trim();
+
+	if (!comment || review.dimensions.some((item) => item.comment.trim() === comment)) {
+		return '';
+	}
+
+	return humanizeRefs(comment);
+};
+
+/** 交稿那条用户消息只显示字数和开头一行，免得几千字刷屏 */
+export const paperSubmissionLabel = (text: string) => {
+	const firstLine = Array.from(
+		text
+			.split('\n')
+			.find((line) => line.trim())
+			?.trim() ?? ''
+	);
+	const preview = firstLine.slice(0, 40).join('') + (firstLine.length > 40 ? '…' : '');
+	return `交稿批改 · ${countCharacters(text).toLocaleString()} 字\n${preview}`;
+};
+
+const tableCell = (value: string) =>
+	value
+		.replace(/\|/g, '｜')
+		.replace(/\s*\n\s*/g, ' ')
+		.trim();
+
+/** 题目卡的纯文本版，当消息 content 用：复制、存进笔记本都直接可读 */
+export const essayTopicMarkdown = (topic: EssayTopic) =>
+	[
+		`## 小论文题目：${topic.title}`,
+		'',
+		'写作要求：',
+		...topic.requirements.map((item, index) => `${index + 1}. ${item}`),
+		'',
+		`建议篇幅：${topic.suggested_chars} 字左右`,
+		...(topic.grounded ? [] : ['', '（没检索到笔记本材料，这道题按课程通用内容出。）'])
+	].join('\n');
+
+/** 批改卡的纯文本版，用途同上 */
+export const paperReviewMarkdown = (review: PaperReview, topic: string, text: string) => {
+	const { placed, unplaced } = placeAnnotations(text, review.annotations);
+	const notes = [...placed, ...unplaced];
+	const extra = extraOverallComment(review);
+
+	return [
+		`## 小论文批改：${review.score} / 100`,
+		'',
+		`题目：${topic || '（未设题目）'} · 全文 ${review.quick_scan.characters.toLocaleString()} 字`,
+		'',
+		'| 维度 | 得分 | 评语 |',
+		'| --- | --- | --- |',
+		...review.dimensions.map(
+			(item) =>
+				`| ${item.label} | ${formatPoints(dimensionPoints(item))} / ${fullMarks(item.weight)} | ${tableCell(humanizeRefs(item.comment))} |`
+		),
+		...(notes.length > 0
+			? [
+					'',
+					'### 批注',
+					...notes.map(
+						(note, index) =>
+							`${index + 1}. 【${note.kind === 'issue' ? '需修改' : '写得好'}】「${note.text}」—— ${humanizeRefs(note.comment)}`
+					)
+				]
+			: []),
+		...(extra ? ['', `总评：${extra}`] : [])
+	].join('\n');
+};

@@ -1,13 +1,13 @@
 import { env } from '$env/dynamic/public';
 
 import { type Citation } from '$lib/data/knowledge';
-import type { AnswerAnnotations, PaperReview } from '$lib/data/essay';
+import type { AnswerAnnotations, EssayTopic, PaperReview } from '$lib/data/essay';
 import type { ExamReview, PublicExam } from '$lib/data/exam';
 import type { FlashDeck } from '$lib/data/flash';
 
 // 试卷相关的形状统一在 $lib/data 里声明（后端 pydantic 保证），这里只做转发，
 // 免得同一份契约在 api 层和组件里各写一遍还写不一样。
-export type { AnswerAnnotations, ExamReview, FlashDeck, PaperReview, PublicExam };
+export type { AnswerAnnotations, EssayTopic, ExamReview, FlashDeck, PaperReview, PublicExam };
 
 export type AgentModel = {
 	id: string;
@@ -56,6 +56,9 @@ const errorMessage = (payload: unknown, fallback: string) => {
 	}
 	if (code === 'upstream_authentication_error') {
 		return 'DeepSeek 拒绝了当前 Key，请重新登记模型。';
+	}
+	if (code === 'message_too_long' || code === 'messages_too_long') {
+		return '这次要发送的内容太长了（单条上限 2 万字）。删掉部分附件内容或任务卡里的长字段再试。';
 	}
 
 	return record.error?.message || (record.msg && record.msg !== 'success' ? record.msg : fallback);
@@ -447,6 +450,35 @@ export async function annotateExamAnswer(
 
 	if (!payload.data || !Array.isArray(payload.data.annotations)) {
 		throw new Error('批注失败：没有返回结果。');
+	}
+
+	return payload.data;
+}
+
+/**
+ * 答疑论文模式的「出题」：按笔记本材料出一道小论文题。hint 是学生给的选题方向（选填，≤100 字）。
+ *
+ * 后端检索不到材料也会出题（课程通用题），这时 grounded=false。
+ */
+export async function generateEssayTopic(
+	model: string,
+	hint?: string,
+	notebookIds?: string[],
+	signal?: AbortSignal
+): Promise<EssayTopic> {
+	const payload = await agentFetch<{ data: EssayTopic }>('/essay/topic', {
+		method: 'POST',
+		headers: { 'Content-Type': 'application/json' },
+		signal,
+		body: JSON.stringify({
+			model,
+			topic: hint?.trim() || undefined,
+			notebook_ids: notebookIds?.filter(Boolean)
+		})
+	});
+
+	if (!payload.data?.title || !Array.isArray(payload.data.requirements)) {
+		throw new Error('出题失败：没有返回题目。');
 	}
 
 	return payload.data;
