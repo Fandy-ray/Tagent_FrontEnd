@@ -1,17 +1,32 @@
 <script lang="ts">
-	import { goto } from '$app/navigation';
+	import { goto, replaceState } from '$app/navigation';
+	import { resolve } from '$app/paths';
 	import { page } from '$app/stores';
 
-	import MockExamPanel from '$lib/components/quiz/MockExamPanel.svelte';
+	import ExamShell from '$lib/components/quiz/ExamShell.svelte';
+	import { type ExamMode } from '$lib/data/exam';
 
 	const modelId = $derived($page.url.searchParams.get('model') ?? '');
 	const initialTopic = $derived($page.url.searchParams.get('topic') ?? '');
 
+	// ?mode= 只预选模式卡，不代表已经开跑（见 ExamShell 里 running 的注释）
+	const initialMode = $derived<ExamMode>(
+		$page.url.searchParams.get('mode') === 'full' ? 'full' : 'flash'
+	);
+
 	const returnPath = $derived(
 		$page.url.searchParams.get('from') === 'qa'
-			? `/qa?model=${encodeURIComponent(modelId)}`
-			: '/agent-select'
+			? resolve(`/qa?model=${encodeURIComponent(modelId)}`)
+			: resolve('/agent-select')
 	);
+
+	// 只是把选择记在地址栏里，不触发导航：用浅路由的 replaceState，
+	// 免得 goto 白跑一遍 load、还把焦点和滚动位置重置掉。
+	const rememberMode = (mode: ExamMode) => {
+		const url = new URL($page.url);
+		url.searchParams.set('mode', mode);
+		replaceState(resolve(`/exam?${url.searchParams.toString()}`), $page.state);
+	};
 </script>
 
 <svelte:head>
@@ -29,15 +44,17 @@
 				‹ 返回
 			</button>
 
-			<div class="font-mono text-xs text-gray-400">
-				测评智能体
-			</div>
+			<div class="font-mono text-xs text-gray-400">测评智能体</div>
 		</div>
 
-		<div
-			class="m-3 min-h-0 flex-1 overflow-hidden rounded-2xl border border-gray-800"
-		>
-			<MockExamPanel fullPage={true} {modelId} {initialTopic} />
+		<div class="m-3 min-h-0 flex-1 overflow-hidden rounded-2xl border border-gray-800">
+			<ExamShell
+				fullPage={true}
+				{modelId}
+				{initialTopic}
+				{initialMode}
+				onModeChange={rememberMode}
+			/>
 		</div>
 	</div>
 </div>
