@@ -1,6 +1,10 @@
 import { env } from '$env/dynamic/public';
 
-import { type KnowledgeCollection, type KnowledgeFile, type SourceKind } from '$lib/data/knowledge';
+import {
+	type KnowledgeCollection,
+	type KnowledgeFile,
+	type SourceKind
+} from '$lib/data/knowledge';
 
 type NotebookListItem = {
 	id: string;
@@ -126,13 +130,14 @@ const fetchJson = async <T>(path: string, signal?: AbortSignal): Promise<T> => {
 	return (await response.json()) as T;
 };
 
-const postJson = async <T>(path: string, body: unknown): Promise<T> => {
+const postJson = async <T>(path: string, body: unknown, signal?: AbortSignal): Promise<T> => {
 	const response = await fetch(`${getOpenNotebookApiUrl()}${path}`, {
 		method: 'POST',
 		headers: {
 			'Content-Type': 'application/json'
 		},
-		body: JSON.stringify(body)
+		body: JSON.stringify(body),
+		signal
 	});
 
 	if (!response.ok) {
@@ -171,7 +176,102 @@ export async function createNote(input: {
 	});
 }
 
-export async function listNotebookKnowledge(signal?: AbortSignal): Promise<KnowledgeCollection[]> {
+export type KnowledgeSearchHit = {
+	id?: string;
+	parentId?: string;
+	title?: string;
+	text?: string;
+	notebookId?: string;
+};
+
+type SourceDetail = SourceListItem & {
+	full_text?: string | null;
+	notebooks?: string[] | null;
+};
+
+const asRecord = (value: unknown): Record<string, unknown> | null =>
+	value && typeof value === 'object' && !Array.isArray(value)
+		? (value as Record<string, unknown>)
+		: null;
+
+const asString = (value: unknown) => (typeof value === 'string' ? value.trim() : '');
+
+export async function searchKnowledge(
+	query: string,
+	options?: { limit?: number; signal?: AbortSignal }
+): Promise<KnowledgeSearchHit[]> {
+	const keyword = query.trim();
+
+	if (!keyword) {
+		return [];
+	}
+
+	const payload = await postJson<{ results?: unknown[] }>(
+		'/api/search',
+		{
+			query: keyword,
+			type: 'text',
+			limit: options?.limit ?? 8,
+			search_sources: true,
+			search_notes: true
+		},
+		options?.signal
+	).catch(() => ({ results: [] }));
+
+	const rows = Array.isArray(payload.results) ? payload.results : [];
+
+	return rows
+		.map((item): KnowledgeSearchHit | null => {
+			const row = asRecord(item);
+			if (!row) {
+				return null;
+			}
+
+			const parent = asRecord(row.parent);
+			const matches = Array.isArray(row.matches) ? row.matches : [];
+			const matchText = matches
+				.map((match) => asString(asRecord(match)?.text) || asString(asRecord(match)?.content))
+				.filter(Boolean)
+				.join('\n');
+
+			const hit: KnowledgeSearchHit = {
+				id: asString(row.id) || undefined,
+				parentId: asString(row.parent_id) || asString(parent?.id) || asString(row.id) || undefined,
+				title: asString(row.title) || asString(parent?.title) || asString(row.name) || undefined,
+				text:
+					matchText ||
+					asString(row.content) ||
+					asString(row.text) ||
+					asString(row.snippet) ||
+					undefined,
+				notebookId: asString(row.notebook_id) || undefined
+			};
+
+			if (!hit.id && !hit.title) {
+				return null;
+			}
+
+			return hit;
+		})
+		.filter((item): item is KnowledgeSearchHit => item !== null);
+}
+
+export async function getSourceText(sourceId: string, signal?: AbortSignal) {
+	if (!sourceId.startsWith('source:')) {
+		return '';
+	}
+
+	const source = await fetchJson<SourceDetail>(
+		`/api/sources/${encodeURIComponent(sourceId)}`,
+		signal
+	).catch(() => null);
+
+	return source?.full_text?.trim() || '';
+}
+
+export async function listNotebookKnowledge(
+	signal?: AbortSignal
+): Promise<KnowledgeCollection[]> {
 	const notebooks = await fetchJson<NotebookListItem[]>(
 		'/api/notebooks?archived=false&order_by=updated+desc',
 		signal ?? new AbortController().signal

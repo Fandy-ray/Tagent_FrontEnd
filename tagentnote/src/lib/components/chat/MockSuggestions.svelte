@@ -5,16 +5,22 @@
 		content: string;
 	};
 
+	type AssistMode = 'qa' | 'paper';
+
 	type Props = {
 		inputValue?: string;
+		mode?: AssistMode;
 		onSelect?: (content: string) => void;
 	};
 
-	let { inputValue = '', onSelect = () => {} }: Props = $props();
+	let {
+		inputValue = '',
+		mode = 'qa',
+		onSelect = () => {}
+	}: Props = $props();
 
-	// 开场引导语，不是知识内容：措辞对任何笔记本都成立，
-	// 不要写死成某本教材的章节或某次实验。
-	const suggestions: Suggestion[] = [
+	// 开场引导语，不是知识内容：措辞对任何笔记本都成立。
+	const qaSuggestions: Suggestion[] = [
 		{
 			id: 'suggestion-1',
 			title: ['帮我梳理', '当前笔记本的核心概念'],
@@ -31,6 +37,36 @@
 			content: '根据笔记内容出几道题考考我。'
 		}
 	];
+
+	const paperSuggestions: Suggestion[] = [
+		{
+			id: 'paper-outline',
+			title: ['生成大纲', '课程论文章节结构'],
+			content: '请基于离散事件仿真，给我一份课程论文大纲。'
+		},
+		{
+			id: 'paper-abstract',
+			title: ['起草摘要', '含方法与结果占位'],
+			content: '请为「排队系统仿真优化」起草一段中文摘要。'
+		},
+		{
+			id: 'paper-method',
+			title: ['方法段落', '实体事件与假设表'],
+			content: '帮我写建模方法部分：包含实体、事件、资源与假设。'
+		},
+		{
+			id: 'paper-experiment',
+			title: ['实验设计', '对照场景与指标'],
+			content: '给我一个仿真实验设计模板，包含基准/改进场景和评价指标。'
+		},
+		{
+			id: 'paper-checklist',
+			title: ['完整性检查', '投稿前清单'],
+			content: '按课程论文清单检查：我还缺哪些部分？'
+		}
+	];
+
+	const suggestions = $derived(mode === 'paper' ? paperSuggestions : qaSuggestions);
 
 	let filteredSuggestions = $derived(
 		inputValue.trim()
@@ -58,9 +94,11 @@
 		>
 			<path d="m13 2-8 12h7l-1 8 8-12h-7z"></path>
 		</svg>
-		<span>建议</span>
+		<span>{mode === 'paper' ? '论文辅助建议' : '建议'}</span>
 	{:else}
-		<div class="flex w-full items-center justify-center text-gray-500">系统建模与仿真智能体</div>
+		<div class="flex w-full items-center justify-center text-gray-500">
+			{mode === 'paper' ? '课程论文写作助手' : '系统建模与仿真智能体'}
+		</div>
 	{/if}
 </div>
 

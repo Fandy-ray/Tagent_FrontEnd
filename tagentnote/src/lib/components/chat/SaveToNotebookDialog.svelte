@@ -114,7 +114,11 @@
 
 {#if open}
 	<div class="fixed inset-0 z-[60] flex items-center justify-center px-4">
-		<button type="button" class="absolute inset-0 bg-black/60" aria-label="关闭" onclick={onClose}
+		<button
+			type="button"
+			class="absolute inset-0 bg-black/60"
+			aria-label="关闭"
+			onclick={onClose}
 		></button>
 
 		<div
@@ -122,8 +126,12 @@
 			role="dialog"
 			aria-labelledby="save-to-notebook-title"
 		>
-			<h2 id="save-to-notebook-title" class="text-base font-semibold text-white">加入笔记本</h2>
-			<p class="mt-1 text-sm text-gray-400">将这轮问答写入所选笔记本的笔记中。</p>
+			<h2 id="save-to-notebook-title" class="text-base font-semibold text-white">
+				加入笔记本
+			</h2>
+			<p class="mt-1 text-sm text-gray-400">
+				将这轮问答写入所选笔记本的笔记中。
+			</p>
 
 			<div class="mt-4 max-h-56 space-y-1 overflow-y-auto">
 				{#if loadStatus === 'loading'}
@@ -133,7 +141,9 @@
 						无法连接 OpenNoteBook，仍可填写名称，但需要服务启动后才能保存。
 					</div>
 				{:else if notebooks.length === 0}
-					<div class="px-2 py-3 text-sm text-gray-500">还没有笔记本，请在下方新建一个。</div>
+					<div class="px-2 py-3 text-sm text-gray-500">
+						还没有笔记本，请在下方新建一个。
+					</div>
 				{:else}
 					{#each notebooks as notebook (notebook.id)}
 						<label

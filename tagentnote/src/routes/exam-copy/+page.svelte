@@ -1,11 +1,10 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
-	import { resolve } from '$app/paths';
 	import { page } from '$app/stores';
 	import { onMount } from 'svelte';
 
 	onMount(() => {
-		void goto(resolve(`/exam?${$page.url.search.replace(/^\?/, '')}`), { replaceState: true });
+		void goto(`/exam${$page.url.search}`, { replaceState: true });
 	});
 </script>
 

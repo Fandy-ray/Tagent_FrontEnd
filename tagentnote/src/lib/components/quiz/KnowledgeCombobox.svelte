@@ -145,7 +145,9 @@
 </script>
 
 <div class="relative w-full max-w-md text-left">
-	<div class="rounded-lg border border-white/[0.22] bg-transparent focus-within:border-blue-400">
+	<div
+		class="rounded-lg border border-white/[0.22] bg-transparent focus-within:border-blue-400"
+	>
 		{#if selectedSources.length > 0}
 			<div class="flex flex-wrap gap-1 px-2 pt-2">
 				{#each selectedSources as item (sourceKey(item.collection.id, item.file.id))}
@@ -182,12 +184,6 @@
 				}}
 				onkeydown={(event) => {
 					if (event.key === 'Enter') {
-						// 中文输入法按回车是在确认候选词，不是提交。少了这句，
-						// 打「排队论」的过程中就会莫名其妙开始出题。
-						if (event.isComposing) {
-							return;
-						}
-
 						open = false;
 						onSubmit();
 					}
@@ -204,7 +200,7 @@
 			/>
 
 			<svg
-				class="pointer-events-none absolute top-1/2 right-3 size-4 -translate-y-1/2 text-gray-500"
+				class="pointer-events-none absolute right-3 top-1/2 size-4 -translate-y-1/2 text-gray-500"
 				viewBox="0 0 24 24"
 				fill="none"
 				stroke="currentColor"
@@ -289,7 +285,9 @@
 
 						{#if opened}
 							{#if group.files.length === 0}
-								<div class="px-3 py-1.5 pl-9 text-[11px] text-gray-500">该笔记本暂无来源</div>
+								<div class="px-3 py-1.5 pl-9 text-[11px] text-gray-500">
+									该笔记本暂无来源
+								</div>
 							{:else}
 								{#each group.files as file (file.id)}
 									{@const key = sourceKey(group.collection.id, file.id)}
@@ -297,14 +295,16 @@
 
 									<button
 										type="button"
-										class="flex w-full items-center gap-2 py-1.5 pr-3 pl-9 text-left transition hover:bg-white/[0.06]"
+										class="flex w-full items-center gap-2 py-1.5 pl-9 pr-3 text-left transition hover:bg-white/[0.06]"
 										role="treeitem"
 										aria-selected={checked}
 										onclick={() => toggleSource(group.collection, file)}
 									>
 										<span
 											class={`flex size-4 shrink-0 items-center justify-center rounded-sm border text-[10px] leading-none ${
-												checked ? 'border-blue-400 bg-blue-500 text-white' : 'border-white/30'
+												checked
+													? 'border-blue-400 bg-blue-500 text-white'
+													: 'border-white/30'
 											}`}
 										>
 											{checked ? '✓' : ''}

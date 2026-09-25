@@ -1,6 +1,5 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
-	import { resolve } from '$app/paths';
 	import { page } from '$app/stores';
 	import { env } from '$env/dynamic/public';
 	import { onMount } from 'svelte';
@@ -20,7 +19,9 @@
 		return raw.trim() || DEFAULT_NOTEBOOK_URL;
 	};
 
-	const openNotebookUrl = normalizeNotebookUrl(env.PUBLIC_OPENNOTEBOOK_URL || DEFAULT_NOTEBOOK_URL);
+	const openNotebookUrl = normalizeNotebookUrl(
+		env.PUBLIC_OPENNOTEBOOK_URL || DEFAULT_NOTEBOOK_URL
+	);
 
 	let iframeKey = $state(0);
 	let status = $state<'checking' | 'ready' | 'offline'>('checking');
@@ -33,15 +34,50 @@
 		findCollection($page.url.searchParams.get('collection') ?? '', collections)
 	);
 	const sourceFileTitle = $derived(
-		sourceCollection?.files.find((file) => file.id === sourceFile)?.title ?? sourceFile
+		sourceCollection?.files.find((file) => file.id === sourceFile)?.title ??
+			sourceFile
 	);
 
-	const returnPath = $derived(
+	const returnPath = $derived.by(() => {
+		const from = $page.url.searchParams.get('from');
+		const model = $page.url.searchParams.get('model') ?? '';
+		const notebook = $page.url.searchParams.get('notebook') ?? '';
+		const chat = $page.url.searchParams.get('chat') ?? '';
+		const mode = $page.url.searchParams.get('mode') ?? '';
+
+		if (from === 'qa') {
+			const params = new URLSearchParams();
+			if (model) params.set('model', model);
+			if (notebook) params.set('notebook', notebook);
+			if (chat) params.set('chat', chat);
+			if (mode === 'paper') params.set('mode', 'paper');
+			const search = params.toString();
+			return search ? `/qa?${search}` : '/qa';
+		}
+
+		if (from === 'workspace') {
+			const params = new URLSearchParams();
+			if (model) params.set('model', model);
+			if (chat) params.set('chat', chat);
+			const search = params.toString();
+			return search ? `/workspace/knowledge?${search}` : '/workspace/knowledge';
+		}
+
+		if (from === 'exam') {
+			return `/exam?model=${encodeURIComponent(model)}`;
+		}
+
+		return '/agent-select';
+	});
+
+	const returnLabel = $derived(
 		$page.url.searchParams.get('from') === 'qa'
-			? resolve(`/qa?model=${encodeURIComponent($page.url.searchParams.get('model') ?? '')}`)
-			: $page.url.searchParams.get('from') === 'exam'
-				? resolve(`/exam?model=${encodeURIComponent($page.url.searchParams.get('model') ?? '')}`)
-				: resolve('/agent-select')
+			? '返回答疑'
+			: $page.url.searchParams.get('from') === 'workspace'
+				? '返回工作空间'
+				: $page.url.searchParams.get('from') === 'exam'
+					? '返回测评'
+					: '返回'
 	);
 
 	const checkNotebook = async () => {
@@ -112,16 +148,17 @@
 
 	{#if status !== 'ready'}
 		<div class="absolute inset-0 z-40 flex items-center justify-center bg-[#080b0f]/92 px-6">
-			<div
-				class="w-full max-w-lg rounded-2xl border border-white/10 bg-[#11161d] p-6 text-gray-200"
-			>
-				<p class="text-xs font-medium tracking-[0.18em] text-cyan-400 uppercase">笔记本</p>
+			<div class="w-full max-w-lg rounded-2xl border border-white/10 bg-[#11161d] p-6 text-gray-200">
+				<p class="text-xs font-medium uppercase tracking-[0.18em] text-cyan-400">
+					笔记本
+				</p>
 				<h1 class="mt-2 text-xl font-semibold text-white">
 					{status === 'checking' ? '正在连接 OpenNoteBook…' : '未检测到 OpenNoteBook'}
 				</h1>
 				<p class="mt-3 text-sm leading-6 text-gray-400">
 					笔记本页通过 iframe 嵌入外部服务，默认地址为
-					<code class="text-cyan-200">{openNotebookUrl}</code>。 请先启动 OpenNoteBook，再刷新本页。
+					<code class="text-cyan-200">{openNotebookUrl}</code>。
+					请先启动 OpenNoteBook，再刷新本页。
 				</p>
 				<p class="mt-2 text-sm leading-6 text-gray-500">
 					本地部署见
@@ -145,7 +182,7 @@
 						class="rounded-xl border border-white/15 px-4 py-2 text-sm text-gray-300 transition hover:bg-white/10"
 						onclick={returnToSource}
 					>
-						返回
+						{returnLabel}
 					</button>
 				</div>
 			</div>
@@ -153,13 +190,13 @@
 	{/if}
 
 	<div
-		class="fixed right-5 bottom-5 z-50 flex items-center overflow-hidden rounded-xl border border-white/15 bg-[#11161d]/95 shadow-2xl shadow-black/50 backdrop-blur-xl"
+		class="fixed bottom-5 right-5 z-50 flex items-center overflow-hidden rounded-xl border border-white/15 bg-[#11161d]/95 shadow-2xl shadow-black/50 backdrop-blur-xl"
 	>
 		<button
 			type="button"
 			class="flex h-11 items-center gap-2 border-r border-white/10 px-4 text-sm text-gray-300 transition hover:bg-white/10 hover:text-white focus:outline-none focus-visible:bg-white/10"
 			onclick={returnToSource}
-			title="返回"
+			title={returnLabel}
 		>
 			<svg
 				class="size-4"
@@ -173,7 +210,7 @@
 			>
 				<path d="m15 18-6-6 6-6"></path>
 			</svg>
-			<span>返回</span>
+			<span>{returnLabel}</span>
 		</button>
 
 		<button
@@ -198,7 +235,6 @@
 			<span>刷新</span>
 		</button>
 
-		<!-- eslint-disable svelte/no-navigation-without-resolve -- OpenNoteBook 是另一个服务的外部地址，不是本应用的路由，resolve() 包不了也不该包 -->
 		<a
 			href={openNotebookUrl}
 			target="_blank"
@@ -222,6 +258,5 @@
 			</svg>
 			<span>新页面打开</span>
 		</a>
-		<!-- eslint-enable svelte/no-navigation-without-resolve -->
 	</div>
 </main>

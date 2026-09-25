@@ -1,5 +1,3 @@
-import { resolve } from '$app/paths';
-
 // 知识源的数据模型与纯函数。
 //
 // 这里**不放任何知识内容**：笔记本、来源、笔记一律来自 OpenNotebook
@@ -28,13 +26,65 @@ export type Citation = {
 	title: string;
 	kind: SourceKind;
 	href: string;
+	/** 如「第4章」 */
+	chapter?: string;
+	/** 如「第264页」或「第295–299页」 */
+	page?: string;
+	/** 展示用：章节 + 页码拼好的短串 */
+	locator?: string;
+	snippet?: string;
 };
 
 export const KIND_LABEL: Record<SourceKind, string> = {
-	file: '文件',
+	file: '教材',
 	note: '笔记',
 	web: '网页'
 };
+
+export function findFileInCollections(
+	fileId: string,
+	collections: KnowledgeCollection[]
+) {
+	if (!fileId) {
+		return null;
+	}
+
+	for (const collection of collections) {
+		const file = collection.files.find((item) => item.id === fileId);
+
+		if (file) {
+			return { collection, file };
+		}
+	}
+
+	return null;
+}
+
+export function toCitation(
+	collection: KnowledgeCollection,
+	file: KnowledgeFile,
+	from = 'qa',
+	extra?: Partial<Pick<Citation, 'chapter' | 'page' | 'locator' | 'snippet'>>
+): Citation {
+	const locator =
+		extra?.locator ||
+		[extra?.chapter, extra?.page].filter(Boolean).join(' · ') ||
+		undefined;
+
+	return {
+		id: `${collection.id}:${file.id}${locator ? `:${locator}` : ''}`,
+		collectionId: collection.id,
+		collectionName: collection.name,
+		fileId: file.id,
+		title: file.title,
+		kind: file.kind,
+		href: sourceHref(collection.id, file.id, from),
+		chapter: extra?.chapter,
+		page: extra?.page,
+		locator,
+		snippet: extra?.snippet
+	};
+}
 
 export function sourceKey(collectionId: string, fileId: string) {
 	return `${collectionId}||${fileId}`;
@@ -73,7 +123,8 @@ export function findCollection(idOrName: string, collections: KnowledgeCollectio
 
 	return (
 		collections.find(
-			(collection) => collection.id === idOrName.trim() || collection.name.toLowerCase() === key
+			(collection) =>
+				collection.id === idOrName.trim() || collection.name.toLowerCase() === key
 		) ?? null
 	);
 }
@@ -95,7 +146,10 @@ export function findSource(key: string, collections: KnowledgeCollection[]) {
 	return { collection, file };
 }
 
-export function sourceKeysForCollection(collectionId: string, collections: KnowledgeCollection[]) {
+export function sourceKeysForCollection(
+	collectionId: string,
+	collections: KnowledgeCollection[]
+) {
 	const collection = findCollection(collectionId, collections);
 
 	return collection?.files.map((file) => sourceKey(collection.id, file.id)) ?? [];
@@ -109,5 +163,5 @@ export function sourceHref(collectionId: string, fileId = '', from = 'qa') {
 		params.set('file', fileId);
 	}
 
-	return resolve(`/notebook?${params.toString()}`);
+	return `/notebook?${params.toString()}`;
 }
