@@ -17,6 +17,15 @@ from app.schema.provider import ModelProvider
 from app.util.text import content_text
 
 
+def _retrieval_query(messages: list[dict[str, str]], retrieval_query: str | None) -> str:
+    """检索词：有前端给的检索提示就用它，否则用最后一条用户消息。
+
+    last_user_message 无论如何都要调——没有用户消息的请求照旧 400。
+    """
+    question = last_user_message(messages)
+    return retrieval_query or question
+
+
 class ChatService:
     def __init__(self, knowledge_base, client_factory):
         self.knowledge_base = knowledge_base
@@ -28,8 +37,11 @@ class ChatService:
         messages: list[dict[str, str]],
         provider: ModelProvider,
         notebook_ids: list[str] | None = None,
+        *,
+        mode: str = "qa",
+        retrieval_query: str | None = None,
     ) -> dict[str, Any]:
-        query = last_user_message(messages)
+        query = _retrieval_query(messages, retrieval_query)
         try:
             result = self.graph.invoke(
                 {
@@ -37,6 +49,7 @@ class ChatService:
                     "provider": provider,
                     "query": query,
                     "notebook_ids": notebook_ids or [],
+                    "mode": mode,
                     "step_log": [],
                 }
             )
@@ -54,11 +67,14 @@ class ChatService:
         messages: list[dict[str, str]],
         provider: ModelProvider,
         notebook_ids: list[str] | None = None,
+        *,
+        mode: str = "qa",
+        retrieval_query: str | None = None,
     ):
-        query = last_user_message(messages)
+        query = _retrieval_query(messages, retrieval_query)
         try:
             context, _documents = self.knowledge_base.retrieve(query, notebook_ids=notebook_ids)
-            prompt_messages = build_prompt_messages(messages, context)
+            prompt_messages = build_prompt_messages(messages, context, mode=mode)
             finish_reason = None
             for chunk in self.client_factory.get(provider).stream(prompt_messages):
                 metadata = getattr(chunk, "response_metadata", None) or {}

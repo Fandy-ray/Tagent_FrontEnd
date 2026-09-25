@@ -14,17 +14,30 @@ class FakeAgentService:
     def __init__(self):
         self.exam_calls = []
         self.invalidated = []
+        self.chat_calls = []
+        self.topic_calls = []
 
-    def answer(self, messages, provider, notebook_ids=None):
+    def answer(self, messages, provider, notebook_ids=None, *, mode="qa", retrieval_query=None):
+        self.chat_calls.append({"mode": mode, "retrieval_query": retrieval_query})
         return {
             "content": f"answered by {provider.upstream_model}: {messages[-1]['content']}",
             "retrieved_context": "context",
             "step_log": ["retrieved", "answered"],
         }
 
-    def stream_answer(self, messages, provider, notebook_ids=None):
+    def stream_answer(self, messages, provider, notebook_ids=None, *, mode="qa", retrieval_query=None):
+        self.chat_calls.append({"mode": mode, "retrieval_query": retrieval_query})
         for token in ["real", " ", provider.upstream_model]:
             yield token
+
+    def propose_topic(self, hint, provider, notebook_ids=None):
+        self.topic_calls.append({"hint": hint, "notebook_ids": notebook_ids})
+        return {
+            "title": f"topic by {provider.upstream_model}",
+            "requirements": ["a", "b"],
+            "suggested_chars": 1000,
+            "grounded": True,
+        }
 
     def generate_quiz(self, provider, notebook_ids=None):
         return {
@@ -197,7 +210,7 @@ class MainRoutesTest(unittest.TestCase):
 
     def test_stream_preserves_real_finish_reason(self):
         class LengthLimitedService(FakeAgentService):
-            def stream_answer(self, messages, provider, notebook_ids=None):
+            def stream_answer(self, messages, provider, notebook_ids=None, **_options):
                 yield "partial", None
                 yield "", "length"
 
@@ -217,6 +230,61 @@ class MainRoutesTest(unittest.TestCase):
         )
         frames = [chunk.decode("utf-8") for chunk in response.response]
         self.assertTrue(any('"finish_reason": "length"' in frame for frame in frames))
+
+    def test_chat_defaults_to_qa_mode(self):
+        self.client.post(
+            "/v1/chat/completions",
+            json={"model": "teacher-default", "messages": [{"role": "user", "content": "hello"}]},
+        )
+        calls = self.app.extensions["services"].chat.chat_calls
+        self.assertEqual(calls[-1], {"mode": "qa", "retrieval_query": None})
+
+    def test_chat_forwards_paper_mode_and_retrieval_query(self):
+        # 前端论文模式一直在发 mode；最后一条消息是几千字的任务 prompt，检索要用短检索词
+        for stream in (False, True):
+            response = self.client.post(
+                "/v1/chat/completions",
+                json={
+                    "model": "teacher-default",
+                    "stream": stream,
+                    "mode": "paper",
+                    "retrieval_query": "排队论 银行窗口",
+                    "messages": [{"role": "user", "content": "很长的论文任务 prompt"}],
+                },
+                buffered=True,
+            )
+            self.assertEqual(response.status_code, 200)
+            calls = self.app.extensions["services"].chat.chat_calls
+            self.assertEqual(calls[-1], {"mode": "paper", "retrieval_query": "排队论 银行窗口"})
+
+    def test_chat_rejects_an_unknown_mode(self):
+        response = self.client.post(
+            "/v1/chat/completions",
+            json={
+                "model": "teacher-default",
+                "mode": "essay",
+                "messages": [{"role": "user", "content": "hello"}],
+            },
+        )
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(response.get_json()["error"]["code"], "invalid_mode")
+
+    def test_essay_topic_route_passes_hint_and_notebooks(self):
+        response = self.client.post(
+            "/essay/topic",
+            json={"model": "teacher-second", "topic": "银行窗口", "notebook_ids": ["nb-1"]},
+        )
+        self.assertEqual(response.status_code, 200)
+        body = response.get_json()
+        self.assertEqual(body["data"]["title"], "topic by upstream-teacher-second")
+        calls = self.app.extensions["services"].essay.topic_calls
+        self.assertEqual(calls[-1], {"hint": "银行窗口", "notebook_ids": ["nb-1"]})
+
+    def test_essay_topic_hint_uses_the_exam_topic_length_limit(self):
+        response = self.client.post(
+            "/essay/topic", json={"model": "teacher-default", "topic": "排" * 101}
+        )
+        self.assertEqual(response.status_code, 422)
 
     def test_unknown_and_disabled_models_use_openai_error_shape(self):
         for model_id in ["unknown", "teacher-disabled"]:

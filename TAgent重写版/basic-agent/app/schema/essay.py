@@ -315,3 +315,45 @@ def numbered_text(sentences: Sequence[Sentence], *, only_paragraphs: Optional[Se
         if only_paragraphs is None or sentence.paragraph in only_paragraphs
     ]
     return "\n".join(lines)
+
+
+# ====================== 出题（答疑论文模式） ======================
+class LLMEssayTopic(StrictModel):
+    """模型出的一道小论文题。
+
+    写作要求必须能核对：批改时「切题与内容」维度拿的就是这道题原文，要求写得空
+    （「结合实际谈谈看法」），切题就没法判。条数卡在 2~4 条，与评分要点同一粒度。
+    """
+
+    title: str = Field(min_length=4, max_length=60)
+    requirements: List[str] = Field(min_length=2, max_length=4)
+    suggested_chars: int
+
+    @field_validator("title", mode="before")
+    @classmethod
+    def _strip_title(cls, value):
+        return value.strip() if isinstance(value, str) else value
+
+    @field_validator("requirements", mode="before")
+    @classmethod
+    def _clean_requirements(cls, value):
+        """模型常给要求编上号（「1. 」），前端自己排序号，这里剥掉；空条目当不合格重试。"""
+        if not isinstance(value, list):
+            return value
+        cleaned = [
+            _LIST_MARKER.sub("", item).strip() if isinstance(item, str) else item for item in value
+        ]
+        for item in cleaned:
+            if isinstance(item, str) and not 1 <= len(item) <= 80:
+                raise ValueError("每条写作要求必须是 1~80 字")
+        return cleaned
+
+
+class EssayTopic(StrictModel):
+    title: str
+    requirements: List[str]
+    suggested_chars: int
+    # 后端按检索结果算，不信模型自报：没检索到材料时题目只能按课程通用内容出，
+    # 前端据此提示学生
+    grounded: bool
+

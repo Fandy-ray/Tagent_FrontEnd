@@ -93,3 +93,19 @@ def review_essay():
         notebook_ids=optional_notebook_ids(payload),
     )
     return envelope(result, provider)
+
+
+@blueprint.post("/essay/topic")
+def propose_essay_topic():
+    """答疑论文模式的「出题」：按笔记本材料出一道小论文题。
+
+    topic 字段是学生给的选题方向（可选，≤100 字，与出卷接口同一个校验）。
+    """
+    payload = exam_json_body()
+    provider = select_provider(payload.get("model"))
+    result = get_essay_service().propose_topic(
+        exam_topic(payload),
+        provider,
+        notebook_ids=optional_notebook_ids(payload),
+    )
+    return envelope(result, provider)

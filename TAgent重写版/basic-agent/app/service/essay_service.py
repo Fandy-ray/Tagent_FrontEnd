@@ -30,6 +30,11 @@ from app.config import (
     ESSAY_MAX_FLAGGED_PARAGRAPHS,
     ESSAY_MIN_ATTEMPT_TIMEOUT,
     ESSAY_MIN_CHARS,
+    ESSAY_TOPIC_LLM_BUDGET,
+    ESSAY_TOPIC_LLM_TIMEOUT,
+    ESSAY_TOPIC_MAX_SUGGESTED_CHARS,
+    ESSAY_TOPIC_MIN_ATTEMPT_TIMEOUT,
+    ESSAY_TOPIC_MIN_SUGGESTED_CHARS,
 )
 from app.errors.exam_errors import InvalidExamRequestError, UpstreamLLMError
 from app.infra.llm_json import call_json_llm
@@ -37,14 +42,17 @@ from app.prompts.essay_prompts import (
     build_annotation_prompt,
     build_dimension_prompt,
     build_essay_answer_annotation_prompt,
+    build_topic_prompt,
     dimension_order,
 )
 from app.schema.essay import (
     MAX_ISSUES,
     MAX_PRAISES,
     Annotation,
+    EssayTopic,
     LLMAnnotationBatch,
     LLMDimension,
+    LLMEssayTopic,
     PaperReview,
     attach_spans,
     build_dimension,
@@ -63,6 +71,8 @@ _NEEDS_CONTEXT = {"content", "argument"}
 # 只有论证维度顺带报可疑段落——它本来就要通读全文，这一步是白捡的，
 # 不必单独跑一轮「找可疑段落」。
 _REPORTS_FLAGS = "argument"
+# 出题时学生没给方向就用它检索：search("") 在向量库与 OpenNoteBook 两边的行为都不可控
+_TOPIC_FALLBACK_QUERY = "系统建模与仿真 课程核心概念"
 
 
 class EssayService:
@@ -198,6 +208,53 @@ class EssayService:
         )
         return self._annotate(
             prompt, focused, provider, attempt_timeout, budget, MAX_ISSUES, MAX_PRAISES
+        )
+
+    # ====================== 答疑论文模式：出题 ======================
+    def propose_topic(
+        self,
+        hint: str | None,
+        provider: ModelProvider,
+        notebook_ids: list[str] | None = None,
+    ) -> EssayTopic:
+        """按笔记本材料出一道小论文题，学生可以一键把它设为本次批改的题目。
+
+        检索不到材料也照样出题（出课程通用题），grounded 如实告诉前端——
+        这一步失败会让学生连题都拿不到，比题目泛一点更糟。
+        """
+        started = time.monotonic()
+        budget = ESSAY_TOPIC_LLM_BUDGET
+        attempt_timeout = min(
+            ESSAY_TOPIC_LLM_TIMEOUT, max(ESSAY_TOPIC_MIN_ATTEMPT_TIMEOUT, budget - 15.0)
+        )
+
+        with self.llm_gate.acquire():
+            context = self._context_for(hint, _TOPIC_FALLBACK_QUERY, notebook_ids)
+            prompt = build_topic_prompt(
+                context,
+                hint,
+                min_chars=ESSAY_TOPIC_MIN_SUGGESTED_CHARS,
+                max_chars=ESSAY_TOPIC_MAX_SUGGESTED_CHARS,
+            )
+            client = self.client_factory.get(
+                provider, timeout_seconds=int(attempt_timeout), max_retries=0
+            ).bind(max_tokens=500)
+            result = call_json_llm(
+                client,
+                prompt,
+                LLMEssayTopic,
+                attempt_timeout=attempt_timeout,
+                budget_seconds=max(0.0, budget - (time.monotonic() - started)),
+            )
+
+        return EssayTopic(
+            title=result.title,
+            requirements=result.requirements,
+            suggested_chars=min(
+                ESSAY_TOPIC_MAX_SUGGESTED_CHARS,
+                max(ESSAY_TOPIC_MIN_SUGGESTED_CHARS, result.suggested_chars),
+            ),
+            grounded=bool(context),
         )
 
     # ====================== 整卷大题的逐句批注 ======================

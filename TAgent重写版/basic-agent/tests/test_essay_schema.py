@@ -11,6 +11,7 @@ from app.schema.essay import (
     LLMAnnotation,
     LLMAnnotationBatch,
     LLMDimension,
+    LLMEssayTopic,
     attach_spans,
     build_dimension,
     numbered_text,
@@ -314,3 +315,48 @@ def test_stripping_numbers_does_not_loosen_the_comparison():
 
     with pytest.raises(ValueError, match="对不上"):
         validate_dimension(paraphrased, "content")
+
+
+# ====================== 出题 ======================
+
+
+def topic(**overrides) -> LLMEssayTopic:
+    payload = {
+        "title": "排队论视角下的银行窗口配置",
+        "requirements": ["用 M/M/c 模型估算平均等待时间", "写明到达与服务的假设"],
+        "suggested_chars": 1200,
+    }
+    payload.update(overrides)
+    return LLMEssayTopic(**payload)
+
+
+def test_topic_accepts_a_well_formed_answer():
+    assert topic().requirements == ["用 M/M/c 模型估算平均等待时间", "写明到达与服务的假设"]
+
+
+def test_topic_rejects_unknown_fields():
+    # 让模型顺手给参考答案是常事，那不是这个接口该下发的东西
+    with pytest.raises(ValidationError):
+        topic(reference_answer="……")
+
+
+@pytest.mark.parametrize("requirements", [["只有一条要求"], ["一", "二", "三", "四", "五"]])
+def test_topic_requires_two_to_four_requirements(requirements):
+    with pytest.raises(ValidationError):
+        topic(requirements=requirements)
+
+
+def test_topic_rejects_a_too_short_title():
+    with pytest.raises(ValidationError):
+        topic(title="排队")
+
+
+def test_topic_strips_numbering_from_requirements():
+    result = topic(requirements=["1. 用 M/M/c 模型估算平均等待时间", "2、写明到达与服务的假设"])
+    assert result.requirements == ["用 M/M/c 模型估算平均等待时间", "写明到达与服务的假设"]
+
+
+def test_topic_rejects_a_requirement_that_is_only_a_number():
+    with pytest.raises(ValidationError):
+        topic(requirements=["1. ", "写明到达与服务的假设"])
+

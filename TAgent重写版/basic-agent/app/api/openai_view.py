@@ -17,7 +17,12 @@ import uuid
 from flask import Response, jsonify, stream_with_context
 
 from app.api.deps import get_chat_service
-from app.api.validators import optional_notebook_ids, validate_messages
+from app.api.validators import (
+    chat_mode,
+    chat_retrieval_query,
+    optional_notebook_ids,
+    validate_messages,
+)
 
 
 def _chunk(
@@ -45,12 +50,13 @@ def _chunk(
 def chat_completion_response(data, provider):
     messages = validate_messages(data.get("messages"))
     notebook_ids = optional_notebook_ids(data)
+    options = {"mode": chat_mode(data), "retrieval_query": chat_retrieval_query(data)}
     service = get_chat_service()
     chat_id = f"chatcmpl-{uuid.uuid4().hex}"
     created = int(time.time())
 
     if not data.get("stream", False):
-        result = service.answer(messages, provider, notebook_ids=notebook_ids)
+        result = service.answer(messages, provider, notebook_ids=notebook_ids, **options)
         return jsonify(
             {
                 "id": chat_id,
@@ -69,7 +75,9 @@ def chat_completion_response(data, provider):
         )
 
     def generate():
-        iterator = iter(service.stream_answer(messages, provider, notebook_ids=notebook_ids))
+        iterator = iter(
+            service.stream_answer(messages, provider, notebook_ids=notebook_ids, **options)
+        )
         finish_reason = "stop"
         try:
             role_chunk = _chunk(

@@ -71,6 +71,35 @@ def validate_messages(value) -> list[dict[str, str]]:
     return normalized[-MAX_MESSAGES:]
 
 
+CHAT_MODES = ("qa", "paper")
+# 检索提示只用来找材料，题目加关键词足够；再长就又回到「拿长文当检索词」的老问题
+MAX_RETRIEVAL_QUERY_CHARS = 200
+
+
+def chat_mode(data: dict) -> str:
+    """答疑（qa）还是论文辅助（paper）。前端的论文模式一直在发这个字段，缺省按答疑。"""
+    value = data.get("mode")
+    if value is None or value == "":
+        return "qa"
+    if value not in CHAT_MODES:
+        raise AgentAPIError(f"mode must be one of: {', '.join(CHAT_MODES)}.", 400, "invalid_mode")
+    return value
+
+
+def chat_retrieval_query(data: dict) -> str | None:
+    """可选的检索提示。论文模式的最后一条消息是几千字的任务 prompt，拿它去检索
+    等于没检索，所以前端另给一句「题目 + 关键词」。
+
+    超长是截断而不是报错：它只是个提示，不该因为题目写长了就让整次对话失败。
+    """
+    value = data.get("retrieval_query")
+    if value is None:
+        return None
+    if not isinstance(value, str):
+        raise AgentAPIError("retrieval_query must be a string.", 400, "validation_error")
+    return value.strip()[:MAX_RETRIEVAL_QUERY_CHARS] or None
+
+
 def required_text(data: dict, field: str) -> str:
     value = data.get(field)
     if not isinstance(value, str) or not value.strip():

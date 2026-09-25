@@ -20,6 +20,7 @@ class RAGState(TypedDict, total=False):
     provider: ModelProvider
     query: str
     notebook_ids: list[str]
+    mode: str
     retrieved_context: str
     retrieved_documents: list[Any]
     content: str
@@ -38,7 +39,9 @@ def build_answer_graph(knowledge_base, client_factory):
         }
 
     def answer_node(state: RAGState):
-        messages = build_prompt_messages(state["messages"], state["retrieved_context"])
+        messages = build_prompt_messages(
+            state["messages"], state["retrieved_context"], mode=state.get("mode", "qa")
+        )
         response = client_factory.get(state["provider"]).invoke(messages)
         return {
             "content": content_text(response.content),
