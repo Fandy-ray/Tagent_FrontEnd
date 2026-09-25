@@ -1,3 +1,5 @@
+import { resolve } from '$app/paths';
+
 // 知识源的数据模型与纯函数。
 //
 // 这里**不放任何知识内容**：笔记本、来源、笔记一律来自 OpenNotebook
@@ -71,8 +73,7 @@ export function findCollection(idOrName: string, collections: KnowledgeCollectio
 
 	return (
 		collections.find(
-			(collection) =>
-				collection.id === idOrName.trim() || collection.name.toLowerCase() === key
+			(collection) => collection.id === idOrName.trim() || collection.name.toLowerCase() === key
 		) ?? null
 	);
 }
@@ -94,10 +95,7 @@ export function findSource(key: string, collections: KnowledgeCollection[]) {
 	return { collection, file };
 }
 
-export function sourceKeysForCollection(
-	collectionId: string,
-	collections: KnowledgeCollection[]
-) {
+export function sourceKeysForCollection(collectionId: string, collections: KnowledgeCollection[]) {
 	const collection = findCollection(collectionId, collections);
 
 	return collection?.files.map((file) => sourceKey(collection.id, file.id)) ?? [];
@@ -111,5 +109,5 @@ export function sourceHref(collectionId: string, fileId = '', from = 'qa') {
 		params.set('file', fileId);
 	}
 
-	return `/notebook?${params.toString()}`;
+	return resolve(`/notebook?${params.toString()}`);
 }

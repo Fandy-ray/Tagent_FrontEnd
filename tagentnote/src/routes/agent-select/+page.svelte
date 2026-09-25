@@ -1,16 +1,17 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
+	import { resolve } from '$app/paths';
 	import { onMount } from 'svelte';
 
 	import { getAgentModels } from '$lib/apis/agent';
 
-	type AgentType = 'qa' | 'notebook' | 'quiz';
+	type AgentType = 'qa' | 'notebook' | 'quiz' | 'essay';
 
 	type AgentCard = {
 		type: AgentType;
 		name: string;
 		description: string;
-		accent: 'cyan' | 'violet' | 'green';
+		accent: 'cyan' | 'violet' | 'green' | 'rose';
 	};
 
 	let models = $state<{ id: string; name: string }[]>([]);
@@ -52,21 +53,32 @@
 			name: '测评智能体',
 			description: '生成知识测验并对作答进行评分。',
 			accent: 'green'
+		},
+		{
+			type: 'essay',
+			name: '论文批改',
+			description: '按三项评分要点给小论文打分，并在稿纸上逐句批注。',
+			accent: 'rose'
 		}
 	];
 
 	const selectAgent = (type: AgentType) => {
 		if (type === 'notebook') {
-			void goto('/notebook');
+			void goto(resolve('/notebook'));
 			return;
 		}
 
 		if (type === 'quiz') {
-			void goto(`/exam?model=${encodeURIComponent(selectedModelId)}`);
+			void goto(resolve(`/exam?model=${encodeURIComponent(selectedModelId)}`));
 			return;
 		}
 
-		void goto(`/qa?model=${encodeURIComponent(selectedModelId)}`);
+		if (type === 'essay') {
+			void goto(resolve(`/essay?model=${encodeURIComponent(selectedModelId)}`));
+			return;
+		}
+
+		void goto(resolve(`/qa?model=${encodeURIComponent(selectedModelId)}`));
 	};
 
 	const getIconBackground = (accent: AgentCard['accent']) => {
@@ -76,6 +88,10 @@
 
 		if (accent === 'violet') {
 			return 'bg-violet-400/10 text-violet-300 ring-violet-400/20';
+		}
+
+		if (accent === 'rose') {
+			return 'bg-rose-400/10 text-rose-300 ring-rose-400/20';
 		}
 
 		return 'bg-emerald-400/10 text-emerald-300 ring-emerald-400/20';
@@ -88,6 +104,10 @@
 
 		if (accent === 'violet') {
 			return 'hover:border-violet-400/50 hover:shadow-violet-950/30 focus:ring-violet-400';
+		}
+
+		if (accent === 'rose') {
+			return 'hover:border-rose-400/50 hover:shadow-rose-950/30 focus:ring-rose-400';
 		}
 
 		return 'hover:border-emerald-400/50 hover:shadow-emerald-950/30 focus:ring-emerald-400';
@@ -115,12 +135,8 @@
 				</div>
 
 				<div>
-					<h1 class="text-2xl font-semibold tracking-tight text-white">
-						TAgent 智能教学平台
-					</h1>
-					<p class="mt-1 text-sm text-gray-400">
-						系统建模与仿真
-					</p>
+					<h1 class="text-2xl font-semibold tracking-tight text-white">TAgent 智能教学平台</h1>
+					<p class="mt-1 text-sm text-gray-400">系统建模与仿真</p>
 				</div>
 			</div>
 		</header>
@@ -128,13 +144,9 @@
 		<section class="py-9" aria-labelledby="agent-mode-title">
 			<div class="flex flex-col justify-between gap-6 md:flex-row md:items-end">
 				<div>
-					<p class="text-xs font-medium uppercase tracking-[0.22em] text-cyan-400">
-					</p>
+					<p class="text-xs font-medium tracking-[0.22em] text-cyan-400 uppercase"></p>
 
-					<h2
-						id="agent-mode-title"
-						class="mt-2 text-2xl font-semibold tracking-tight text-white"
-					>
+					<h2 id="agent-mode-title" class="mt-2 text-2xl font-semibold tracking-tight text-white">
 						选择智能体
 					</h2>
 
@@ -144,17 +156,14 @@
 				</div>
 
 				<div class="w-full md:w-80">
-					<label
-						for="agent-model"
-						class="mb-2 block text-xs font-medium text-gray-400"
-					>
+					<label for="agent-model" class="mb-2 block text-xs font-medium text-gray-400">
 						当前模型
 					</label>
 
 					<div class="relative">
 						<select
 							id="agent-model"
-							class="h-12 w-full appearance-none rounded-xl border border-white/15 bg-white/[0.04] px-4 pr-11 text-sm text-gray-100 outline-none transition hover:border-white/25 focus:border-cyan-400 focus:ring-2 focus:ring-cyan-400/20"
+							class="h-12 w-full appearance-none rounded-xl border border-white/15 bg-white/[0.04] px-4 pr-11 text-sm text-gray-100 transition outline-none hover:border-white/25 focus:border-cyan-400 focus:ring-2 focus:ring-cyan-400/20"
 							bind:value={selectedModelId}
 						>
 							{#each models as model (model.id)}
@@ -163,7 +172,7 @@
 						</select>
 
 						<svg
-							class="pointer-events-none absolute right-4 top-1/2 size-4 -translate-y-1/2 text-gray-500"
+							class="pointer-events-none absolute top-1/2 right-4 size-4 -translate-y-1/2 text-gray-500"
 							viewBox="0 0 24 24"
 							fill="none"
 							stroke="currentColor"
@@ -176,11 +185,11 @@
 				</div>
 			</div>
 
-			<div class="mt-8 grid grid-cols-1 gap-5 md:grid-cols-3">
+			<div class="mt-8 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
 				{#each agents as agent (agent.type)}
 					<button
 						type="button"
-						class={`group flex min-h-64 flex-col justify-between rounded-2xl border border-white/10 bg-white/[0.035] p-6 text-left shadow-2xl shadow-black/10 backdrop-blur-sm transition duration-300 hover:-translate-y-1 hover:bg-white/[0.055] hover:shadow-2xl focus:outline-none focus:ring-2 ${getCardHover(agent.accent)}`}
+						class={`group flex min-h-64 flex-col justify-between rounded-2xl border border-white/10 bg-white/[0.035] p-6 text-left shadow-2xl shadow-black/10 backdrop-blur-sm transition duration-300 hover:-translate-y-1 hover:bg-white/[0.055] hover:shadow-2xl focus:ring-2 focus:outline-none ${getCardHover(agent.accent)}`}
 						onclick={() => selectAgent(agent.type)}
 					>
 						<div>
@@ -215,7 +224,7 @@
 										<path d="M6 3h12a2 2 0 0 1 2 2v16H8a4 4 0 0 1-4-4V5a2 2 0 0 1 2-2z"></path>
 										<path d="M8 3v18M11 8h6M11 12h6"></path>
 									</svg>
-								{:else}
+								{:else if agent.type === 'quiz'}
 									<svg
 										class="size-6"
 										viewBox="0 0 24 24"
@@ -228,6 +237,20 @@
 									>
 										<path d="M9 11l3 3L22 4"></path>
 										<path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"></path>
+									</svg>
+								{:else}
+									<svg
+										class="size-6"
+										viewBox="0 0 24 24"
+										fill="none"
+										stroke="currentColor"
+										stroke-width="1.8"
+										stroke-linecap="round"
+										stroke-linejoin="round"
+										aria-hidden="true"
+									>
+										<path d="M12 20h9"></path>
+										<path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4z"></path>
 									</svg>
 								{/if}
 							</div>
@@ -242,30 +265,33 @@
 						</div>
 
 						<div class="mt-8 flex items-center justify-end">
-	<span
-		class="flex size-9 items-center justify-center rounded-full border border-white/10 text-gray-500 transition duration-300 group-hover:translate-x-1 group-hover:border-white/20 group-hover:text-white"
-	>
-		<svg
-			class="size-4"
-			viewBox="0 0 24 24"
-			fill="none"
-			stroke="currentColor"
-			stroke-width="2"
-			stroke-linecap="round"
-			stroke-linejoin="round"
-			aria-hidden="true"
-		>
-			<path d="M5 12h14M13 6l6 6-6 6"></path>
-		</svg>
-	</span>
-</div>
-</button>
+							<span
+								class="flex size-9 items-center justify-center rounded-full border border-white/10 text-gray-500 transition duration-300 group-hover:translate-x-1 group-hover:border-white/20 group-hover:text-white"
+							>
+								<svg
+									class="size-4"
+									viewBox="0 0 24 24"
+									fill="none"
+									stroke="currentColor"
+									stroke-width="2"
+									stroke-linecap="round"
+									stroke-linejoin="round"
+									aria-hidden="true"
+								>
+									<path d="M5 12h14M13 6l6 6-6 6"></path>
+								</svg>
+							</span>
+						</div>
+					</button>
 				{/each}
 			</div>
 
 			<div class="mt-6 flex items-center gap-2 text-xs text-gray-600">
 				<span class="size-1.5 rounded-full bg-emerald-400"></span>
-				<span>{modelsError || '答疑与测评将请求 basic-agent，笔记本仍使用 OpenNotebook。'}</span>
+				<span
+					>{modelsError ||
+						'答疑、测评与论文批改将请求 basic-agent，笔记本仍使用 OpenNotebook。'}</span
+				>
 			</div>
 		</section>
 	</div>

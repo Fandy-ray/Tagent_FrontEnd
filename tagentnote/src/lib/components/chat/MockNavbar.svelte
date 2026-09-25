@@ -22,6 +22,7 @@
 		onOpenSidebar?: () => void;
 		onNewChat?: () => void;
 		onOpenExam?: () => void;
+		onOpenEssay?: () => void;
 		onHome?: () => void;
 		onModelChange?: () => void;
 		onCollectionChange?: (collectionId: string) => void;
@@ -43,6 +44,7 @@
 		onOpenSidebar = () => {},
 		onNewChat = () => {},
 		onOpenExam = () => {},
+		onOpenEssay = () => {},
 		onHome = () => {},
 		onModelChange = () => {},
 		onCollectionChange = () => {}
@@ -86,10 +88,12 @@
 		<div class="mx-auto flex w-full max-w-full bg-transparent px-1.5 pt-0.5 md:px-2">
 			<div class="flex w-full max-w-full items-center">
 				{#if !sidebarOpen}
-					<div class="mr-1 mt-1 flex flex-none -translate-x-0.5 self-start items-center text-gray-400">
+					<div
+						class="mt-1 mr-1 flex flex-none -translate-x-0.5 items-center self-start text-gray-400"
+					>
 						<button
 							type="button"
-							class="flex cursor-pointer rounded-lg transition hover:bg-gray-850"
+							class="hover:bg-gray-850 flex cursor-pointer rounded-lg transition"
 							onclick={onOpenSidebar}
 							title="打开侧边栏"
 							aria-label="打开侧边栏"
@@ -120,7 +124,7 @@
 								<div class="mr-1 max-w-full">
 									<button
 										type="button"
-										class="flex max-w-[240px] items-center gap-1 rounded-lg px-1.5 py-1 text-left text-sm text-gray-200 transition hover:bg-gray-850"
+										class="hover:bg-gray-850 flex max-w-[240px] items-center gap-1 rounded-lg px-1.5 py-1 text-left text-sm text-gray-200 transition"
 										onclick={toggleModelMenu}
 										aria-expanded={modelMenuOpen}
 										aria-haspopup="listbox"
@@ -144,7 +148,7 @@
 
 									{#if modelMenuOpen}
 										<div
-											class="absolute left-0 top-9 z-50 min-w-52 rounded-xl border border-gray-800 bg-gray-900 p-1.5 shadow-2xl shadow-black/40"
+											class="absolute top-9 left-0 z-50 min-w-52 rounded-xl border border-gray-800 bg-gray-900 p-1.5 shadow-2xl shadow-black/40"
 											role="listbox"
 											aria-label="选择模型"
 										>
@@ -210,14 +214,15 @@
 								stroke-width="1.8"
 								aria-hidden="true"
 							>
-								<path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
+								<path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"
+								></path>
 							</svg>
 							<span class="truncate">{currentCollection.name}</span>
 						</button>
 
 						{#if collectionMenuOpen}
 							<div
-								class="absolute right-0 top-9 z-50 min-w-52 rounded-xl border border-gray-800 bg-gray-900 p-1.5 shadow-2xl shadow-black/40"
+								class="absolute top-9 right-0 z-50 min-w-52 rounded-xl border border-gray-800 bg-gray-900 p-1.5 shadow-2xl shadow-black/40"
 								role="listbox"
 								aria-label="选择知识库"
 							>
@@ -236,9 +241,7 @@
 										>
 											<span class="text-sm">{collection.name}</span>
 											<span class="text-[11px] text-gray-500">
-												{collection.id
-													? `${collection.noteCount ?? 0} 条笔记`
-													: '不限定范围'}
+												{collection.id ? `${collection.noteCount ?? 0} 条笔记` : '不限定范围'}
 											</span>
 										</button>
 									{/each}
@@ -248,7 +251,7 @@
 					</div>
 					<button
 						type="button"
-						class="flex cursor-pointer rounded-xl px-2 py-2 transition hover:bg-gray-850"
+						class="hover:bg-gray-850 flex cursor-pointer rounded-xl px-2 py-2 transition"
 						onclick={onNewChat}
 						title="新对话"
 						aria-label="新对话"
@@ -269,7 +272,7 @@
 
 					<button
 						type="button"
-						class="flex cursor-pointer rounded-xl px-2 py-2 transition hover:bg-gray-850"
+						class="hover:bg-gray-850 flex cursor-pointer rounded-xl px-2 py-2 transition"
 						onclick={onOpenExam}
 						title="智能测评"
 						aria-label="智能测评"
@@ -292,7 +295,29 @@
 
 					<button
 						type="button"
-						class="flex select-none rounded-xl p-1.5 transition hover:bg-gray-850"
+						class="hover:bg-gray-850 flex cursor-pointer rounded-xl px-2 py-2 transition"
+						onclick={onOpenEssay}
+						title="论文批改"
+						aria-label="论文批改"
+					>
+						<svg
+							class="size-5"
+							viewBox="0 0 24 24"
+							fill="none"
+							stroke="currentColor"
+							stroke-width="1.5"
+							stroke-linecap="round"
+							stroke-linejoin="round"
+							aria-hidden="true"
+						>
+							<path d="M12 20h9"></path>
+							<path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4z"></path>
+						</svg>
+					</button>
+
+					<button
+						type="button"
+						class="hover:bg-gray-850 flex rounded-xl p-1.5 transition select-none"
 						onclick={onHome}
 						title="返回选择智能体"
 						aria-label="返回选择智能体"

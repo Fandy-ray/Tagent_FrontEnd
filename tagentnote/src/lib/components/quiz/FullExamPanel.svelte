@@ -1,8 +1,18 @@
 <script lang="ts">
 	import { onDestroy, onMount } from 'svelte';
 
-	import { generateExam, reviewExam } from '$lib/apis/agent';
+	import { annotateExamAnswer, generateExam, reviewExam } from '$lib/apis/agent';
 	import MathText from '$lib/components/MathText.svelte';
+	import AnnotatedText from '$lib/components/essay/AnnotatedText.svelte';
+	import {
+		ANNOTATE_MIN_ANSWER_CHARS,
+		circled,
+		countCharacters,
+		humanizeRefs,
+		placeAnnotations,
+		pyStrip,
+		type Annotation
+	} from '$lib/data/essay';
 	import {
 		LETTERS,
 		SECTION_LABELS,
@@ -67,6 +77,18 @@
 	let controller: AbortController | null = null;
 	let failure = $state('');
 
+	type AnswerNotes =
+		| { status: 'loading'; source: string }
+		| { status: 'done'; source: string; items: Annotation[] }
+		| { status: 'failed'; source: string; error: string };
+
+	// 大题的逐句批注是**按需**的：判卷已经等过一轮模型，再给每道大题各发一轮等待就翻倍了；
+	// 学生点开哪道才批哪道（见 basic-agent 的 /quiz/exam/annotate）。结果按题号留着，来回翻页不重复花调用。
+	let answerNotes = $state<Record<string, AnswerNotes>>({});
+	let activeNote = $state<number | null>(null);
+	// 只是在飞的请求句柄，不参与渲染，所以用普通对象而不是响应式容器
+	const noteControllers: Record<string, AbortController> = {};
+
 	let allQuestions = $derived<PublicQuestion[]>(
 		exam ? [...exam.cloze, ...exam.choice, ...exam.essay] : []
 	);
@@ -92,6 +114,79 @@
 	);
 
 	let progressPct = $derived(totalCount > 0 ? Math.round((answeredCount / totalCount) * 100) : 0);
+
+	let currentNotes = $derived<AnswerNotes | null>(
+		currentResult ? (answerNotes[currentResult.id] ?? null) : null
+	);
+
+	// 批注下标相对后端 strip() 之后的作答计算，所以发出去、画高亮都用同一份 pyStrip 过的文本
+	let currentSource = $derived(
+		currentResult?.type === 'essay' ? pyStrip(String(answers[currentResult.id] ?? '')) : ''
+	);
+
+	// 不足 40 字后端直接回空数组，干脆不给按钮
+	let canAnnotate = $derived(countCharacters(currentSource) >= ANNOTATE_MIN_ANSWER_CHARS);
+
+	let currentPlacement = $derived(
+		currentNotes?.status === 'done'
+			? placeAnnotations(currentNotes.source, currentNotes.items)
+			: null
+	);
+
+	const resetNotes = () => {
+		for (const [questionId, pending] of Object.entries(noteControllers)) {
+			pending.abort();
+			delete noteControllers[questionId];
+		}
+
+		answerNotes = {};
+		activeNote = null;
+	};
+
+	const requestCurrentNotes = () => {
+		if (!exam || !currentResult || !canAnnotate) {
+			return;
+		}
+
+		const questionId = currentResult.id;
+		const source = currentSource;
+
+		noteControllers[questionId]?.abort();
+		const own = new AbortController();
+		noteControllers[questionId] = own;
+		answerNotes = { ...answerNotes, [questionId]: { status: 'loading', source } };
+
+		void annotateExamAnswer(modelId, exam.exam_id, questionId, source, own.signal)
+			.then((data) => {
+				if (own.signal.aborted) {
+					return;
+				}
+
+				answerNotes = {
+					...answerNotes,
+					[questionId]: { status: 'done', source, items: data.annotations }
+				};
+			})
+			.catch((error: unknown) => {
+				if (own.signal.aborted) {
+					return;
+				}
+
+				answerNotes = {
+					...answerNotes,
+					[questionId]: {
+						status: 'failed',
+						source,
+						error: error instanceof Error ? error.message : '批注失败，请重试。'
+					}
+				};
+			})
+			.finally(() => {
+				if (noteControllers[questionId] === own) {
+					delete noteControllers[questionId];
+				}
+			});
+	};
 
 	const stopTicker = () => {
 		if (ticker !== null) {
@@ -124,6 +219,7 @@
 		answers = {};
 		pageIndex = 0;
 		resultIndex = 0;
+		resetNotes();
 		phase = 'generating';
 
 		elapsed = 0;
@@ -207,6 +303,7 @@
 
 	const goToResult = (index: number) => {
 		resultIndex = Math.max(0, Math.min(index, review?.results.length ?? 0));
+		activeNote = null;
 	};
 
 	const onKeydown = (event: KeyboardEvent) => {
@@ -249,6 +346,7 @@
 	onDestroy(() => {
 		stopTicker();
 		controller?.abort();
+		resetNotes();
 
 		// onDestroy 在 SSR 渲染完也会跑一次，那边没有 window。
 		if (typeof window === 'undefined') {
@@ -691,15 +789,76 @@
 									{/if}
 
 									<div class="mt-5 rounded-xl bg-gray-800 p-3">
-										<div class="mb-1 text-[11px] font-semibold text-gray-500">我的答案</div>
+										<div class="mb-1 flex items-center justify-between gap-2">
+											<span class="text-[11px] font-semibold text-gray-500">我的答案</span>
 
-										<div class="text-sm leading-relaxed">
-											{currentResult.my_answer !== null &&
-											currentResult.my_answer !== undefined &&
-											currentResult.my_answer !== ''
-												? currentResult.my_answer
-												: '未作答'}
+											{#if currentResult.type === 'essay' && canAnnotate && currentNotes?.status !== 'done'}
+												<button
+													type="button"
+													class="rounded-lg border border-gray-700 px-2 py-0.5 text-[11px] text-gray-300 transition hover:bg-gray-700 disabled:opacity-60"
+													disabled={currentNotes?.status === 'loading'}
+													onclick={requestCurrentNotes}
+													title="挑出这道题作答里最该改的一两句，画线并说明"
+												>
+													{currentNotes?.status === 'loading'
+														? '正在逐句批注…'
+														: currentNotes?.status === 'failed'
+															? '重试逐句批注'
+															: '逐句批注'}
+												</button>
+											{/if}
 										</div>
+
+										{#if currentPlacement && currentPlacement.placed.length > 0}
+											<div class="text-sm leading-7">
+												<AnnotatedText
+													paragraphs={currentPlacement.paragraphs}
+													active={activeNote}
+													onActivate={(n) => (activeNote = n)}
+												/>
+											</div>
+
+											<ol class="mt-3 space-y-1 border-t border-gray-700 pt-2.5">
+												{#each currentPlacement.placed as note (note.n)}
+													<li
+														id={`note-${note.n}`}
+														class={`rounded-lg px-2 py-1 text-xs leading-relaxed text-gray-300 transition ${
+															activeNote === note.n ? 'bg-red-500/10' : ''
+														}`}
+													>
+														<span class="mr-1 text-red-400">
+															{circled(note.n)}
+															{note.kind === 'issue' ? '需修改' : '写得好'}
+														</span>
+														{humanizeRefs(note.comment)}
+													</li>
+												{/each}
+											</ol>
+										{:else}
+											<div class="text-sm leading-relaxed whitespace-pre-wrap">
+												{currentResult.my_answer !== null &&
+												currentResult.my_answer !== undefined &&
+												currentResult.my_answer !== ''
+													? currentResult.my_answer
+													: '未作答'}
+											</div>
+										{/if}
+
+										{#if currentNotes?.status === 'failed'}
+											<p class="mt-2 text-xs text-red-400">{currentNotes.error}</p>
+										{:else if currentPlacement && currentPlacement.unplaced.length > 0}
+											<p class="mt-2 text-xs text-gray-500">
+												有 {currentPlacement.unplaced.length} 条批注对不上作答原文的位置，没有画线。
+											</p>
+										{:else if currentPlacement && currentPlacement.placed.length === 0}
+											<p class="mt-2 text-xs text-gray-500">
+												没有挑出需要单独指出的句子，看右侧评语即可。
+											</p>
+										{:else if currentResult.type === 'essay' && currentSource && !canAnnotate}
+											<p class="mt-2 text-[11px] text-gray-500">
+												作答不足 {ANNOTATE_MIN_ANSWER_CHARS} 字，不做逐句批注。
+											</p>
+										{/if}
 									</div>
 								</section>
 

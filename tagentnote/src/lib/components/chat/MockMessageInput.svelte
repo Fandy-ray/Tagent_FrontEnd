@@ -45,7 +45,7 @@
 
 <div
 	id="message-input-container"
-	class="relative flex w-full flex-1 flex-col rounded-3xl border border-white/[0.08] bg-white/[0.035] px-1 text-gray-100 shadow-lg shadow-black/10 backdrop-blur-sm transition hover:border-white/[0.12] focus-within:border-white/[0.16]"
+	class="relative flex w-full flex-1 flex-col rounded-3xl border border-white/[0.08] bg-white/[0.035] px-1 text-gray-100 shadow-lg shadow-black/10 backdrop-blur-sm transition focus-within:border-white/[0.16] hover:border-white/[0.12]"
 >
 	<div class="max-h-[18rem] min-h-[3rem] overflow-y-auto">
 		<textarea
@@ -56,13 +56,11 @@
 			{placeholder}
 			{disabled}
 			onkeydown={handleKeydown}
-			aria-label={placeholder}
-		></textarea>
+			aria-label={placeholder}></textarea>
 	</div>
 
 	<div class="mx-0.5 mt-0.5 mb-2.5 flex max-w-full items-end justify-between" dir="ltr">
-		<div class="ml-1 flex max-w-[80%] flex-1 items-center self-end">
-		</div>
+		<div class="ml-1 flex max-w-[80%] flex-1 items-center self-end"></div>
 
 		<div class="mr-1 flex shrink-0 items-center gap-1 self-end">
 			{#if generating}
@@ -80,7 +78,7 @@
 					type="button"
 					class="flex size-8 items-center justify-center rounded-full bg-white text-black transition hover:bg-gray-200 disabled:cursor-not-allowed disabled:opacity-30"
 					onclick={submit}
-					disabled={disabled}
+					{disabled}
 					title="发送"
 					aria-label="发送"
 				>

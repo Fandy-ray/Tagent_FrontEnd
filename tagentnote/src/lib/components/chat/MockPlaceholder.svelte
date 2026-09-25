@@ -24,9 +24,7 @@
 	};
 </script>
 
-<div
-	class="m-auto w-full max-w-6xl translate-y-6 px-2 py-24 text-center min-[640px]:px-20"
->
+<div class="m-auto w-full max-w-6xl translate-y-6 px-2 py-24 text-center min-[640px]:px-20">
 	<div class="flex w-full items-center gap-4 text-center text-3xl text-gray-100">
 		<div class="flex w-full flex-col items-center justify-center">
 			<div class="flex w-fit flex-row justify-center gap-3 px-5">
@@ -64,10 +62,7 @@
 
 	<div class="mx-auto mt-2 max-w-2xl">
 		<div class="mx-5">
-			<MockSuggestions
-				inputValue={prompt}
-				onSelect={selectSuggestion}
-			/>
+			<MockSuggestions inputValue={prompt} onSelect={selectSuggestion} />
 		</div>
 	</div>
 </div>

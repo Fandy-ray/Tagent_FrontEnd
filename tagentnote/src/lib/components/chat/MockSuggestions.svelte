@@ -10,10 +10,7 @@
 		onSelect?: (content: string) => void;
 	};
 
-	let {
-		inputValue = '',
-		onSelect = () => {}
-	}: Props = $props();
+	let { inputValue = '', onSelect = () => {} }: Props = $props();
 
 	// 开场引导语，不是知识内容：措辞对任何笔记本都成立，
 	// 不要写死成某本教材的章节或某次实验。
@@ -63,9 +60,7 @@
 		</svg>
 		<span>建议</span>
 	{:else}
-		<div class="flex w-full items-center justify-center text-gray-500">
-			系统建模与仿真智能体
-		</div>
+		<div class="flex w-full items-center justify-center text-gray-500">系统建模与仿真智能体</div>
 	{/if}
 </div>
 

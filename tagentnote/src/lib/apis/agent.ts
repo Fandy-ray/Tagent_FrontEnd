@@ -1,12 +1,13 @@
 import { env } from '$env/dynamic/public';
 
 import { type Citation } from '$lib/data/knowledge';
+import type { AnswerAnnotations, PaperReview } from '$lib/data/essay';
 import type { ExamReview, PublicExam } from '$lib/data/exam';
 import type { FlashDeck } from '$lib/data/flash';
 
 // 试卷相关的形状统一在 $lib/data 里声明（后端 pydantic 保证），这里只做转发，
 // 免得同一份契约在 api 层和组件里各写一遍还写不一样。
-export type { ExamReview, FlashDeck, PublicExam };
+export type { AnswerAnnotations, ExamReview, FlashDeck, PaperReview, PublicExam };
 
 export type AgentModel = {
 	id: string;
@@ -280,6 +281,72 @@ export async function reviewExam(
 
 	if (!payload.data) {
 		throw new Error('判卷失败：没有返回结果。');
+	}
+
+	return payload.data;
+}
+
+/**
+ * 小论文批改。三个维度在后端并发打分，论证维度点名了可疑段落时再多一轮逐句批注，
+ * 全在这一次请求里完成（方案文档第六节：不做流式）。
+ *
+ * text 请先用 pyStrip 处理：批注下标是相对后端 strip 之后的正文算的，
+ * 前端画高亮必须用同一份正文。
+ */
+export async function reviewEssay(
+	model: string,
+	text: string,
+	topic?: string,
+	notebookIds?: string[],
+	signal?: AbortSignal
+): Promise<PaperReview> {
+	const payload = await agentFetch<{ data: PaperReview }>('/essay/review', {
+		method: 'POST',
+		headers: { 'Content-Type': 'application/json' },
+		signal,
+		body: JSON.stringify({
+			model,
+			text,
+			topic: topic?.trim() || undefined,
+			notebook_ids: notebookIds?.filter(Boolean)
+		})
+	});
+
+	if (!payload.data || !Array.isArray(payload.data.dimensions)) {
+		throw new Error('批改失败：没有返回结果。');
+	}
+
+	return payload.data;
+}
+
+/**
+ * 整卷大题的逐句批注，**按需**调用：学生点开哪道才批哪道，不点就一轮都不花。
+ *
+ * 题干与评分要点由后端按 exam_id + question_id 回缓存取，不从这里传——
+ * 客户端给的评分标准一律不可信。模型必须与出卷时一致，否则后端回 422。
+ * 作答不足 40 字（ANNOTATE_MIN_ANSWER_CHARS）时后端直接回空数组。
+ */
+export async function annotateExamAnswer(
+	model: string,
+	examId: string,
+	questionId: string,
+	answer: string,
+	signal?: AbortSignal
+): Promise<AnswerAnnotations> {
+	const payload = await agentFetch<{ data: AnswerAnnotations }>('/quiz/exam/annotate', {
+		method: 'POST',
+		headers: { 'Content-Type': 'application/json' },
+		signal,
+		body: JSON.stringify({
+			model,
+			exam_id: examId,
+			question_id: questionId,
+			answer
+		})
+	});
+
+	if (!payload.data || !Array.isArray(payload.data.annotations)) {
+		throw new Error('批注失败：没有返回结果。');
 	}
 
 	return payload.data;

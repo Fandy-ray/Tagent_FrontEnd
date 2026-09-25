@@ -87,7 +87,7 @@
 </script>
 
 <aside
-	class="flex h-screen w-[260px] shrink-0 select-none flex-col overflow-hidden border-r border-white/[0.04] bg-[#111111] text-sm text-gray-200"
+	class="flex h-screen w-[260px] shrink-0 flex-col overflow-hidden border-r border-white/[0.04] bg-[#111111] text-sm text-gray-200 select-none"
 >
 	<header class="flex h-12 shrink-0 items-center gap-2 px-2">
 		<button
@@ -97,7 +97,9 @@
 			title="返回选择智能体"
 			aria-label="返回选择智能体"
 		>
-			<div class="flex size-6 items-center justify-center rounded-full bg-white text-[9px] font-bold text-black">
+			<div
+				class="flex size-6 items-center justify-center rounded-full bg-white text-[9px] font-bold text-black"
+			>
 				T
 			</div>
 		</button>
@@ -133,12 +135,12 @@
 		</button>
 	</header>
 
-	<div class="min-h-0 flex-1 overflow-y-auto px-[7px] pb-3 pt-1">
+	<div class="min-h-0 flex-1 overflow-y-auto px-[7px] pt-1 pb-3">
 		<nav class="pb-4">
 			<button
 				type="button"
 				id="sidebar-new-chat-button"
-				class="group flex w-full items-center gap-3 rounded-2xl px-2.5 py-2 text-gray-200 outline-none transition hover:bg-gray-900"
+				class="group flex w-full items-center gap-3 rounded-2xl px-2.5 py-2 text-gray-200 transition outline-none hover:bg-gray-900"
 				onclick={onNewChat}
 			>
 				<svg
@@ -159,7 +161,7 @@
 
 			<button
 				type="button"
-				class="group flex w-full items-center gap-3 rounded-2xl px-2.5 py-2 text-gray-200 outline-none transition hover:bg-gray-900"
+				class="group flex w-full items-center gap-3 rounded-2xl px-2.5 py-2 text-gray-200 transition outline-none hover:bg-gray-900"
 				onclick={() => {
 					searchOpen = !searchOpen;
 					if (!searchOpen) searchQuery = '';
@@ -191,12 +193,10 @@
 		</nav>
 
 		<section>
-			<div class="px-2.5 pb-2 pt-1 text-xs font-medium text-gray-500">
-				对话
-			</div>
+			<div class="px-2.5 pt-1 pb-2 text-xs font-medium text-gray-500">对话</div>
 
 			{#each groupedChats as group (group.label)}
-				<div class="px-2.5 pb-1.5 pt-1 text-xs font-medium text-gray-500">
+				<div class="px-2.5 pt-1 pb-1.5 text-xs font-medium text-gray-500">
 					{group.label}
 				</div>
 				<div class="space-y-0.5">
@@ -233,7 +233,7 @@
 		</section>
 	</div>
 
-	<footer class="relative shrink-0 px-1.5 pb-2 pt-4">
+	<footer class="relative shrink-0 px-1.5 pt-4 pb-2">
 		<div
 			class="pointer-events-none absolute inset-x-0 -top-8 h-12 bg-gradient-to-t from-gray-950 to-transparent"
 		></div>
@@ -245,15 +245,17 @@
 			title="返回选择智能体"
 		>
 			<div class="relative mr-3 shrink-0">
-				<div class="flex size-7 items-center justify-center rounded-full bg-amber-500 text-[10px] font-semibold text-white">
+				<div
+					class="flex size-7 items-center justify-center rounded-full bg-amber-500 text-[10px] font-semibold text-white"
+				>
 					T
 				</div>
-				<span class="absolute -bottom-0.5 -right-0.5 size-2.5 rounded-full border-2 border-gray-950 bg-green-500"></span>
+				<span
+					class="absolute -right-0.5 -bottom-0.5 size-2.5 rounded-full border-2 border-gray-950 bg-green-500"
+				></span>
 			</div>
 			<div class="min-w-0 flex-1 text-left">
-				<p class="truncate text-sm font-medium text-gray-200">
-					Tagent
-				</p>
+				<p class="truncate text-sm font-medium text-gray-200">Tagent</p>
 				<p class="truncate text-[11px] text-gray-500">
 					{modelId || '未选择模型'}
 				</p>

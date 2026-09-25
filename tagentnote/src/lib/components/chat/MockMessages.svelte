@@ -79,7 +79,7 @@
 				</article>
 			{:else}
 				<article class="group flex w-full">
-					<div class="mr-3 mt-1 hidden shrink-0 sm:flex">
+					<div class="mt-1 mr-3 hidden shrink-0 sm:flex">
 						<div
 							class="flex size-8 items-center justify-center rounded-full bg-white text-[9px] font-black text-black"
 						>
@@ -95,7 +95,7 @@
 						</div>
 
 						<div class="w-full min-w-full">
-							<p class="whitespace-pre-wrap text-sm leading-7 text-gray-200">
+							<p class="text-sm leading-7 whitespace-pre-wrap text-gray-200">
 								{message.content}{#if message.streaming}<span
 										class="streaming-caret ml-0.5 inline-block h-[1em] w-[2px] translate-y-[2px] bg-gray-200"
 									></span>{/if}
@@ -132,8 +132,7 @@
 									feedback[message.id] === 'up' ? 'text-white' : ''
 								}`}
 								onclick={() => {
-									feedback[message.id] =
-										feedback[message.id] === 'up' ? undefined : 'up';
+									feedback[message.id] = feedback[message.id] === 'up' ? undefined : 'up';
 								}}
 								title="赞"
 								aria-label="回答有帮助"
@@ -149,7 +148,9 @@
 									aria-hidden="true"
 								>
 									<path d="M7 10v12H3V10z"></path>
-									<path d="M7 20h10.5a2 2 0 0 0 2-1.7l1.2-7A2 2 0 0 0 18.7 9H14l1-4a2 2 0 0 0-3.6-1.5L7 10"></path>
+									<path
+										d="M7 20h10.5a2 2 0 0 0 2-1.7l1.2-7A2 2 0 0 0 18.7 9H14l1-4a2 2 0 0 0-3.6-1.5L7 10"
+									></path>
 								</svg>
 							</button>
 
@@ -159,8 +160,7 @@
 									feedback[message.id] === 'down' ? 'text-white' : ''
 								}`}
 								onclick={() => {
-									feedback[message.id] =
-										feedback[message.id] === 'down' ? undefined : 'down';
+									feedback[message.id] = feedback[message.id] === 'down' ? undefined : 'down';
 								}}
 								title="踩"
 								aria-label="回答没有帮助"
@@ -176,7 +176,9 @@
 									aria-hidden="true"
 								>
 									<path d="M17 14V2h4v12z"></path>
-									<path d="M17 4H6.5a2 2 0 0 0-2 1.7l-1.2 7A2 2 0 0 0 5.3 15H10l-1 4a2 2 0 0 0 3.6 1.5L17 14"></path>
+									<path
+										d="M17 4H6.5a2 2 0 0 0-2 1.7l-1.2 7A2 2 0 0 0 5.3 15H10l-1 4a2 2 0 0 0 3.6 1.5L17 14"
+									></path>
 								</svg>
 							</button>
 
@@ -234,7 +236,7 @@
 
 		{#if generating && !messages.some((message) => message.streaming)}
 			<article class="flex w-full">
-				<div class="mr-3 mt-1 hidden shrink-0 sm:flex">
+				<div class="mt-1 mr-3 hidden shrink-0 sm:flex">
 					<div
 						class="flex size-8 items-center justify-center rounded-full bg-white text-[9px] font-black text-black"
 					>
@@ -251,11 +253,9 @@
 
 					<div class="flex items-center gap-1.5 py-2">
 						<span class="thinking-dot size-1.5 rounded-full bg-gray-400"></span>
-						<span
-							class="thinking-dot size-1.5 rounded-full bg-gray-400 [animation-delay:150ms]"
+						<span class="thinking-dot size-1.5 rounded-full bg-gray-400 [animation-delay:150ms]"
 						></span>
-						<span
-							class="thinking-dot size-1.5 rounded-full bg-gray-400 [animation-delay:300ms]"
+						<span class="thinking-dot size-1.5 rounded-full bg-gray-400 [animation-delay:300ms]"
 						></span>
 					</div>
 				</div>

@@ -4,13 +4,14 @@
 
 ## 功能概览
 
-| 模块 | 路由 | 说明 |
-|------|------|------|
-| 欢迎页 | `/welcome` | 平台入口与品牌展示 |
-| 智能体选择 | `/agent-select` | 选择模型与智能体类型 |
-| 答疑智能体 | `/qa` | 基于课程知识库的检索增强问答（当前为 Mock RAG） |
-| 笔记本 | `/notebook` | 嵌入 OpenNoteBook 知识工作空间 |
-| 测评智能体 | `/exam` | 生成知识测验并对作答评分 |
+| 模块       | 路由            | 说明                                            |
+| ---------- | --------------- | ----------------------------------------------- |
+| 欢迎页     | `/welcome`      | 平台入口与品牌展示                              |
+| 智能体选择 | `/agent-select` | 选择模型与智能体类型                            |
+| 答疑智能体 | `/qa`           | 基于课程知识库的检索增强问答（当前为 Mock RAG） |
+| 笔记本     | `/notebook`     | 嵌入 OpenNoteBook 知识工作空间                  |
+| 测评智能体 | `/exam`         | 生成知识测验并对作答评分                        |
+| 论文批改   | `/essay`        | 小论文按三项评分要点打分，并在稿纸上逐句旁批    |
 
 ## 技术栈
 
@@ -53,14 +54,14 @@ npm run dev
 
 ### 常用脚本
 
-| 命令 | 说明 |
-|------|------|
-| `npm run dev` | 启动开发服务器 |
-| `npm run build` | 生产构建 |
-| `npm run preview` | 预览生产构建 |
-| `npm run check` | 类型与 Svelte 检查 |
-| `npm run lint` | ESLint + Prettier 检查 |
-| `npm run format` | Prettier 格式化 |
+| 命令              | 说明                   |
+| ----------------- | ---------------------- |
+| `npm run dev`     | 启动开发服务器         |
+| `npm run build`   | 生产构建               |
+| `npm run preview` | 预览生产构建           |
+| `npm run check`   | 类型与 Svelte 检查     |
+| `npm run lint`    | ESLint + Prettier 检查 |
+| `npm run format`  | Prettier 格式化        |
 
 ## 环境变量
 
@@ -83,18 +84,22 @@ src/
 │   ├── apis/agent.ts          # 模型列表与 Mock RAG 接口
 │   └── components/
 │       ├── chat/              # 答疑页聊天 UI
+│       ├── essay/             # 论文批改：稿纸、评分栏、逐句高亮
 │       └── quiz/              # 测评面板
 └── routes/
     ├── welcome/               # 欢迎页
     ├── agent-select/          # 智能体选择
     ├── qa/                    # 答疑
     ├── notebook/              # OpenNoteBook 嵌入
-    └── exam/                  # 测评
+    ├── exam/                  # 测评
+    └── essay/                 # 论文批改
 ```
 
 ## 说明
 
 - 答疑走 `POST /rag/query`，测评走 `/quiz/exam/generate` 与 `/quiz/exam/review`，由 Vite 代理到 basic-agent。
+- 论文批改页的「范例」来自 `src/lib/samples/*.txt`（格式见该目录 README）。这些 `.txt` 已在 `.gitignore` 里：范例正文多半有版权，留在本地即可，不入库。
+- 论文批改走 `POST /essay/review`；整卷大题的逐句批注走 `POST /quiz/exam/annotate`，学生点「逐句批注」才发。高亮位置一律用后端下发的句子区间，前端不自己切句。
 - 笔记本依赖外部 OpenNoteBook 服务；需先在本地或目标环境启动对应服务，并配置 `PUBLIC_OPENNOTEBOOK_URL`。
 - 播客功能本周在教学前端隐藏。若 OpenNoteBook 内仍露出播客入口，需 tagent 组在对端 UI 关闭。
 

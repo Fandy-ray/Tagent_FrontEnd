@@ -1,10 +1,6 @@
 import { env } from '$env/dynamic/public';
 
-import {
-	type KnowledgeCollection,
-	type KnowledgeFile,
-	type SourceKind
-} from '$lib/data/knowledge';
+import { type KnowledgeCollection, type KnowledgeFile, type SourceKind } from '$lib/data/knowledge';
 
 type NotebookListItem = {
 	id: string;
@@ -175,9 +171,7 @@ export async function createNote(input: {
 	});
 }
 
-export async function listNotebookKnowledge(
-	signal?: AbortSignal
-): Promise<KnowledgeCollection[]> {
+export async function listNotebookKnowledge(signal?: AbortSignal): Promise<KnowledgeCollection[]> {
 	const notebooks = await fetchJson<NotebookListItem[]>(
 		'/api/notebooks?archived=false&order_by=updated+desc',
 		signal ?? new AbortController().signal

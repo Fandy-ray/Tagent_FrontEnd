@@ -9,17 +9,17 @@
 
 以下问题已在本仓库改完，部署后请再点一遍主路径确认：
 
-| ID | 处理 |
-|----|------|
-| ISS-01 | 笔记本增加连接检测与失败提示 |
-| ISS-02 | 答疑页接入 `agent.ts` Mock RAG；停止/重生成生效 |
-| ISS-03 | 统一默认 URL，补 `.env.example` |
-| ISS-04 / ISS-05 | 修正 README 安装步骤与国内镜像说明 |
-| ISS-06 | 正式测评改为 `/exam`，copy 路由重定向 |
-| ISS-07 / ISS-08 | 欢迎页改为演示表述，去掉 Google Fonts |
-| ISS-09 | 修复 `$state`、`onclick`、建议列表 a11y、测评 modelId |
-| ISS-10 / ISS-11 | favicon 与 `lang=zh-CN` |
-| 播客 | 本前端已隐藏语音/朗读入口。OpenNoteBook 内播客仍需 tagent 组在对端 UI 关闭 |
+| ID              | 处理                                                                       |
+| --------------- | -------------------------------------------------------------------------- |
+| ISS-01          | 笔记本增加连接检测与失败提示                                               |
+| ISS-02          | 答疑页接入 `agent.ts` Mock RAG；停止/重生成生效                            |
+| ISS-03          | 统一默认 URL，补 `.env.example`                                            |
+| ISS-04 / ISS-05 | 修正 README 安装步骤与国内镜像说明                                         |
+| ISS-06          | 正式测评改为 `/exam`，copy 路由重定向                                      |
+| ISS-07 / ISS-08 | 欢迎页改为演示表述，去掉 Google Fonts                                      |
+| ISS-09          | 修复 `$state`、`onclick`、建议列表 a11y、测评 modelId                      |
+| ISS-10 / ISS-11 | favicon 与 `lang=zh-CN`                                                    |
+| 播客            | 本前端已隐藏语音/朗读入口。OpenNoteBook 内播客仍需 tagent 组在对端 UI 关闭 |
 
 部署后仍需和 tagent 组确认：OpenNoteBook 是否允许 iframe、端口是否 8502、对端播客入口是否已隐藏、`.doc` 来源上传失败（ISS-12）。
 
@@ -146,28 +146,28 @@
 
 ## 非问题（已排除）
 
-| 日志 | 结论 |
-|------|------|
-| `[404] GET /json/version` | 浏览器/调试器探测 Chrome DevTools 端点，不是业务路由缺失 |
-| `cd: no such file or directory: tagentnote` 之后 npm 仍在跑 | 见 ISS-04；不是 npm 本身损坏 |
+| 日志                                                        | 结论                                                     |
+| ----------------------------------------------------------- | -------------------------------------------------------- |
+| `[404] GET /json/version`                                   | 浏览器/调试器探测 Chrome DevTools 端点，不是业务路由缺失 |
+| `cd: no such file or directory: tagentnote` 之后 npm 仍在跑 | 见 ISS-04；不是 npm 本身损坏                             |
 
 ---
 
 ## 建议同步到 Gitee 的标签
 
-| Issue | 建议标签 |
-|-------|----------|
-| ISS-01 | `bug` `P0` `notebook` |
+| Issue  | 建议标签                   |
+| ------ | -------------------------- |
+| ISS-01 | `bug` `P0` `notebook`      |
 | ISS-02 | `enhancement` `P0` `agent` |
-| ISS-03 | `bug` `P0` `docs` |
-| ISS-04 | `docs` `P1` |
-| ISS-05 | `docs` `P1` `dx` |
-| ISS-06 | `enhancement` `P1` |
-| ISS-07 | `docs` `P1` |
-| ISS-08 | `enhancement` `P1` |
-| ISS-09 | `bug` `P2` |
-| ISS-10 | `bug` `P2` |
-| ISS-11 | `bug` `P2` |
-| ISS-12 | `bug` `P1` `notebook` |
+| ISS-03 | `bug` `P0` `docs`          |
+| ISS-04 | `docs` `P1`                |
+| ISS-05 | `docs` `P1` `dx`           |
+| ISS-06 | `enhancement` `P1`         |
+| ISS-07 | `docs` `P1`                |
+| ISS-08 | `enhancement` `P1`         |
+| ISS-09 | `bug` `P2`                 |
+| ISS-10 | `bug` `P2`                 |
+| ISS-11 | `bug` `P2`                 |
+| ISS-12 | `bug` `P1` `notebook`      |
 
 创建 Gitee Issue 需要仓库协作者身份 + 私人令牌（`issues` 权限）。本地整理完成后，可用令牌批量创建，或按本文件逐条粘贴到 https://gitee.com/kevin-zhengscuter/tagentnote/issues/new。

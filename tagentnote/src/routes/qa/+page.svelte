@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
+	import { resolve } from '$app/paths';
 	import { page } from '$app/stores';
 	import { onDestroy, onMount, tick } from 'svelte';
 
@@ -7,14 +8,10 @@
 	import { listNotebooks, type NotebookSummary } from '$lib/apis/opennotebook';
 	import { sourceHref } from '$lib/data/knowledge';
 	import MockMessageInput from '$lib/components/chat/MockMessageInput.svelte';
-	import MockMessages, {
-		type MockMessage
-	} from '$lib/components/chat/MockMessages.svelte';
+	import MockMessages, { type MockMessage } from '$lib/components/chat/MockMessages.svelte';
 	import MockNavbar from '$lib/components/chat/MockNavbar.svelte';
 	import MockPlaceholder from '$lib/components/chat/MockPlaceholder.svelte';
-	import MockSidebar, {
-		type ChatSummary
-	} from '$lib/components/chat/MockSidebar.svelte';
+	import MockSidebar, { type ChatSummary } from '$lib/components/chat/MockSidebar.svelte';
 	import SaveToNotebookDialog from '$lib/components/chat/SaveToNotebookDialog.svelte';
 
 	let sidebarOpen = $state(true);
@@ -110,7 +107,7 @@
 	const returnToSelect = () => {
 		bumpGeneration();
 		generating = false;
-		void goto('/agent-select');
+		void goto(resolve('/agent-select'));
 	};
 
 	const createEmptyChat = () => {
@@ -132,8 +129,19 @@
 
 	const openExam = () => {
 		void goto(
-			`/exam?model=${encodeURIComponent(selectedModelId)}&from=qa&topic=${encodeURIComponent(collectionId)}`
+			resolve(
+				`/exam?model=${encodeURIComponent(selectedModelId)}&from=qa&topic=${encodeURIComponent(collectionId)}`
+			)
 		);
+	};
+
+	// 论文辅助：带上当前笔记本，批改时按它检索课程材料，返回时也原样带回来
+	const openEssay = () => {
+		const query = `model=${encodeURIComponent(selectedModelId)}&from=qa${
+			collectionId ? `&notebook=${encodeURIComponent(collectionId)}` : ''
+		}`;
+
+		void goto(resolve(`/essay?${query}`));
 	};
 
 	const clipTitle = (text: string) => {
@@ -270,7 +278,7 @@
 			return;
 		}
 
-		void goto(`/qa?model=${encodeURIComponent(selectedModelId)}`, {
+		void goto(resolve(`/qa?model=${encodeURIComponent(selectedModelId)}`), {
 			replaceState: true,
 			keepFocus: true,
 			noScroll: true
@@ -304,9 +312,7 @@
 			];
 		} else {
 			const id = activeChatId;
-			chats = chats.map((chat) =>
-				chat.id === id ? { ...chat, updatedAt: Date.now() } : chat
-			);
+			chats = chats.map((chat) => (chat.id === id ? { ...chat, updatedAt: Date.now() } : chat));
 		}
 
 		void scrollToBottom();
@@ -408,6 +414,7 @@
 			}}
 			onNewChat={createEmptyChat}
 			onOpenExam={openExam}
+			onOpenEssay={openEssay}
 			onHome={returnToSelect}
 			onModelChange={syncModelToUrl}
 			onCollectionChange={(id) => {
