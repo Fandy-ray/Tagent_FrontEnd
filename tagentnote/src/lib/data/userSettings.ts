@@ -7,10 +7,38 @@ export type DirectConnection = {
 };
 
 export type ToolServer = {
+	id?: string;
+	type?: 'openapi' | 'mcp';
 	url: string;
 	key: string;
 	path: string;
 	enabled: boolean;
+	spec?: string;
+	spec_type?: 'url' | 'json';
+	auth_type?: 'none' | 'bearer' | 'session' | 'system_oauth' | 'oauth_2.1' | 'oauth_2.1_static';
+	headers?: Record<string, string> | string;
+	functionNameFilterList?: string;
+	name?: string;
+	description?: string;
+	info?: { id?: string; name?: string; description?: string };
+	connection?: {
+		type?: string;
+		url?: string;
+		key?: string;
+		path?: string;
+		enabled?: boolean;
+		auth_type?: string;
+		config?: { enable?: boolean };
+	};
+};
+
+export type TerminalServer = {
+	url: string;
+	key: string;
+	name: string;
+	enabled: boolean;
+	path: string;
+	auth_type?: string;
 };
 
 export type MemoryItem = {
@@ -33,6 +61,7 @@ export type UserSettings = {
 	gender: string;
 	dateOfBirth: string;
 	webhookUrl: string;
+	profileImageUrl: string;
 	// Interface
 	landingPageMode: '' | 'chat';
 	widescreenMode: boolean;
@@ -101,6 +130,7 @@ export type UserSettings = {
 	// Connections / Integrations
 	directConnections: DirectConnection[];
 	toolServers: ToolServer[];
+	terminalServers: TerminalServer[];
 };
 
 const STORAGE_KEY = 'tagentnote.user.settings.v1';
@@ -119,6 +149,7 @@ export const defaultUserSettings = (): UserSettings => ({
 	gender: '',
 	dateOfBirth: '',
 	webhookUrl: '',
+	profileImageUrl: '',
 	landingPageMode: '',
 	widescreenMode: false,
 	chatBubble: true,
@@ -182,7 +213,8 @@ export const defaultUserSettings = (): UserSettings => ({
 	ttsPlaybackRate: 1,
 	nonLocalVoices: false,
 	directConnections: [],
-	toolServers: []
+	toolServers: [],
+	terminalServers: []
 });
 
 export function loadUserSettings(): UserSettings {
@@ -205,6 +237,9 @@ export function loadUserSettings(): UserSettings {
 				? parsed.directConnections
 				: defaults.directConnections,
 			toolServers: Array.isArray(parsed.toolServers) ? parsed.toolServers : defaults.toolServers,
+			terminalServers: Array.isArray(parsed.terminalServers)
+				? parsed.terminalServers
+				: defaults.terminalServers,
 			imageCompressionSize: {
 				...defaults.imageCompressionSize,
 				...(parsed.imageCompressionSize ?? {})
@@ -231,39 +266,34 @@ export function applyTheme(theme: UserSettings['theme']) {
 	if (!browser) return;
 
 	const root = document.documentElement;
-	const themes = ['dark', 'light', 'oled-dark'];
+	const themes = ['dark', 'light', 'oled-dark', 'system'];
+
+	// 移除所有主题类
 	themes.forEach((t) => root.classList.remove(t));
 
-	let apply: string = theme;
-	if (theme === 'system') {
-		apply = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
-	}
+	// 重置 CSS 变量
+	root.style.removeProperty('--color-gray-800');
+	root.style.removeProperty('--color-gray-850');
+	root.style.removeProperty('--color-gray-900');
+	root.style.removeProperty('--color-gray-950');
 
-	if (apply === 'oled-dark') {
-		root.classList.add('dark');
+	let themeToApply = theme;
+
+	if (theme === 'oled-dark') {
 		root.style.setProperty('--color-gray-800', '#101010');
 		root.style.setProperty('--color-gray-850', '#050505');
 		root.style.setProperty('--color-gray-900', '#000000');
 		root.style.setProperty('--color-gray-950', '#000000');
-		root.style.backgroundColor = '#000000';
-		document.body.style.backgroundColor = '#000000';
-	} else if (apply === 'light') {
-		root.classList.add('light');
-		root.style.removeProperty('--color-gray-800');
-		root.style.removeProperty('--color-gray-850');
-		root.style.removeProperty('--color-gray-900');
-		root.style.removeProperty('--color-gray-950');
-		root.style.backgroundColor = '#ffffff';
-		document.body.style.backgroundColor = '#ffffff';
-	} else {
-		root.classList.add('dark');
+		themeToApply = 'dark';
+	} else if (theme === 'dark') {
 		root.style.setProperty('--color-gray-800', '#333');
 		root.style.setProperty('--color-gray-850', '#262626');
 		root.style.setProperty('--color-gray-900', '#171717');
 		root.style.setProperty('--color-gray-950', '#0d0d0d');
-		root.style.backgroundColor = '#171717';
-		document.body.style.backgroundColor = '#171717';
+		themeToApply = 'dark';
 	}
+
+	root.classList.add(themeToApply);
 
 	localStorage.setItem('theme', theme);
 }

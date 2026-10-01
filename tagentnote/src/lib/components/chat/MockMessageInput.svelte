@@ -8,6 +8,9 @@
 	import IntegrationsMenu from './MessageInput/IntegrationsMenu.svelte';
 	import VoiceRecording from './MessageInput/VoiceRecording.svelte';
 	import CallOverlay from './MessageInput/CallOverlay.svelte';
+	import { getI18nContext } from '$lib/i18n';
+
+	const i18n = getI18nContext();
 
 	type Props = {
 		prompt?: string;
@@ -45,7 +48,7 @@
 
 	let {
 		prompt = $bindable(''),
-		placeholder = '发送消息',
+		placeholder = $i18n.t('Send a Message'),
 		disabled = false,
 		generating = false,
 		ctrlEnterToSend = false,
@@ -89,7 +92,13 @@
 		if (webSearchAlways) webSearchEnabled = true;
 	});
 
-	const suggestions = ['帮我总结这节课的要点', '用更简单的话解释', '给出相关练习题', '对比一下相关概念'];
+	const suggestions = $derived([
+		$i18n.t('Summarize the key points of this lesson'),
+		$i18n.t('Explain in simpler terms'),
+		$i18n.t('Provide related exercises'),
+		$i18n.t('Compare related concepts')
+	]);
+
 	const autocompleteHint = $derived.by(() => {
 		if (!promptAutocomplete || !prompt.trim()) return '';
 		const q = prompt.trim();
@@ -345,7 +354,7 @@
 
 <div
 	id="message-input-container"
-	class="relative flex w-full flex-1 flex-col rounded-3xl border border-white/[0.08] bg-white/[0.035] px-1 text-gray-100 shadow-lg shadow-black/10 backdrop-blur-sm transition hover:border-white/[0.12] focus-within:border-white/[0.16]"
+	class="relative flex w-full flex-1 flex-col rounded-3xl border border-white/[0.08] bg-white/[0.035] px-1 text-gray-100 backdrop-blur-sm transition hover:border-white/[0.12] focus-within:border-white/[0.16]"
 >
 	{#if recording}
 		<VoiceRecording

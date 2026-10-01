@@ -98,7 +98,7 @@
 	<title>选择智能体 | TAgent 智能教学平台</title>
 </svelte:head>
 
-<main class="relative min-h-screen overflow-hidden bg-[#080b0f] text-gray-100">
+<main class="relative min-h-screen overflow-hidden bg-gray-900 text-gray-100">
 	<div
 		class="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_25%_10%,rgba(8,145,178,0.10),transparent_28%),radial-gradient(circle_at_80%_80%,rgba(124,58,237,0.08),transparent_30%)]"
 	></div>

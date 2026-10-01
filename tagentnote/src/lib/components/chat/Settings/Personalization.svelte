@@ -1,6 +1,8 @@
 <script lang="ts">
 	import Switch from '$lib/components/common/Switch.svelte';
-	import type { MemoryItem, UserSettings } from '$lib/data/userSettings';
+	import ManageModal from './Personalization/ManageModal.svelte';
+	import { seedFromSettings } from './Personalization/memoryStore';
+	import type { UserSettings } from '$lib/data/userSettings';
 
 	type Props = {
 		settings: UserSettings;
@@ -12,12 +14,16 @@
 
 	let enableMemory = $state(settings.memory);
 	let showManageModal = $state(false);
-	let memories = $state<MemoryItem[]>([...(settings.memories ?? [])]);
-	let draft = $state('');
+	let seeded = false;
 
 	$effect(() => {
 		enableMemory = settings.memory;
-		memories = [...(settings.memories ?? [])];
+		// One-time seed so the ManageModal has a stable, mock-friendly
+		// baseline list even before the user saves anything.
+		if (!seeded) {
+			seedFromSettings(settings.memories ?? []);
+			seeded = true;
+		}
 	});
 </script>
 
@@ -73,71 +79,4 @@
 	</div>
 </form>
 
-{#if showManageModal}
-	<!-- svelte-ignore a11y_click_events_have_key_events -->
-	<!-- svelte-ignore a11y_no_static_element_interactions -->
-	<div
-		class="fixed inset-0 z-[90] flex items-center justify-center bg-black/70 px-4"
-		onclick={() => {
-			showManageModal = false;
-		}}
-	>
-		<div
-			class="w-full max-w-lg rounded-2xl border border-gray-800 bg-gray-850 p-4 text-sm shadow-2xl"
-			onclick={(e) => e.stopPropagation()}
-		>
-			<div class="mb-3 flex items-center justify-between">
-				<div class="font-medium">管理记忆</div>
-				<button type="button" class="text-gray-500" onclick={() => (showManageModal = false)}>关闭</button>
-			</div>
-
-			<div class="mb-3 max-h-60 space-y-2 overflow-y-auto">
-				{#if memories.length === 0}
-					<div class="text-xs text-gray-500">暂无记忆</div>
-				{:else}
-					{#each memories as item}
-						<div class="flex items-start gap-2 rounded-xl border border-gray-800 px-3 py-2">
-							<div class="min-w-0 flex-1 text-xs text-gray-200">{item.content}</div>
-							<button
-								type="button"
-								class="text-xs text-red-300"
-								onclick={() => {
-									memories = memories.filter((m) => m.id !== item.id);
-									saveSettings({ memories });
-								}}
-							>
-								删除
-							</button>
-						</div>
-					{/each}
-				{/if}
-			</div>
-
-			<textarea
-				class="mb-2 w-full resize-y rounded-xl border border-gray-800 bg-transparent px-3 py-2 text-xs outline-none"
-				rows="3"
-				placeholder="添加一条新记忆…"
-				bind:value={draft}
-			></textarea>
-			<div class="flex justify-end">
-				<button
-					type="button"
-					class="rounded-full bg-white px-3.5 py-1.5 text-xs font-medium text-black"
-					onclick={() => {
-						const content = draft.trim();
-						if (!content) return;
-						memories = [
-							...memories,
-							{ id: crypto.randomUUID(), content, createdAt: Date.now() }
-						];
-						draft = '';
-						saveSettings({ memories, memory: true });
-						enableMemory = true;
-					}}
-				>
-					添加
-				</button>
-			</div>
-		</div>
-	</div>
-{/if}
+<ManageModal bind:show={showManageModal} />

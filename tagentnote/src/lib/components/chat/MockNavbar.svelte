@@ -1,6 +1,9 @@
 <script lang="ts">
 	import ChatOverflowMenu from './ChatOverflowMenu.svelte';
 	import UserMenu from '$lib/components/layout/UserMenu.svelte';
+	import { getI18nContext } from '$lib/i18n';
+
+	const i18n = getI18nContext();
 
 	type MockModel = {
 		id: string;
@@ -41,6 +44,7 @@
 		onSaveTemporaryChat?: () => void;
 		onToggleControls?: () => void;
 		onSettings?: () => void;
+		onOpenData?: () => void;
 		onArchivedChats?: () => void;
 		onPlayground?: () => void;
 		onAdmin?: () => void;
@@ -53,12 +57,6 @@
 		onAddChatTag?: (tag: string) => void;
 		folders?: { id: string; name: string }[];
 		onMoveChatToFolder?: (folderId: string | null) => void;
-	};
-
-	const ALL_NOTEBOOKS: NotebookOption = {
-		id: '',
-		name: '全部笔记本',
-		description: '检索所有笔记本和本地教材'
 	};
 
 	let {
@@ -85,6 +83,7 @@
 		onSaveTemporaryChat = () => {},
 		onToggleControls = () => {},
 		onSettings = () => {},
+		onOpenData = () => {},
 		onArchivedChats = () => {},
 		onPlayground = () => {},
 		onAdmin = () => {},
@@ -108,14 +107,17 @@
 	let collectionMenuEl = $state<HTMLDivElement | null>(null);
 	let collectionMenuStyle = $state('');
 
-	const notebookOptions = $derived([ALL_NOTEBOOKS, ...notebooks]);
+	const notebookOptions = $derived([
+		{ id: '__all__', name: $i18n.t('All Notebooks'), description: $i18n.t('Search all notebooks and local textbooks'), noteCount: undefined },
+		...notebooks
+	]);
 
 	const currentCollection = $derived(
-		notebookOptions.find((collection) => collection.id === collectionId) ?? ALL_NOTEBOOKS
+		notebookOptions.find((collection) => collection.id === collectionId) ?? notebookOptions[0]
 	);
 
 	const currentModelName = $derived(
-		models.find((model) => model.id === selectedModelId)?.name ?? '选择模型'
+		models.find((model) => model.id === selectedModelId)?.name ?? $i18n.t('Select Model')
 	);
 
 	const portal = (node: HTMLElement) => {
@@ -209,8 +211,8 @@
 </script>
 
 <nav
-	class="sticky top-0 z-30 flex w-full shrink-0 flex-col items-center overflow-visible border-b border-white/[0.04] bg-[#171717] pt-1 pb-1"
-	aria-label="聊天顶部导航"
+	class="sticky top-0 z-30 flex w-full shrink-0 flex-col items-center overflow-visible border-b border-white/[0.04] bg-gray-900 pt-1 pb-1"
+	aria-label={$i18n.t('Chat Header Navigation')}
 >
 	<div class="flex w-full items-center px-1.5 pr-1">
 		<div class="mx-auto flex w-full max-w-full bg-transparent px-1.5 pt-0.5 md:px-2">
@@ -221,8 +223,8 @@
 							type="button"
 							class="flex cursor-pointer rounded-lg transition hover:bg-gray-850"
 							onclick={onOpenSidebar}
-							title="打开侧边栏"
-							aria-label="打开侧边栏"
+							title={$i18n.t('Open Sidebar')}
+							aria-label={$i18n.t('Open Sidebar')}
 						>
 							<div class="self-center p-1.5">
 								<svg
@@ -283,7 +285,7 @@
 						<div
 							class="mr-1 mt-1 inline-flex rounded-full border border-white/10 bg-white/[0.03] p-0.5 text-[11px]"
 							role="group"
-							aria-label="答疑模式"
+							aria-label={$i18n.t('Assist Mode')}
 						>
 							<button
 								type="button"
@@ -294,7 +296,7 @@
 								}`}
 								onclick={() => onAssistModeChange('qa')}
 							>
-								课程答疑
+								{$i18n.t('QA Mode')}
 							</button>
 							<button
 								type="button"
@@ -305,7 +307,7 @@
 								}`}
 								onclick={() => onAssistModeChange('paper')}
 							>
-								论文辅助
+								{$i18n.t('Paper Assistant')}
 							</button>
 						</div>
 
@@ -314,7 +316,7 @@
 								type="button"
 								class="mt-1 flex max-w-[180px] items-center gap-1.5 rounded-full border border-white/10 bg-white/[0.04] px-2.5 py-1 text-[11px] text-gray-200 transition hover:bg-white/[0.08]"
 								onclick={toggleCollectionMenu}
-								title="当前知识库"
+								title={$i18n.t('Current Knowledge Base')}
 								aria-expanded={collectionMenuOpen}
 							>
 								<svg
@@ -337,8 +339,8 @@
 							type="button"
 							class="flex cursor-pointer rounded-xl px-2 py-2 text-gray-400 transition hover:bg-gray-850 hover:text-white"
 							onclick={onSaveTemporaryChat}
-							title="保存临时对话"
-							aria-label="保存临时对话"
+							title={$i18n.t('Save Temporary Chat')}
+							aria-label={$i18n.t('Save Temporary Chat')}
 							id="save-temporary-chat-button"
 						>
 							<svg
@@ -364,8 +366,8 @@
 								temporaryChat ? 'text-amber-200' : 'text-gray-400 hover:text-white'
 							}`}
 							onclick={onToggleTemporaryChat}
-							title={temporaryChat ? '关闭临时对话' : '临时对话'}
-							aria-label={temporaryChat ? '关闭临时对话' : '临时对话'}
+							title={temporaryChat ? $i18n.t('Close Temporary Chat') : $i18n.t('Temporary Chat')}
+							aria-label={temporaryChat ? $i18n.t('Close Temporary Chat') : $i18n.t('Temporary Chat')}
 							aria-pressed={temporaryChat}
 							id="temporary-chat-button"
 						>
@@ -404,8 +406,8 @@
 						type="button"
 						class="flex cursor-pointer rounded-xl px-2 py-2 transition hover:bg-gray-850"
 						onclick={onOpenExam}
-						title="智能测评"
-						aria-label="智能测评"
+						title={$i18n.t('Smart Assessment')}
+						aria-label={$i18n.t('Smart Assessment')}
 					>
 						<svg
 							class="size-5"
@@ -429,8 +431,8 @@
 							controlsOpen ? 'text-white' : 'text-gray-400 hover:text-white'
 						}`}
 						onclick={onToggleControls}
-						title="控制"
-						aria-label="控制"
+						title={$i18n.t('Controls')}
+						aria-label={$i18n.t('Controls')}
 						aria-pressed={controlsOpen}
 						id="chat-controls-button"
 					>
@@ -447,6 +449,29 @@
 							<path
 								d="M10.5 6h9.75M10.5 6a1.5 1.5 0 1 1-3 0m3 0a1.5 1.5 0 1 0-3 0M3.75 6H7.5m3 12h9.75m-9.75 0a1.5 1.5 0 0 1-3 0m3 0a1.5 1.5 0 0 0-3 0m-3.75 0H7.5m9-6h3.75m-3.75 0a1.5 1.5 0 0 1-3 0m3 0a1.5 1.5 0 0 0-3 0m-9.75 0h9.75"
 							></path>
+						</svg>
+					</button>
+
+					<button
+						type="button"
+						class="flex cursor-pointer rounded-xl px-2 py-2 text-gray-400 transition hover:bg-gray-850 hover:text-white"
+						onclick={onOpenData}
+						title="数据"
+						aria-label="数据"
+					>
+						<svg
+							class="size-5"
+							viewBox="0 0 24 24"
+							fill="none"
+							stroke="currentColor"
+							stroke-width="1.5"
+							stroke-linecap="round"
+							stroke-linejoin="round"
+							aria-hidden="true"
+						>
+							<ellipse cx="12" cy="5" rx="9" ry="3"></ellipse>
+							<path d="M3 5v14c0 1.66 4.03 3 9 3s9-1.34 9-3V5"></path>
+							<path d="M3 12c0 1.66 4.03 3 9 3s9-1.34 9-3"></path>
 						</svg>
 					</button>
 
@@ -478,10 +503,10 @@
 		class="rounded-xl border border-gray-800 bg-gray-900 p-1.5 text-white shadow-2xl shadow-black/40"
 		style={modelMenuStyle}
 		role="listbox"
-		aria-label="选择模型"
+		aria-label={$i18n.t('Select Model')}
 	>
 		{#if models.length === 0}
-			<p class="px-3 py-2 text-xs text-gray-500">basic-agent 没有返回可用模型。</p>
+			<p class="px-3 py-2 text-xs text-gray-500">{$i18n.t('No models available from basic-agent.')}</p>
 		{/if}
 		{#each models as model (model.id)}
 			<button
@@ -522,10 +547,10 @@
 		class="max-h-[min(24rem,70vh)] overflow-y-auto rounded-xl border border-gray-800 bg-gray-900 p-1.5 text-white shadow-2xl shadow-black/40"
 		style={collectionMenuStyle}
 		role="listbox"
-		aria-label="选择知识库"
+		aria-label={$i18n.t('Select Knowledge Base')}
 	>
 		{#if notebooksLoading && notebooks.length === 0}
-			<p class="px-3 py-2 text-xs text-gray-500">正在读取笔记本…</p>
+			<p class="px-3 py-2 text-xs text-gray-500">{$i18n.t('Loading notebooks...')}</p>
 		{:else}
 			{#each notebookOptions as collection (collection.id || 'all')}
 				<button
@@ -539,7 +564,7 @@
 				>
 					<span class="text-sm">{collection.name}</span>
 					<span class="text-[11px] text-gray-500">
-						{collection.id ? `${collection.noteCount ?? 0} 条笔记` : '不限定范围'}
+						{collection.id ? $i18n.t('{{count}} notes', { count: collection.noteCount ?? 0 }) : $i18n.t('No restriction')}
 					</span>
 				</button>
 			{/each}

@@ -66,7 +66,7 @@
 	<title>工作空间 | TAgent</title>
 </svelte:head>
 
-<main class="flex h-screen overflow-hidden bg-[#171717] text-white">
+<main class="flex h-screen overflow-hidden bg-gray-900 text-white">
 	{#if sidebarOpen}
 		<MockSidebar
 			{activeChatId}
@@ -85,7 +85,7 @@
 		/>
 	{/if}
 
-	<section class="relative flex min-w-0 flex-1 flex-col bg-[#171717]">
+	<section class="relative flex min-w-0 flex-1 flex-col bg-gray-900">
 		<nav class="shrink-0 px-2.5 pt-1.5 select-none">
 			<div class="flex items-center gap-1">
 				{#if !sidebarOpen}

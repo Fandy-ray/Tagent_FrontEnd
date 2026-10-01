@@ -1,6 +1,9 @@
 <script lang="ts">
 	import UserStatusModal from './UserStatusModal.svelte';
 	import UserCircle from '$lib/components/icons/UserCircle.svelte';
+	import { getI18nContext } from '$lib/i18n';
+
+	const i18n = getI18nContext();
 
 	type Props = {
 		/** navbar=右上角帮助菜单；sidebar=左下角资料+状态菜单 */
@@ -221,18 +224,18 @@
 								<span class="shrink-0 self-center text-sm">{statusEmoji}</span>
 							{/if}
 							<span class="line-clamp-2 flex-1 self-center">
-								{statusMessage || '更新您的状态'}
+								{statusMessage || $i18n.t('Update your status')}
 							</span>
 						</button>
 						<button
 							type="button"
 							class="self-start opacity-50 hover:opacity-100"
-							aria-label="清除状态"
+							aria-label={$i18n.t('Clear Status')}
 							onclick={(e) => {
 								e.preventDefault();
 								e.stopPropagation();
 								onStatusSave({ emoji: '', message: '' });
-								onToast('状态已清除');
+								onToast($i18n.t('Status cleared'));
 							}}
 						>
 							<svg class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -265,7 +268,7 @@
 								d="M15.182 15.182a4.5 4.5 0 0 1-6.364 0M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0ZM9.75 9.75c.008-.034.017-.067.026-.1a.15.15 0 0 1 .222-.062.15.15 0 0 1 .075.112c.01.033.018.066.026.1M14.25 9.75c.008-.034.017-.067.026-.1a.15.15 0 0 1 .222-.062.15.15 0 0 1 .075.112c.01.033.018.066.026.1"
 							></path>
 						</svg>
-						<span class="truncate self-center">更新您的状态</span>
+						<span class="truncate self-center">{$i18n.t('Update your status')}</span>
 					</button>
 				</div>
 			{/if}
@@ -289,7 +292,7 @@
 					<path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z"></path>
 				</svg>
 			</span>
-			<span class="truncate self-center">设置</span>
+			<span class="truncate self-center">{$i18n.t('Settings')}</span>
 		</button>
 
 		<button
@@ -307,7 +310,7 @@
 					></path>
 				</svg>
 			</span>
-			<span class="truncate self-center">已归档对话</span>
+			<span class="truncate self-center">{$i18n.t('Archived Chats')}</span>
 		</button>
 
 		{#if userRole === 'admin'}
@@ -348,7 +351,7 @@
 						</svg>
 					{/if}
 				</span>
-				<span class="truncate self-center">管理员面板</span>
+				<span class="truncate self-center">{$i18n.t('Admin Panel')}</span>
 			</button>
 		{/if}
 
@@ -373,7 +376,7 @@
 							></path>
 						</svg>
 					</span>
-					<span class="truncate self-center">帮助文档</span>
+					<span class="truncate self-center">{$i18n.t('Help')}</span>
 				</a>
 
 				<a
@@ -409,7 +412,7 @@
 						<path d="M8 14L12 10L16 14" stroke-linecap="round" stroke-linejoin="round"></path>
 					</svg>
 				</span>
-				<span class="truncate self-center">键盘快捷键</span>
+					<span class="truncate self-center">{$i18n.t('Keyboard Shortcuts')}</span>
 			</button>
 		{/if}
 
@@ -440,7 +443,7 @@
 					<span class="relative inline-flex size-2 rounded-full bg-green-500"></span>
 				</span>
 				<span>
-					当前在线用户:
+					{$i18n.t('Active users online')}:
 					<span class="font-semibold text-white">{activeUsers}</span>
 				</span>
 			</div>

@@ -18,7 +18,7 @@
 	import MockNavbar from '$lib/components/chat/MockNavbar.svelte';
 	import MockPlaceholder from '$lib/components/chat/MockPlaceholder.svelte';
 	import MockSidebar from '$lib/components/chat/MockSidebar.svelte';
-	import ArchivedChatsModal from '$lib/components/chat/ArchivedChatsModal.svelte';
+	import ArchivedChatsModal from '$lib/components/layout/ArchivedChatsModal.svelte';
 	import SaveToNotebookDialog from '$lib/components/chat/SaveToNotebookDialog.svelte';
 	import SettingsModal from '$lib/components/chat/SettingsModal.svelte';
 	import ShortcutsModal from '$lib/components/chat/ShortcutsModal.svelte';
@@ -116,6 +116,7 @@
 	);
 	let paperContext = $state<PaperContext>({ ...DEFAULT_PAPER_CONTEXT });
 	let settingsOpen = $state(false);
+	let settingsTab = $state<'general' | 'data_controls'>('general');
 	let archivedOpen = $state(false);
 	let shortcutsOpen = $state(false);
 	let userSettings = $state<UserSettings>(loadUserSettings());
@@ -143,7 +144,8 @@
 			.map((chat) => ({
 				id: chat.id,
 				title: chat.title,
-				updatedAt: chat.updatedAt
+				updatedAt: chat.updatedAt,
+				archived: true
 			}))
 			.sort((a, b) => b.updatedAt - a.updatedAt)
 	);
@@ -835,6 +837,13 @@
 	};
 
 	const openSettings = () => {
+		settingsTab = 'general';
+		settingsOpen = true;
+	};
+
+	// 数据管理就在设置里（导入、导出、归档、清空）：直接打开到那一页
+	const openDataPanel = () => {
+		settingsTab = 'data_controls';
 		settingsOpen = true;
 	};
 
@@ -2122,7 +2131,7 @@
 	}}
 />
 
-<main class="flex h-screen overflow-hidden bg-[#171717] text-white">
+<main class="flex h-screen overflow-hidden bg-gray-900 text-white">
 	{#if sidebarOpen}
 		<MockSidebar
 			{activeChatId}
@@ -2174,7 +2183,7 @@
 		/>
 	{/if}
 
-	<section class="relative flex min-h-0 min-w-0 flex-1 overflow-hidden bg-[#171717]">
+	<section class="relative flex min-h-0 min-w-0 flex-1 overflow-hidden bg-gray-900">
 		<div class="relative flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
 			<MockNavbar
 				{sidebarOpen}
@@ -2207,6 +2216,7 @@
 					controlsOpen = !controlsOpen;
 				}}
 				onSettings={openSettings}
+				onOpenData={openDataPanel}
 				onArchivedChats={openArchivedChats}
 				onPlayground={openPlayground}
 				onAdmin={openAdmin}
@@ -2233,7 +2243,7 @@
 
 			{#if assistMode === 'paper'}
 				<div
-					class="min-h-0 max-h-[calc(100vh-4rem)] shrink-0 overflow-y-auto overscroll-contain border-b border-white/[0.06] bg-[#171717] px-3 py-2 md:px-5"
+					class="min-h-0 max-h-[calc(100vh-4rem)] shrink-0 overflow-y-auto overscroll-contain border-b border-white/[0.06] bg-gray-900 px-3 py-2 md:px-5"
 				>
 					<PaperTaskCard
 						bind:title={paperTitle}
@@ -2264,7 +2274,7 @@
 						{#if selectedFolderId && selectedFolderName}
 							<div class="relative z-20 flex w-full justify-center pt-3">
 								<div
-									class="inline-flex items-center gap-2 rounded-full border border-white/10 bg-[#242424]/90 px-3 py-1 text-xs text-gray-300 backdrop-blur"
+									class="inline-flex items-center gap-2 rounded-full border border-white/10 bg-gray-900/90 px-3 py-1 text-xs text-gray-300 backdrop-blur"
 								>
 									分组 · {selectedFolderName}
 									<button
@@ -2314,7 +2324,7 @@
 					{#if temporaryChat}
 						<div class="relative z-20 flex justify-center pt-3">
 							<div
-								class="inline-flex items-center gap-2 rounded-full border border-white/10 bg-[#242424]/90 px-3 py-1 text-xs text-gray-400 backdrop-blur"
+								class="inline-flex items-center gap-2 rounded-full border border-white/10 bg-gray-900/90 px-3 py-1 text-xs text-gray-400 backdrop-blur"
 								title="此对话不会出现在历史记录中，消息也不会被保存。"
 							>
 								临时对话 · 不会写入历史
@@ -2388,8 +2398,8 @@
 						<div class="px-4 pb-1 text-center text-[11px] text-sky-400/80">联网搜索：始终开启</div>
 					{/if}
 
-					<div
-						class="relative z-10 shrink-0 bg-gradient-to-t from-gray-900 via-gray-900 to-transparent px-4 pt-4 pb-2"
+				<div
+						class="relative z-10 shrink-0 px-4 pt-4 pb-2"
 					>
 						<div
 							class={`mx-auto w-full ${userSettings.widescreenMode ? 'max-w-full' : 'max-w-3xl'}`}
@@ -2470,6 +2480,7 @@
 
 <SettingsModal
 	open={settingsOpen}
+	initialTab={settingsTab}
 	userRole="admin"
 	onClose={() => {
 		settingsOpen = false;
@@ -2489,13 +2500,22 @@
 />
 
 <ArchivedChatsModal
-	open={archivedOpen}
-	chats={archivedChats}
-	onClose={() => {
-		archivedOpen = false;
+	bind:show={archivedOpen}
+	chats={[
+		...chats.map((chat) => ({
+			id: chat.id,
+			title: chat.title,
+			updatedAt: chat.updatedAt,
+			archived: !!chat.archived
+		}))
+	]}
+	onUpdate={() => {
+		persistChats();
 	}}
-	onUnarchive={unarchiveChat}
-	onOpenChat={openArchivedChat}
+	onDelete={(id) => {
+		chats = chats.filter((chat) => chat.id !== id);
+		persistChats();
+	}}
 />
 
 <ShortcutsModal
@@ -2508,7 +2528,7 @@
 {#if changelogOpen}
 	<div class="fixed inset-0 z-[80] flex items-center justify-center bg-black/60 p-4">
 		<div
-			class="w-full max-w-md rounded-2xl border border-white/10 bg-[#1f1f1f] p-5 text-left shadow-xl"
+			class="w-full max-w-md rounded-2xl border border-white/10 bg-gray-900 p-5 text-left shadow-xl"
 		>
 			<h2 class="text-lg font-semibold text-white">新功能介绍</h2>
 			<p class="mt-2 text-sm leading-6 text-gray-400">
@@ -2531,7 +2551,7 @@
 
 {#if saveToast}
 	<div
-		class="fixed bottom-6 left-1/2 z-[70] -translate-x-1/2 rounded-xl border border-white/10 bg-[#242424] px-4 py-2 text-sm text-gray-100 shadow-lg"
+		class="fixed bottom-6 left-1/2 z-[70] -translate-x-1/2 rounded-xl border border-white/10 bg-gray-900 px-4 py-2 text-sm text-gray-100 shadow-lg"
 	>
 		{saveToast}
 	</div>

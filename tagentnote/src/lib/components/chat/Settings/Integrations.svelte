@@ -1,6 +1,16 @@
 <script lang="ts">
+	import { getI18nContext } from '$lib/i18n';
+	const i18n = getI18nContext();
+
+	import Spinner from '$lib/components/common/Spinner.svelte';
+	import Tooltip from '$lib/components/common/Tooltip.svelte';
 	import Plus from '$lib/components/icons/Plus.svelte';
-	import type { ToolServer, UserSettings } from '$lib/data/userSettings';
+	import Connection from './Tools/Connection.svelte';
+	import Terminals from './Integrations/Terminals.svelte';
+
+	import AddToolServerModal from './Tools/AddToolServerModal.svelte';
+
+	import type { UserSettings, ToolServer, TerminalServer } from '$lib/data/userSettings';
 
 	type Props = {
 		settings: UserSettings;
@@ -10,150 +20,142 @@
 
 	let { settings, saveSettings, onSave = () => {} }: Props = $props();
 
-	let servers = $state<ToolServer[]>([...(settings.toolServers ?? [])]);
-	let showAdd = $state(false);
-	let draftUrl = $state('');
-	let draftKey = $state('');
-	let draftPath = $state('/openapi.json');
+	let servers = $state<ToolServer[]>([]);
+	let terminalServerConfigs = $state<TerminalServer[]>([]);
+	let showConnectionModal = $state(false);
+	let loaded = $state(false);
+
+	const loadFromSettings = () => {
+		servers = Array.isArray(settings?.toolServers) ? [...settings.toolServers] : [];
+		terminalServerConfigs = Array.isArray(settings?.terminalServers)
+			? [...settings.terminalServers]
+			: [];
+		loaded = true;
+	};
 
 	$effect(() => {
-		servers = [...(settings.toolServers ?? [])];
+		if (!loaded) {
+			loadFromSettings();
+		}
 	});
 
-	const persist = async () => {
-		await saveSettings({ toolServers: servers });
-		onSave();
+	const addConnectionHandler = async (server: ToolServer) => {
+		servers = [...servers, server];
+		await updateHandler();
 	};
 
-	const addServer = async () => {
-		const url = draftUrl.trim().replace(/\/$/, '');
-		if (!url) return;
-		servers = [
-			...servers,
-			{ url, key: draftKey.trim(), path: draftPath.trim() || '/openapi.json', enabled: true }
-		];
-		draftUrl = '';
-		draftKey = '';
-		draftPath = '/openapi.json';
-		showAdd = false;
-		await persist();
+	const updateHandler = async () => {
+		await saveSettings({
+			toolServers: servers,
+			terminalServers: terminalServerConfigs
+		});
+		onSave();
 	};
 </script>
+
+<AddToolServerModal bind:show={showConnectionModal} onSubmit={addConnectionHandler} />
 
 <form
 	id="tab-tools"
 	class="flex h-full flex-col justify-between text-sm"
 	onsubmit={(e) => {
 		e.preventDefault();
-		persist();
+		updateHandler();
 	}}
 >
-	<div class="h-full overflow-y-scroll">
-		<div class="pr-1.5">
-			<div class="mb-0.5 flex items-center justify-between">
-				<div class="font-medium">管理工具服务器</div>
-				<button
-					class="px-1"
-					type="button"
-					aria-label="添加连接"
-					onclick={() => {
-						showAdd = !showAdd;
-					}}
-				>
-					<Plus />
-				</button>
-			</div>
+	<div class="scrollbar-hidden h-full overflow-y-scroll">
+		{#if loaded}
+			<div>
+				<div class="pr-1.5">
+					<div>
+						<div class="mb-0.5 flex items-center justify-between">
+							<div class="font-medium">{$i18n.t('Manage OpenAPI Tool Servers')}</div>
 
-			{#if showAdd}
-				<div class="mb-2 space-y-2 rounded-xl border border-gray-800 p-3">
-					<input
-						class="w-full bg-transparent text-xs outline-none"
-						placeholder="https://example.com"
-						bind:value={draftUrl}
-					/>
-					<input
-						class="w-full bg-transparent text-xs outline-none"
-						placeholder="/openapi.json"
-						bind:value={draftPath}
-					/>
-					<input
-						class="w-full bg-transparent text-xs outline-none"
-						placeholder="Bearer Token（可选）"
-						type="password"
-						bind:value={draftKey}
-					/>
-					<div class="flex justify-end gap-2">
-						<button type="button" class="px-2 text-xs text-gray-500" onclick={() => (showAdd = false)}>取消</button>
-						<button type="button" class="rounded-full bg-white px-3 py-1 text-xs text-black" onclick={addServer}>添加</button>
+							<Tooltip content={$i18n.t('Add Connection')}>
+								<button
+									aria-label={$i18n.t('Add Connection')}
+									class="px-1"
+									onclick={() => (showConnectionModal = true)}
+									type="button"
+								>
+									<Plus />
+								</button>
+							</Tooltip>
+						</div>
+
+						<div class="flex flex-col gap-1.5">
+							{#each servers as _, idx}
+								<Connection
+									bind:connection={servers[idx]}
+									onSubmit={() => updateHandler()}
+									onDelete={() => {
+										servers = servers.filter((_, i) => i !== idx);
+										updateHandler();
+									}}
+								/>
+							{/each}
+						</div>
+					</div>
+
+					<div class="my-1.5">
+						<div class="text-xs text-gray-500">
+							{$i18n.t('Connect to your own OpenAPI compatible external tool servers.')}
+							<br />
+							{$i18n.t(
+								'CORS must be properly configured by the provider to allow requests from Open WebUI.'
+							)}
+						</div>
+					</div>
+
+					<div class="mb-2 text-xs text-gray-600 dark:text-gray-300">
+						<a
+							class="underline"
+							href="https://github.com/open-webui/openapi-servers"
+							target="_blank">{$i18n.t('Learn more about OpenAPI tool servers.')} ↗</a
+						>
 					</div>
 				</div>
-			{/if}
 
-			<div class="flex flex-col gap-1.5">
-				{#each servers as server, idx}
-					<div class="flex items-center gap-2 rounded-xl border border-gray-800 px-3 py-2">
-						<input
-							type="checkbox"
-							bind:checked={server.enabled}
-							onchange={() => {
-								servers = [...servers];
-								saveSettings({ toolServers: servers });
-							}}
-						/>
-						<div class="min-w-0 flex-1">
-							<input
-								class="w-full truncate bg-transparent text-xs outline-none"
-								bind:value={server.url}
-								onchange={() => {
-									servers = [...servers];
-									saveSettings({ toolServers: servers });
-								}}
-							/>
-							<input
-								class="mt-1 w-full bg-transparent text-xs text-gray-500 outline-none"
-								bind:value={server.path}
-								onchange={() => {
-									servers = [...servers];
-									saveSettings({ toolServers: servers });
-								}}
-							/>
+				<hr class="my-4 border-gray-100/50 dark:border-gray-850/50" />
+
+				<div class="pr-1.5">
+					<Terminals
+						bind:servers={terminalServerConfigs}
+						onChange={() => updateHandler()}
+					/>
+
+					<div class="mt-1.5">
+						<div class="text-xs text-gray-500">
+							{$i18n.t(
+								'Connect to Open Terminal instances to browse files and use them as always-on tools. Only one can be active at a time.'
+							)}
 						</div>
-						<button
-							type="button"
-							class="text-xs text-red-300"
-							onclick={() => {
-								servers = servers.filter((_, i) => i !== idx);
-								saveSettings({ toolServers: servers });
-							}}
-						>
-							删除
-						</button>
-					</div>
-				{/each}
-			</div>
 
-			<div class="my-1.5 text-xs text-gray-500">
-				连接到你自己的 OpenAPI 兼容外部工具服务器。
-				<br />
-				提供方必须正确配置 CORS。
+						<div class="mt-1 text-xs text-gray-600 dark:text-gray-300">
+							<a
+								class="underline"
+								href="https://github.com/open-webui/open-terminal"
+								target="_blank">{$i18n.t('Learn more about Open Terminal')} ↗</a
+							>
+						</div>
+					</div>
+				</div>
 			</div>
-			<div class="mb-2 text-xs text-gray-300">
-				<a
-					class="underline"
-					href="https://github.com/open-webui/openapi-servers"
-					target="_blank"
-					rel="noreferrer">了解更多关于 OpenAPI 工具服务器 ↗</a
-				>
+		{:else}
+			<div class="flex h-full justify-center">
+				<div class="my-auto">
+					<Spinner className="size-6" />
+				</div>
 			</div>
-		</div>
+		{/if}
 	</div>
 
-	<div class="flex justify-end pt-2 text-sm font-medium">
+	<div class="flex justify-end pt-3 text-sm font-medium">
 		<button
-			class="rounded-full bg-white px-3.5 py-1.5 text-sm font-medium text-black transition hover:bg-gray-100"
+			class="rounded-full bg-black px-3.5 py-1.5 text-sm font-medium text-white transition hover:bg-gray-900 dark:bg-white dark:text-black dark:hover:bg-gray-100"
 			type="submit"
 		>
-			保存
+			{$i18n.t('Save')}
 		</button>
 	</div>
 </form>

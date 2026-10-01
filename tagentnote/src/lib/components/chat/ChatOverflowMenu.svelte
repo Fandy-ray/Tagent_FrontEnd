@@ -130,7 +130,7 @@
 	<div
 		bind:this={menuEl}
 		use:portal
-		class="rounded-2xl border border-gray-800 bg-[#242424] px-1 py-1 text-white shadow-lg shadow-black/40"
+		class="rounded-2xl border border-gray-800 bg-gray-850 px-1 py-1 text-white shadow-lg shadow-black/40"
 		style={menuStyle}
 		role="menu"
 		onclick={(event) => event.stopPropagation()}

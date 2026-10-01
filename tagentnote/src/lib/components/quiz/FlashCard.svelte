@@ -67,7 +67,7 @@
 	<div class="flip-inner" class:is-flipped={flipped}>
 		<!-- 正面 -->
 		<section
-			class="flip-face rounded-2xl border border-gray-700 bg-[#242424] shadow-sm"
+			class="flip-face rounded-2xl border border-gray-700 bg-gray-850 shadow-sm"
 			aria-hidden={flipped}
 		>
 			<!-- 竖条要被圆角裁住，但 overflow-hidden 不能待在 .flip-face 上（见 <style> 里的说明），
@@ -178,7 +178,7 @@
 
 		<!-- 反面 -->
 		<section
-			class="flip-face flip-back rounded-2xl border border-gray-700 bg-[#242424] shadow-sm"
+			class="flip-face flip-back rounded-2xl border border-gray-700 bg-gray-850 shadow-sm"
 			aria-hidden={!flipped}
 		>
 			<div class="pointer-events-none absolute inset-0 overflow-hidden rounded-2xl">

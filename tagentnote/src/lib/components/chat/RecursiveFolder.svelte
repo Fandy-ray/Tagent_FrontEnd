@@ -162,7 +162,7 @@
 			</button>
 			{#if openMenuId === folder.id}
 				<div
-					class="absolute right-0 z-50 mt-1 w-44 rounded-xl border border-white/10 bg-[#1f1f1f] py-1 shadow-xl"
+					class="absolute right-0 z-50 mt-1 w-44 rounded-xl border border-white/10 bg-gray-900 py-1 shadow-xl"
 				>
 					<button
 						type="button"

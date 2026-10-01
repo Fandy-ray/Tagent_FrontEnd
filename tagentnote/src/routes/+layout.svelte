@@ -4,6 +4,12 @@
 	import '../app.css';
 	// 出题 prompt 要求公式用 $...$ / $$...$$ 包裹，渲染走 $lib/data/math.ts
 	import 'katex/dist/katex.min.css';
+	import { initI18n, setI18nContext } from '$lib/i18n';
+	import i18n from '$lib/i18n';
+
+	// 初始化 i18n 并设置 context（在组件初始化时同步执行）
+	initI18n();
+	setI18nContext();
 
 	let { children } = $props();
 

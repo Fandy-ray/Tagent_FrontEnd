@@ -65,7 +65,7 @@
 				{#if importLabel}
 					<button
 						type="button"
-						class="flex items-center rounded-lg bg-gray-850 px-2 py-1 text-xs font-medium leading-none text-gray-200 transition hover:bg-gray-800"
+						class="flex scale-90 items-center rounded-lg bg-gray-850 px-2 py-0.1 text-[1px] font-medium leading-none text-gray-200 transition hover:bg-gray-800"
 						onclick={onImport}
 					>
 						{importLabel}

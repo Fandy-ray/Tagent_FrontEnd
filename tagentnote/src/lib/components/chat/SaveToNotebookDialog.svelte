@@ -122,7 +122,7 @@
 		></button>
 
 		<div
-			class="relative w-full max-w-md rounded-2xl border border-white/10 bg-[#242424] p-4 text-left shadow-2xl"
+			class="relative w-full max-w-md rounded-2xl border border-white/10 bg-gray-850 p-4 text-left shadow-2xl"
 			role="dialog"
 			aria-labelledby="save-to-notebook-title"
 		>

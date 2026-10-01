@@ -1,6 +1,9 @@
 <script lang="ts">
 	import Controls from '$lib/components/chat/Controls/Controls.svelte';
 	import type { MockMessage } from '$lib/components/chat/MockMessages.svelte';
+	import { getI18nContext } from '$lib/i18n';
+
+	const i18n = getI18nContext();
 
 	type Props = {
 		open?: boolean;
@@ -34,11 +37,11 @@
 
 {#if open}
 	<aside
-		class="relative z-30 flex h-full w-[min(100%,420px)] shrink-0 flex-col border-l border-white/5 bg-[#212121] shadow-[ -8px_0_24px_rgba(0,0,0,0.35)]"
+		class="relative z-30 flex h-full w-[min(100%,420px)] shrink-0 flex-col border-l border-white/5 bg-gray-850 shadow-[ -8px_0_24px_rgba(0,0,0,0.35)]"
 		id="controls-container"
-		aria-label="对话高级设置"
+		aria-label={$i18n.t('Chat Advanced Settings')}
 	>
-		<div class="flex h-full min-h-0 flex-col bg-[#212121]">
+		<div class="flex h-full min-h-0 flex-col bg-gray-850">
 			<div class="flex shrink-0 items-center justify-between gap-2 px-2 pt-2 pb-2">
 				<div class="flex min-w-0 flex-1 gap-1 overflow-x-auto">
 					<button
@@ -90,7 +93,7 @@
 			</div>
 
 			<div
-				class={`min-h-0 flex-1 bg-[#212121] ${
+				class={`min-h-0 flex-1 bg-gray-850 ${
 					activeTab === 'controls' ? 'overflow-y-auto px-3 pt-1 pb-4' : 'overflow-hidden'
 				}`}
 			>
