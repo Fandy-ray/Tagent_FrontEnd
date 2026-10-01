@@ -120,19 +120,19 @@
 	<title>知识笔记本 | TAgent</title>
 </svelte:head>
 
-<main class="relative h-screen w-screen overflow-hidden bg-[#080b0f]">
+<main class="relative h-screen w-screen overflow-hidden bg-gray-950">
 	{#key iframeKey}
 		<iframe
 			title="OpenNoteBook 知识工作空间"
 			src={openNotebookUrl}
-			class="block h-full w-full border-0 bg-[#171717]"
+			class="block h-full w-full border-0 bg-gray-900"
 			allow="clipboard-read; clipboard-write"
 		></iframe>
 	{/key}
 
 	{#if sourceCollection}
 		<div
-			class="absolute top-4 left-1/2 z-40 w-[min(92vw,36rem)] -translate-x-1/2 rounded-xl border border-cyan-400/20 bg-[#11161d]/95 px-4 py-3 text-sm text-gray-200 backdrop-blur"
+			class="absolute top-4 left-1/2 z-40 w-[min(92vw,36rem)] -translate-x-1/2 rounded-xl border border-cyan-400/20 bg-gray-950/95 px-4 py-3 text-sm text-gray-200 backdrop-blur"
 		>
 			{#if sourceFileTitle}
 				请在笔记本
@@ -147,8 +147,8 @@
 	{/if}
 
 	{#if status !== 'ready'}
-		<div class="absolute inset-0 z-40 flex items-center justify-center bg-[#080b0f]/92 px-6">
-			<div class="w-full max-w-lg rounded-2xl border border-white/10 bg-[#11161d] p-6 text-gray-200">
+		<div class="absolute inset-0 z-40 flex items-center justify-center bg-gray-950/92 px-6">
+			<div class="w-full max-w-lg rounded-2xl border border-white/10 bg-gray-950 p-6 text-gray-200">
 				<p class="text-xs font-medium uppercase tracking-[0.18em] text-cyan-400">
 					笔记本
 				</p>
@@ -190,7 +190,7 @@
 	{/if}
 
 	<div
-		class="fixed bottom-5 right-5 z-50 flex items-center overflow-hidden rounded-xl border border-white/15 bg-[#11161d]/95 shadow-2xl shadow-black/50 backdrop-blur-xl"
+		class="fixed bottom-5 right-5 z-50 flex items-center overflow-hidden rounded-xl border border-white/15 bg-gray-950/95 shadow-2xl shadow-black/50 backdrop-blur-xl"
 	>
 		<button
 			type="button"

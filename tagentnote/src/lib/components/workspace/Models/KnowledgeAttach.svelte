@@ -113,7 +113,7 @@
 
 		{#if showPicker}
 			<div
-				class="absolute top-full left-0 z-20 mt-1 max-h-56 min-w-56 overflow-y-auto rounded-xl border border-gray-800 bg-[#171717] p-2 shadow-xl"
+				class="absolute top-full left-0 z-20 mt-1 max-h-56 min-w-56 overflow-y-auto rounded-xl border border-gray-800 bg-gray-900 p-2 shadow-xl"
 			>
 				{#if options.length === 0}
 					<div class="px-2 py-2 text-xs text-gray-500">暂无知识库</div>

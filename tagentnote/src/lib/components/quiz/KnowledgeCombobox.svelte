@@ -215,7 +215,7 @@
 	{#if open}
 		<div
 			id="knowledge-combobox-list"
-			class="absolute inset-x-0 top-[calc(100%+6px)] z-20 max-h-72 overflow-y-auto rounded-xl border border-white/10 bg-[#242424] py-1 shadow-lg"
+			class="absolute inset-x-0 top-[calc(100%+6px)] z-20 max-h-72 overflow-y-auto rounded-xl border border-white/10 bg-gray-850 py-1 shadow-lg"
 			role="tree"
 			onmousedown={keepMenu}
 		>

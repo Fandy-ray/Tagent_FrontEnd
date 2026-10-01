@@ -133,18 +133,18 @@
 			aria-modal="true"
 			aria-label={title}
 		>
-			<div class="flex justify-between px-5 pt-4 pb-1 text-gray-300">
-				<div class="self-center text-lg font-medium">{title}</div>
+			<div class="flex justify-between px-5 pt-3 pb-1 text-gray-300">
+				<div class="self-center text-base font-medium">{title}</div>
 				<button type="button" class="self-center" onclick={onClose} aria-label="关闭">
-					<svg class="size-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+					<svg class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
 						<path stroke-linecap="round" d="M6 6l12 12M18 6L6 18"></path>
 					</svg>
 				</button>
 			</div>
 
-			<div class="flex w-full flex-col px-5 pb-4 text-gray-200">
-				<div class="mt-1 flex w-full flex-col">
-					<div class="mb-1 text-xs text-gray-500">分组名称</div>
+			<div class="flex w-full flex-col gap-1 px-5 pb-3 text-gray-200">
+				<div class="flex w-full flex-col">
+					<div class="mb-0.5 text-[11px] text-gray-500">分组名称</div>
 					<input
 						id="folder-name"
 						class="w-full bg-transparent text-sm outline-none placeholder:text-gray-600"
@@ -169,11 +169,11 @@
 					onchange={onPickBackground}
 				/>
 
-				<div class="mt-1 flex w-full items-center justify-between">
-					<div class="text-xs text-gray-500">分组背景图</div>
+				<div class="flex w-full items-center justify-between">
+					<div class="text-[11px] text-gray-500">分组背景图</div>
 					<button
 						type="button"
-						class="flex rounded-sm px-3 py-1 text-xs transition hover:bg-gray-800"
+						class="flex rounded-sm px-2.5 py-0.5 text-[11px] transition hover:bg-gray-800"
 						onclick={() => {
 							if (backgroundImageUrl !== null) backgroundImageUrl = null;
 							else fileInput?.click();
@@ -187,32 +187,32 @@
 
 				{#if backgroundImageUrl}
 					<div
-						class="mt-2 h-24 overflow-hidden rounded-xl border border-white/10 bg-cover bg-center"
+						class="mt-1 h-20 overflow-hidden rounded-xl border border-white/10 bg-cover bg-center"
 						style={`background-image:url(${backgroundImageUrl})`}
 					></div>
 				{/if}
 
-				<hr class="my-2.5 w-full border-gray-800/80" />
+				<hr class="my-1.5 w-full border-gray-800/80" />
 
-				<div class="my-1">
-					<div class="mb-2 text-xs text-gray-500">系统提示词</div>
+				<div>
+					<div class="mb-1 text-[11px] text-gray-500">系统提示词</div>
 					<textarea
-						class="max-h-[200px] min-h-[88px] w-full resize-y bg-transparent text-sm outline-none placeholder:text-gray-600"
+						class="max-h-[180px] min-h-[72px] w-full resize-y bg-transparent text-sm outline-none placeholder:text-gray-600"
 						placeholder={`请在此填写模型的系统提示词\n例如：你是《超级马里奥兄弟》中的马里奥（Mario），扮演助理的角色。`}
 						bind:value={systemPrompt}
 					></textarea>
 				</div>
 
-				<div class="my-2">
-					<div class="mb-2 flex w-full justify-between">
-						<div class="mb-1 text-xs text-gray-500">知识库</div>
+				<div>
+					<div class="mb-1 flex w-full justify-between">
+						<div class="text-[11px] text-gray-500">知识库</div>
 					</div>
 
 					{#if knowledgeItems.length > 0}
-						<div class="mb-2.5 flex flex-wrap items-center gap-2">
+						<div class="mb-1.5 flex flex-wrap items-center gap-1.5">
 							{#each knowledgeItems as item (item.id)}
 								<span
-									class="inline-flex max-w-full items-center gap-1 rounded-lg border border-white/10 bg-white/[0.04] px-2 py-1 text-xs text-gray-200"
+									class="inline-flex max-w-full items-center gap-1 rounded-lg border border-white/10 bg-white/[0.04] px-2 py-0.5 text-[11px] text-gray-200"
 								>
 									<span class="truncate">{item.name}</span>
 									<button
@@ -231,7 +231,7 @@
 					<div class="relative flex flex-row flex-wrap gap-1 text-sm">
 						<button
 							type="button"
-							class="rounded-full border border-white/15 bg-transparent px-3 py-1 text-xs text-gray-200 transition hover:bg-white/[0.06]"
+							class="rounded-full border border-white/15 bg-transparent px-2.5 py-0.5 text-[11px] text-gray-200 transition hover:bg-white/[0.06]"
 							onclick={() => {
 								showKnowledgePicker = !showKnowledgePicker;
 							}}
@@ -240,7 +240,7 @@
 						</button>
 						<button
 							type="button"
-							class="rounded-full border border-white/15 bg-transparent px-3 py-1 text-xs text-gray-200 transition hover:bg-white/[0.06]"
+							class="rounded-full border border-white/15 bg-transparent px-2.5 py-0.5 text-[11px] text-gray-200 transition hover:bg-white/[0.06]"
 							onclick={() => knowledgeFileInput?.click()}
 						>
 							上传文件
@@ -248,13 +248,13 @@
 
 						{#if showKnowledgePicker}
 							<div
-								class="absolute top-9 left-0 z-20 max-h-48 w-64 overflow-y-auto rounded-xl border border-white/10 bg-[#1f1f1f] py-1 shadow-xl"
+								class="absolute top-7 left-0 z-20 max-h-48 w-64 overflow-y-auto rounded-xl border border-white/10 bg-gray-900 py-1 shadow-xl"
 							>
 								{#if knowledgeOptions.length === 0}
-									<div class="px-3 py-2 text-xs text-gray-500">暂无可用知识库</div>
+									<div class="px-3 py-1.5 text-[11px] text-gray-500">暂无可用知识库</div>
 									<button
 										type="button"
-										class="w-full px-3 py-1.5 text-left text-xs text-sky-400 hover:bg-white/[0.06]"
+										class="w-full px-3 py-1.5 text-left text-[11px] text-sky-400 hover:bg-white/[0.06]"
 										onclick={() => {
 											showKnowledgePicker = false;
 											onOpenWorkspaceKnowledge();
@@ -266,7 +266,7 @@
 									{#each knowledgeOptions as option (option.id)}
 										<button
 											type="button"
-											class="flex w-full truncate px-3 py-1.5 text-left text-xs hover:bg-white/[0.06] disabled:opacity-40"
+											class="flex w-full truncate px-3 py-1.5 text-left text-[11px] hover:bg-white/[0.06] disabled:opacity-40"
 											disabled={knowledgeItems.some((item) => item.id === option.id)}
 											onclick={() => addKnowledge(option)}
 										>
@@ -286,15 +286,15 @@
 						onchange={onUploadKnowledgeFiles}
 					/>
 
-					<div class="mt-2 text-[11px] leading-4 text-gray-500">
+					<div class="mt-1.5 text-[10px] leading-4 text-gray-500">
 						如需在此处附加知识库，请先将其添加到工作空间中的“知识库”中
 					</div>
 				</div>
 
-				<div class="flex justify-end gap-1.5 pt-3 text-sm font-medium">
+				<div class="flex justify-end gap-1.5 pt-2 text-sm font-medium">
 					<button
 						type="button"
-						class="flex items-center rounded-full bg-white px-3.5 py-1.5 text-sm font-medium text-black transition hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-40"
+						class="flex items-center rounded-lg bg-white px-3 py-1 text-xs font-medium text-black transition hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-40"
 						disabled={!name.trim()}
 						onclick={submit}
 					>

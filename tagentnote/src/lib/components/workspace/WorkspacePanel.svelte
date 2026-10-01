@@ -49,7 +49,7 @@
 			{#if secondaryAction}
 				<button
 					type="button"
-					class="rounded-xl bg-[#242424] px-3 py-1.5 text-xs font-medium text-gray-200 transition hover:bg-gray-800"
+					class="rounded-xl bg-gray-850 px-3 py-1.5 text-xs font-medium text-gray-200 transition hover:bg-gray-800"
 					onclick={onSecondary}
 				>
 					{secondaryAction}
@@ -103,7 +103,7 @@
 		<div class="mt-10 mb-4">
 			<div class="mb-1 text-xl font-medium text-white">由 Open WebUI 社区开发</div>
 			<a
-				class="mb-2 flex w-full items-center justify-between rounded-xl px-3.5 py-1.5 transition hover:bg-[#242424]"
+				class="mb-2 flex w-full items-center justify-between rounded-xl px-3.5 py-1.5 transition hover:bg-gray-850"
 				href={footerHref || '#'}
 				target={footerHref ? '_blank' : undefined}
 				rel={footerHref ? 'noreferrer' : undefined}

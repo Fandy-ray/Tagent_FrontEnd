@@ -315,7 +315,7 @@
 				href="https://openwebui.com/models"
 				target="_blank"
 				rel="noopener noreferrer"
-				class="flex w-full items-center justify-between rounded-xl px-3.5 py-1.5 transition hover:bg-[#242424]"
+				class="flex w-full items-center justify-between rounded-xl px-3.5 py-1.5 transition hover:bg-gray-850"
 			>
 				<div>
 					<div class="font-medium text-gray-100">发现更多模型</div>

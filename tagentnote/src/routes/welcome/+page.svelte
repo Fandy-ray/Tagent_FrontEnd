@@ -11,7 +11,7 @@
 			// 本地存储不可用时保持当前主题
 		}
 
-		document.documentElement.classList.remove('light', 'system', 'her');
+		document.documentElement.classList.remove('light', 'dark', 'oled-dark', 'system');
 		document.documentElement.classList.add('dark');
 
 		const t1 = setTimeout(() => {

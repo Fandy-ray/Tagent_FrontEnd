@@ -1,9 +1,10 @@
 <script lang="ts">
 	type Props = {
 		className?: string;
+		strokeWidth?: string;
 	};
 
-	let { className = 'size-4' }: Props = $props();
+	let { className = 'size-4', strokeWidth = '2' }: Props = $props();
 </script>
 
 <svg
@@ -12,7 +13,7 @@
 	viewBox="0 0 24 24"
 	fill="none"
 	stroke="currentColor"
-	stroke-width="2"
+	stroke-width={strokeWidth}
 	stroke-linecap="round"
 	stroke-linejoin="round"
 	aria-hidden="true"

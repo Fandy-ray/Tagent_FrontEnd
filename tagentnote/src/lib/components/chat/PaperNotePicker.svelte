@@ -93,7 +93,7 @@
 
 	{#if open}
 		<div
-			class={`absolute left-0 z-40 w-full min-w-64 max-w-lg rounded-xl border border-white/10 bg-[#242424] p-2 shadow-2xl ${openUp ? 'bottom-[calc(100%+6px)]' : 'top-[calc(100%+6px)]'}`}
+			class={`absolute left-0 z-40 w-full min-w-64 max-w-lg rounded-xl border border-white/10 bg-gray-850 p-2 shadow-2xl ${openUp ? 'bottom-[calc(100%+6px)]' : 'top-[calc(100%+6px)]'}`}
 		>
 			<div class="mb-2 flex items-center gap-2">
 				<input

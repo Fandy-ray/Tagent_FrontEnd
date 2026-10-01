@@ -6,6 +6,9 @@
 	import Search from '$lib/components/icons/Search.svelte';
 	import type { QaChat } from '$lib/data/qaConversations';
 	import type { QaFolder } from '$lib/data/qaFolders';
+	import { getI18nContext } from '$lib/i18n';
+
+	const i18n = getI18nContext();
 
 	export type ChatSummary = {
 		id: string;
@@ -270,7 +273,7 @@
 </script>
 
 <aside
-	class="flex h-screen w-[260px] shrink-0 select-none flex-col overflow-hidden border-r border-white/[0.04] bg-[#111111] text-sm text-gray-200"
+	class="flex h-screen w-[260px] shrink-0 select-none flex-col overflow-hidden border-r border-white/[0.04] bg-gray-900 text-sm text-gray-200"
 >
 	<header class="flex h-12 shrink-0 items-center gap-2 px-2">
 		<button
@@ -280,7 +283,7 @@
 			title="返回选择智能体"
 			aria-label="返回选择智能体"
 		>
-			<div class="flex size-6 items-center justify-center rounded-full bg-white text-[8px] font-black text-black">
+			<div class="flex size-6 items-center justify-center rounded-full border border-black/20 bg-white text-[8px] font-black text-black dark:border-transparent">
 				OI
 			</div>
 		</button>
@@ -337,7 +340,7 @@
 					<path d="M12 20h9"></path>
 					<path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"></path>
 				</svg>
-				<span class="flex-1 text-left text-sm">新对话</span>
+				<span class="flex-1 text-left text-sm">{$i18n.t('New Chat')}</span>
 			</button>
 
 			<button
@@ -348,13 +351,13 @@
 					showSearch = true;
 				}}
 				draggable="false"
-				aria-label="搜索"
+				aria-label={$i18n.t('Search')}
 			>
 				<div class="self-center">
 					<Search strokeWidth="2" className="size-[18px]" />
 				</div>
 				<div class="flex flex-1 translate-y-[0.5px] self-center">
-					<div class="self-center text-sm">搜索</div>
+					<div class="self-center text-sm">{$i18n.t('Search')}</div>
 				</div>
 				<span
 					class="invisible rounded border border-white/10 px-1.5 py-0.5 text-[10px] text-gray-500 group-hover:visible"
@@ -363,7 +366,7 @@
 				</span>
 			</button>
 
-			<button type="button" class={navClass('notes')} onclick={onOpenNotes} title="打开笔记">
+			<button type="button" class={navClass('notes')} onclick={onOpenNotes} title={$i18n.t('Open Notes')}>
 				<svg
 					class="size-[18px] shrink-0"
 					viewBox="0 0 24 24"
@@ -381,14 +384,14 @@
 					<path d="M8 12h8"></path>
 					<path d="M8 16h5"></path>
 				</svg>
-				<span class="flex-1 text-left text-sm">笔记</span>
+				<span class="flex-1 text-left text-sm">{$i18n.t('Notes')}</span>
 			</button>
 
 			<button
 				type="button"
 				class={navClass('workspace')}
 				onclick={onOpenWorkspace}
-				title="打开工作空间"
+				title={$i18n.t('Open Workspace')}
 			>
 				<svg
 					class="size-[18px] shrink-0"
@@ -404,7 +407,7 @@
 						d="M13.5 16.875h3.375m0 0h3.375m-3.375 0V13.5m0 3.375v3.375M6 10.5h2.25a2.25 2.25 0 0 0 2.25-2.25V6a2.25 2.25 0 0 0-2.25-2.25H6A2.25 2.25 0 0 0 3.75 6v2.25A2.25 2.25 0 0 0 6 10.5Zm0 9.75h2.25A2.25 2.25 0 0 0 10.5 18v-2.25a2.25 2.25 0 0 0-2.25-2.25H6a2.25 2.25 0 0 0-2.25 2.25V18A2.25 2.25 0 0 0 6 20.25Zm9.75-9.75H18a2.25 2.25 0 0 0 2.25-2.25V6A2.25 2.25 0 0 0 18 3.75h-2.25A2.25 2.25 0 0 0 13.5 6v2.25a2.25 2.25 0 0 0 2.25 2.25Z"
 					></path>
 				</svg>
-				<span class="flex-1 text-left text-sm">工作空间</span>
+				<span class="flex-1 text-left text-sm">{$i18n.t('Workspace')}</span>
 			</button>
 
 		</nav>
@@ -421,13 +424,13 @@
 						localStorage.setItem('sidebar-folders-folder-state', String(showFolders));
 					}}
 				>
-					<span class="translate-y-[0.5px]">分组</span>
+					<span class="translate-y-[0.5px]">{$i18n.t('Folders')}</span>
 				</button>
 				<button
 					type="button"
 					class="absolute right-2 z-10 flex items-center rounded-md p-0.5 text-gray-400 opacity-0 transition group-hover:opacity-100 hover:text-white"
-					title="创建分组"
-					aria-label="创建分组"
+					title={$i18n.t('Create Folder')}
+					aria-label={$i18n.t('Create Folder')}
 					onclick={(e) => {
 						e.stopPropagation();
 						openCreateFolder(null);
@@ -480,14 +483,14 @@
 
 		<section>
 			<div class="flex items-center justify-between px-2.5 pb-2 pt-1">
-				<div class="text-xs font-medium text-gray-500">对话</div>
+				<div class="text-xs font-medium text-gray-500">{$i18n.t('Chats')}</div>
 				{#if selectedFolderId}
 					<button
 						type="button"
 						class="text-[10px] text-sky-400/90 hover:text-sky-300"
 						onclick={() => onSelectFolder(null)}
 					>
-						清除筛选
+						{$i18n.t('Clear Filters')}
 					</button>
 				{/if}
 			</div>
@@ -511,7 +514,7 @@
 					</button>
 				{/each}
 				{#if selectedChats.length === 0}
-					<p class="px-2.5 py-4 text-xs text-gray-500">当前分组暂无对话。新建对话将放入此分组。</p>
+					<p class="px-2.5 py-4 text-xs text-gray-500">{$i18n.t('No chats in this folder. New chats will be placed here.')}</p>
 				{/if}
 			{:else}
 				{#each groupedUnfiledChats as group (group.label)}
@@ -540,8 +543,8 @@
 									<button
 										type="button"
 										class="absolute top-1.5 right-1 rounded-md p-0.5 text-gray-500 opacity-0 group-hover:opacity-100 hover:bg-gray-800 hover:text-white"
-										title="移至分组"
-										aria-label="移至分组"
+										title={$i18n.t('Move to Folder')}
+										aria-label={$i18n.t('Move to Folder')}
 										onclick={(e) => {
 											e.stopPropagation();
 											openChatMenuId = openChatMenuId === chat.id ? null : chat.id;
@@ -558,7 +561,7 @@
 									</button>
 									{#if openChatMenuId === chat.id}
 										<div
-											class="absolute top-8 right-1 z-40 max-h-48 w-40 overflow-y-auto rounded-xl border border-white/10 bg-[#1f1f1f] py-1 shadow-xl"
+											class="absolute top-8 right-1 z-40 max-h-48 w-40 overflow-y-auto rounded-xl border border-white/10 bg-gray-900 py-1 shadow-xl"
 										>
 											{#each folders as folder (folder.id)}
 												<button
@@ -583,9 +586,9 @@
 				{#if unfiledChats.length === 0}
 					<p class="px-2.5 py-6 text-xs leading-5 text-gray-500">
 						{#if chats.length === 0}
-							还没有对话。提问后会出现在这里，刷新后仍会保留。
+							{$i18n.t('No chats yet. Questions will appear here and persist after refresh.')}
 						{:else}
-							对话都在分组中。点击上方分组查看。
+							{$i18n.t('All chats are in folders. Click on a folder above to view.')}
 						{/if}
 					</p>
 				{/if}
@@ -594,9 +597,6 @@
 	</div>
 
 	<footer class="relative shrink-0 px-1.5 pb-2 pt-4">
-		<div
-			class="pointer-events-none absolute inset-x-0 -top-8 h-12 bg-gradient-to-t from-gray-950 to-transparent"
-		></div>
 
 		<div class="relative">
 			<UserMenu
@@ -628,7 +628,7 @@
 								{avatarText}
 							</div>
 							<span
-								class="absolute -right-0.5 -bottom-0.5 size-2.5 rounded-full border-2 border-gray-950 bg-green-500"
+								class="absolute -right-0.5 -bottom-0.5 size-2.5 rounded-full border-2 border-gray-200 bg-green-500 dark:border-gray-950"
 							></span>
 						</div>
 						<div class="self-center font-medium text-gray-100">{userName}</div>
@@ -659,7 +659,7 @@
 
 <FolderModal
 	open={folderModalOpen}
-	title={folderModalMode === 'rename' ? '编辑分组' : folderModalMode === 'sub' ? '创建子分组' : '创建分组'}
+	title={folderModalMode === 'rename' ? $i18n.t('Edit Folder') : folderModalMode === 'sub' ? $i18n.t('Create Subfolder') : $i18n.t('Create Folder')}
 	initialName={folderModalDraft.name}
 	initialSystemPrompt={folderModalDraft.systemPrompt}
 	initialBackgroundImageUrl={folderModalDraft.backgroundImageUrl}
@@ -686,15 +686,15 @@
 			onclick={(e) => e.stopPropagation()}
 			role="dialog"
 			aria-modal="true"
-			aria-label="删除分组"
+			aria-label={$i18n.t('Delete Folder')}
 		>
-			<h3 class="text-base font-medium">要删除此分组吗？</h3>
+			<h3 class="text-base font-medium">{$i18n.t('Delete this folder?')}</h3>
 			<p class="mt-2 text-sm text-gray-400">
-				确定删除「{folders.find((f) => f.id === deleteTargetId)?.name ?? ''}」吗？
+				{$i18n.t('Are you sure you want to delete "{{NAME}}"?', { NAME: folders.find((f) => f.id === deleteTargetId)?.name ?? '' })}
 			</p>
 			<label class="mt-3 flex items-center gap-2 text-xs text-gray-400">
 				<input type="checkbox" bind:checked={deleteContents} />
-				删除此分组内的所有内容
+				{$i18n.t('Delete all contents in this folder')}
 			</label>
 			<div class="mt-4 flex justify-end gap-2">
 				<button
@@ -704,14 +704,14 @@
 						deleteConfirmOpen = false;
 					}}
 				>
-					取消
+					{$i18n.t('Cancel')}
 				</button>
 				<button
 					type="button"
 					class="rounded-xl bg-red-500/90 px-3 py-1.5 text-sm font-medium text-white hover:bg-red-500"
 					onclick={confirmDeleteFolder}
 				>
-					删除
+					{$i18n.t('Delete')}
 				</button>
 			</div>
 		</div>

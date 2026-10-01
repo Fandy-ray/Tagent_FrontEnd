@@ -48,7 +48,7 @@
 			const messageId = event.node.id;
 			if (messageId) onNodeClick(messageId);
 		}}
-		class="overview-flow bg-[#212121]"
+		class="overview-flow bg-gray-850"
 	>
 		<Controls showLock={false} position="bottom-left">
 			<ControlButton

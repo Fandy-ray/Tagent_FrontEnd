@@ -18,9 +18,10 @@
 	import MockNavbar from '$lib/components/chat/MockNavbar.svelte';
 	import MockPlaceholder from '$lib/components/chat/MockPlaceholder.svelte';
 	import MockSidebar from '$lib/components/chat/MockSidebar.svelte';
-	import ArchivedChatsModal from '$lib/components/chat/ArchivedChatsModal.svelte';
+	import ArchivedChatsModal from '$lib/components/layout/ArchivedChatsModal.svelte';
 	import SaveToNotebookDialog from '$lib/components/chat/SaveToNotebookDialog.svelte';
 	import SettingsModal from '$lib/components/chat/SettingsModal.svelte';
+	import DataControls from '$lib/components/chat/Settings/DataControls.svelte';
 	import ShortcutsModal from '$lib/components/chat/ShortcutsModal.svelte';
 	import { buildQaCitations, enrichCitationsWithPages } from '$lib/data/citations';
 	import {
@@ -103,6 +104,7 @@
 	);
 	let paperContext = $state<PaperContext>({ ...DEFAULT_PAPER_CONTEXT });
 	let settingsOpen = $state(false);
+	let dataOpen = $state(false);
 	let archivedOpen = $state(false);
 	let shortcutsOpen = $state(false);
 	let userSettings = $state<UserSettings>(loadUserSettings());
@@ -130,7 +132,8 @@
 			.map((chat) => ({
 				id: chat.id,
 				title: chat.title,
-				updatedAt: chat.updatedAt
+				updatedAt: chat.updatedAt,
+				archived: true
 			}))
 			.sort((a, b) => b.updatedAt - a.updatedAt)
 	);
@@ -596,13 +599,14 @@
 			}
 
 			if (event.key === 'Escape') {
-				if (settingsOpen || shortcutsOpen || changelogOpen || archivedOpen || saveOpen) {
+				if (settingsOpen || shortcutsOpen || changelogOpen || archivedOpen || saveOpen || dataOpen) {
 					event.preventDefault();
 					settingsOpen = false;
 					shortcutsOpen = false;
 					changelogOpen = false;
 					archivedOpen = false;
 					saveOpen = false;
+					dataOpen = false;
 					return;
 				}
 			}
@@ -793,6 +797,10 @@
 
 	const openSettings = () => {
 		settingsOpen = true;
+	};
+
+	const openDataPanel = () => {
+		dataOpen = true;
 	};
 
 	const handleSettingsChange = (next: UserSettings) => {
@@ -1833,7 +1841,7 @@
 	<title>{pageTitle}</title>
 </svelte:head>
 
-<main class="flex h-screen overflow-hidden bg-[#171717] text-white">
+<main class="flex h-screen overflow-hidden bg-gray-900 text-white">
 	{#if sidebarOpen}
 		<MockSidebar
 			{activeChatId}
@@ -1885,7 +1893,7 @@
 		/>
 	{/if}
 
-	<section class="relative flex min-h-0 min-w-0 flex-1 overflow-hidden bg-[#171717]">
+	<section class="relative flex min-h-0 min-w-0 flex-1 overflow-hidden bg-gray-900">
 		<div class="relative flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
 			<MockNavbar
 				{sidebarOpen}
@@ -1918,6 +1926,7 @@
 					controlsOpen = !controlsOpen;
 				}}
 				onSettings={openSettings}
+				onOpenData={openDataPanel}
 				onArchivedChats={openArchivedChats}
 				onPlayground={openPlayground}
 				onAdmin={openAdmin}
@@ -1944,7 +1953,7 @@
 
 			{#if assistMode === 'paper'}
 				<div
-					class="min-h-0 max-h-[calc(100vh-4rem)] shrink-0 overflow-y-auto overscroll-contain border-b border-white/[0.06] bg-[#171717] px-3 py-2 md:px-5"
+					class="min-h-0 max-h-[calc(100vh-4rem)] shrink-0 overflow-y-auto overscroll-contain border-b border-white/[0.06] bg-gray-900 px-3 py-2 md:px-5"
 				>
 					<PaperTaskCard
 						bind:title={paperTitle}
@@ -1974,7 +1983,7 @@
 						{#if selectedFolderId && selectedFolderName}
 							<div class="relative z-20 flex w-full justify-center pt-3">
 								<div
-									class="inline-flex items-center gap-2 rounded-full border border-white/10 bg-[#242424]/90 px-3 py-1 text-xs text-gray-300 backdrop-blur"
+									class="inline-flex items-center gap-2 rounded-full border border-white/10 bg-gray-900/90 px-3 py-1 text-xs text-gray-300 backdrop-blur"
 								>
 									分组 · {selectedFolderName}
 									<button
@@ -2022,7 +2031,7 @@
 					{#if temporaryChat}
 						<div class="relative z-20 flex justify-center pt-3">
 							<div
-								class="inline-flex items-center gap-2 rounded-full border border-white/10 bg-[#242424]/90 px-3 py-1 text-xs text-gray-400 backdrop-blur"
+								class="inline-flex items-center gap-2 rounded-full border border-white/10 bg-gray-900/90 px-3 py-1 text-xs text-gray-400 backdrop-blur"
 								title="此对话不会出现在历史记录中，消息也不会被保存。"
 							>
 								临时对话 · 不会写入历史
@@ -2093,8 +2102,8 @@
 						<div class="px-4 pb-1 text-center text-[11px] text-sky-400/80">联网搜索：始终开启</div>
 					{/if}
 
-					<div
-						class="relative z-10 shrink-0 bg-gradient-to-t from-gray-900 via-gray-900 to-transparent px-4 pt-4 pb-2"
+				<div
+						class="relative z-10 shrink-0 px-4 pt-4 pb-2"
 					>
 						<div
 							class={`mx-auto w-full ${userSettings.widescreenMode ? 'max-w-full' : 'max-w-3xl'}`}
@@ -2191,14 +2200,54 @@
 	}}
 />
 
-<ArchivedChatsModal
-	open={archivedOpen}
-	chats={archivedChats}
-	onClose={() => {
-		archivedOpen = false;
+<DataControls
+	allChats={[
+		...chats.map((chat) => ({
+			id: chat.id,
+			title: chat.title,
+			updatedAt: chat.updatedAt,
+			archived: chat.archived
+		}))
+	]}
+	files={[]}
+	onImport={importChatsFromFile}
+	onExport={exportAllChats}
+	onArchiveAll={archiveAllChats}
+	onDeleteAll={deleteAllChats}
+	onUnarchive={(id) => {
+		chats = chats.map((chat) => (chat.id === id ? { ...chat, archived: false } : chat));
+		persistChats();
 	}}
-	onUnarchive={unarchiveChat}
-	onOpenChat={openArchivedChat}
+	onUnshare={() => {
+		toast('该对话当前未生成分享链接');
+	}}
+	onDeleteChat={(id) => {
+		chats = chats.filter((chat) => chat.id !== id);
+		persistChats();
+	}}
+	onDeleteFile={() => {
+		/* mock：FilesModal 中删除文件暂无 mock 数据 */
+	}}
+	canExport={true}
+/>
+
+<ArchivedChatsModal
+	bind:show={archivedOpen}
+	chats={[
+		...chats.map((chat) => ({
+			id: chat.id,
+			title: chat.title,
+			updatedAt: chat.updatedAt,
+			archived: !!chat.archived
+		}))
+	]}
+	onUpdate={() => {
+		persistChats();
+	}}
+	onDelete={(id) => {
+		chats = chats.filter((chat) => chat.id !== id);
+		persistChats();
+	}}
 />
 
 <ShortcutsModal
@@ -2211,7 +2260,7 @@
 {#if changelogOpen}
 	<div class="fixed inset-0 z-[80] flex items-center justify-center bg-black/60 p-4">
 		<div
-			class="w-full max-w-md rounded-2xl border border-white/10 bg-[#1f1f1f] p-5 text-left shadow-xl"
+			class="w-full max-w-md rounded-2xl border border-white/10 bg-gray-900 p-5 text-left shadow-xl"
 		>
 			<h2 class="text-lg font-semibold text-white">新功能介绍</h2>
 			<p class="mt-2 text-sm leading-6 text-gray-400">
@@ -2234,7 +2283,7 @@
 
 {#if saveToast}
 	<div
-		class="fixed bottom-6 left-1/2 z-[70] -translate-x-1/2 rounded-xl border border-white/10 bg-[#242424] px-4 py-2 text-sm text-gray-100 shadow-lg"
+		class="fixed bottom-6 left-1/2 z-[70] -translate-x-1/2 rounded-xl border border-white/10 bg-gray-900 px-4 py-2 text-sm text-gray-100 shadow-lg"
 	>
 		{saveToast}
 	</div>

@@ -14,7 +14,7 @@
 		show = $bindable(false),
 		size = 'md',
 		containerClassName = 'p-3',
-		className = 'bg-[#171717]/95 backdrop-blur-sm rounded-[1.75rem]',
+		className = 'bg-gray-900/95 backdrop-blur-sm rounded-[1.75rem]',
 		children
 	}: Props = $props();
 

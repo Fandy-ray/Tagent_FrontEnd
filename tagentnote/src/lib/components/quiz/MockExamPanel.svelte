@@ -500,7 +500,7 @@
 
 <div
 	bind:this={rootEl}
-	class="flex h-full min-h-0 flex-col bg-[#242424] text-gray-100"
+	class="flex h-full min-h-0 flex-col bg-gray-850 text-gray-100"
 >
 	<div
 		class="flex shrink-0 items-center justify-between border-b border-white/[0.08] px-3.5 pt-3 pb-2"
@@ -517,7 +517,7 @@
 
 		<div class="flex min-w-0 items-center gap-1.5">
 			<select
-				class="h-8 min-w-0 max-w-52 rounded-lg border border-white/[0.18] bg-[#242424] px-2 text-xs text-gray-100 outline-none focus:border-blue-400 disabled:cursor-not-allowed disabled:opacity-60"
+				class="h-8 min-w-0 max-w-52 rounded-lg border border-white/[0.18] bg-gray-850 px-2 text-xs text-gray-100 outline-none focus:border-blue-400 disabled:cursor-not-allowed disabled:opacity-60"
 				bind:value={selectedModelId}
 				disabled={modelsLoading || phase !== 'idle' || availableModels.length === 0}
 				aria-label="测评模型"
@@ -690,7 +690,7 @@
 				<div class="flex min-h-0 min-w-0 flex-1 items-center justify-center">
 					{#key currentQuestion.id}
 						<div
-							class="relative h-full max-h-[640px] min-h-0 w-full overflow-hidden rounded-2xl border border-gray-700 bg-[#242424] shadow-sm"
+							class="relative h-full max-h-[640px] min-h-0 w-full overflow-hidden rounded-2xl border border-gray-700 bg-gray-850 shadow-sm"
 						>
 							<div class="absolute top-0 bottom-0 left-0 w-1 bg-blue-500"></div>
 
@@ -891,7 +891,7 @@
 				<div class="flex min-h-0 min-w-0 flex-1 items-center justify-center">
 					{#if resultIndex === 0}
 						<div
-							class="flex h-full max-h-[640px] w-full flex-col items-center justify-center overflow-y-auto rounded-2xl border border-gray-700 bg-[#242424] px-5 text-center"
+							class="flex h-full max-h-[640px] w-full flex-col items-center justify-center overflow-y-auto rounded-2xl border border-gray-700 bg-gray-850 px-5 text-center"
 						>
 							<div
 								class="mb-3 font-mono text-xs tracking-[0.2em] text-gray-500 uppercase"
@@ -929,7 +929,7 @@
 						</div>
 					{:else if currentResult}
 						<div
-							class="h-full max-h-[640px] min-h-0 w-full overflow-hidden rounded-2xl border border-gray-700 bg-[#242424] shadow-sm"
+							class="h-full max-h-[640px] min-h-0 w-full overflow-hidden rounded-2xl border border-gray-700 bg-gray-850 shadow-sm"
 						>
 							<div
 								class={`h-full min-h-0 ${

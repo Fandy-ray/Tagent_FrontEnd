@@ -18,7 +18,7 @@
 	<title>智能测评 | TAgent</title>
 </svelte:head>
 
-<div class="min-h-[100dvh] w-full bg-[#171717] text-gray-100">
+<div class="min-h-[100dvh] w-full bg-gray-900 text-gray-100">
 	<div class="mx-auto flex h-[100dvh] max-w-6xl flex-col">
 		<div class="flex shrink-0 items-center justify-between px-4 pt-3">
 			<button

@@ -6,7 +6,7 @@
 	<title>管理员面板 | TAgent</title>
 </svelte:head>
 
-<main class="flex min-h-screen items-center justify-center bg-[#171717] px-4 text-white">
+<main class="flex min-h-screen items-center justify-center bg-gray-900 px-4 text-white">
 	<div class="w-full max-w-md rounded-2xl border border-gray-800 bg-gray-850 p-6 text-center">
 		<h1 class="text-xl font-medium">管理员面板</h1>
 		<p class="mt-3 text-sm leading-6 text-gray-400">

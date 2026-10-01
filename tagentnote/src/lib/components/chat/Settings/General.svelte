@@ -1,5 +1,9 @@
 <script lang="ts">
-	import { applyTheme, type UserSettings } from '$lib/data/userSettings';
+	import type { UserSettings } from '$lib/data/userSettings';
+	import languages from '$lib/i18n/locales/languages.json';
+	import { getI18nContext, changeLanguage } from '$lib/i18n';
+
+	const i18n = getI18nContext();
 
 	type Props = {
 		settings: UserSettings;
@@ -8,6 +12,40 @@
 	};
 
 	let { settings, saveSettings, onSave = () => {} }: Props = $props();
+
+	// Theme
+	const themes = ['dark', 'light', 'oled-dark', 'system'];
+
+	const applyTheme = (_theme: string) => {
+		const root = document.documentElement;
+
+		// 移除所有主题类
+		themes.forEach((t) => root.classList.remove(t));
+
+		// 重置 CSS 变量
+		root.style.removeProperty('--color-gray-800');
+		root.style.removeProperty('--color-gray-850');
+		root.style.removeProperty('--color-gray-900');
+		root.style.removeProperty('--color-gray-950');
+
+		let themeToApply = _theme;
+
+		if (_theme === 'oled-dark') {
+			root.style.setProperty('--color-gray-800', '#101010');
+			root.style.setProperty('--color-gray-850', '#050505');
+			root.style.setProperty('--color-gray-900', '#000000');
+			root.style.setProperty('--color-gray-950', '#000000');
+			themeToApply = 'dark';
+		} else if (_theme === 'dark') {
+			root.style.setProperty('--color-gray-800', '#333');
+			root.style.setProperty('--color-gray-850', '#262626');
+			root.style.setProperty('--color-gray-900', '#171717');
+			root.style.setProperty('--color-gray-950', '#0d0d0d');
+			themeToApply = 'dark';
+		}
+
+		root.classList.add(themeToApply);
+	};
 
 	const buildParams = (source: Record<string, any> = {}) => {
 		const next = { ...source };
@@ -60,6 +98,12 @@
 		selectedTheme = theme;
 		applyTheme(theme);
 		await saveSettings({ theme });
+	};
+
+	const langChangeHandler = async (newLang: string) => {
+		lang = newLang;
+		changeLanguage(newLang);
+		await saveSettings({ language: newLang });
 	};
 
 	const toggleNotification = async () => {
@@ -140,40 +184,42 @@
 <div class="flex h-full min-h-0 flex-col justify-between text-sm" id="tab-general">
 	<div class="min-h-0 flex-1 overflow-y-auto pr-1">
 		<div>
-			<div class="mb-1 text-sm font-medium">WebUI 设置</div>
+			<div class="mb-1 text-sm font-medium">{$i18n.t('WebUI Settings')}</div>
 
 			<div class="flex w-full justify-between">
-				<div class="self-center text-xs font-medium">主题</div>
+				<div class="self-center text-xs font-medium">{$i18n.t('Theme')}</div>
 				<div class="relative flex items-center">
 					<select
 						class="w-fit rounded-sm bg-transparent px-2 py-2 pr-8 text-right text-xs outline-none"
 						bind:value={selectedTheme}
 						onchange={() => themeChangeHandler(selectedTheme)}
 					>
-						<option value="system" class="bg-gray-800">⚙️ 系统</option>
-						<option value="dark" class="bg-gray-800">🌑 暗色</option>
-						<option value="oled-dark" class="bg-gray-800">🌃 漆黑</option>
-						<option value="light" class="bg-gray-800">☀️ 浅色</option>
+						<option value="system" class="bg-gray-800">⚙️ {$i18n.t('System')}</option>
+						<option value="dark" class="bg-gray-800">🌑 {$i18n.t('Dark')}</option>
+						<option value="oled-dark" class="bg-gray-800">🌃 {$i18n.t('OLED Dark')}</option>
+						<option value="light" class="bg-gray-800">☀️ {$i18n.t('Light')}</option>
 					</select>
 				</div>
 			</div>
 
 			<div class="flex w-full justify-between">
-				<div class="self-center text-xs font-medium">语言</div>
+				<div class="self-center text-xs font-medium">{$i18n.t('Language')}</div>
 				<div class="relative flex items-center">
 					<select
 						class="w-fit rounded-sm bg-transparent px-2 py-2 pr-8 text-right text-xs outline-none"
 						bind:value={lang}
+						onchange={(e) => langChangeHandler((e.target as HTMLSelectElement).value)}
 					>
-						<option value="zh-CN" class="bg-gray-800">Chinese (简体中文)</option>
-						<option value="en-US" class="bg-gray-800">English (US)</option>
+						{#each languages as language}
+							<option value={language.code}>{language.title}</option>
+						{/each}
 					</select>
 				</div>
 			</div>
 
 			<div>
 				<div class="flex w-full justify-between py-0.5">
-					<div class="self-center text-xs font-medium">桌面通知</div>
+					<div class="self-center text-xs font-medium">{$i18n.t('Desktop Notification')}</div>
 					<button
 						class="flex rounded-sm px-3 py-1 text-xs transition"
 						onclick={toggleNotification}
@@ -182,9 +228,9 @@
 						aria-checked={notificationEnabled}
 					>
 						{#if notificationEnabled}
-							<span class="ml-2 self-center">开启</span>
+							<span class="ml-2 self-center">{$i18n.t('Enabled')}</span>
 						{:else}
-							<span class="ml-2 self-center">关闭</span>
+							<span class="ml-2 self-center">{$i18n.t('Disabled')}</span>
 						{/if}
 					</button>
 				</div>
@@ -194,32 +240,32 @@
 		<hr class="my-3 border-gray-850/30" />
 
 		<div>
-			<div class="my-2.5 text-sm font-medium">系统提示词</div>
+			<div class="my-2.5 text-sm font-medium">{$i18n.t('System Prompt')}</div>
 			<textarea
 				bind:value={system}
 				class="w-full resize-y bg-transparent text-sm text-gray-300 outline-none"
 				rows="4"
-				placeholder="在这里输入系统提示词"
+				placeholder={$i18n.t('System Prompt Placeholder')}
 			></textarea>
 		</div>
 
 		<div class="mt-2 space-y-3 pr-1.5">
 			<div class="flex items-center justify-between text-sm">
-				<div class="font-medium">高级参数</div>
+				<div class="font-medium">{$i18n.t('Advanced Parameters Title')}</div>
 				<button
 					class="text-xs font-medium text-gray-500 hover:text-gray-300"
 					type="button"
 					aria-expanded={showAdvanced}
 					onclick={toggleAdvanced}
 				>
-					{showAdvanced ? '隐藏' : '显示'}
+					{showAdvanced ? $i18n.t('Hide') : $i18n.t('Show')}
 				</button>
 			</div>
 
 			{#if showAdvanced}
 				<div id="settings-advanced-params" class="pb-4 text-gray-200">
 					{#if advancedLoading || !AdvancedParamsComp}
-						<p class="py-3 text-xs text-gray-500">正在加载高级参数…</p>
+						<p class="py-3 text-xs text-gray-500">{$i18n.t('Loading Advanced Params')}</p>
 					{:else}
 						<AdvancedParamsComp admin={true} custom={true} bind:params />
 					{/if}
@@ -234,7 +280,7 @@
 			onclick={saveHandler}
 			type="button"
 		>
-			保存
+			{$i18n.t('Save')}
 		</button>
 	</div>
 </div>

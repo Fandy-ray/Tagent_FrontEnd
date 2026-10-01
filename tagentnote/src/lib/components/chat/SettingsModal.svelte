@@ -21,6 +21,9 @@
 		type UserSettings
 	} from '$lib/data/userSettings';
 	import { tick, type Component } from 'svelte';
+	import { getI18nContext } from '$lib/i18n';
+
+	const i18n = getI18nContext();
 
 	type TabId =
 		| 'general'
@@ -68,18 +71,31 @@
 	let lazyTabs = $state<Partial<Record<TabId, Component<any>>>>({});
 
 	const allTabs: { id: TabId; title: string; keywords: string[] }[] = [
-		{ id: 'general', title: '通用', keywords: ['general', '主题', '语言', '通知', '系统提示', '高级参数', 'theme'] },
-		{ id: 'interface', title: '界面', keywords: ['interface', '界面', '宽屏', '气泡', '缩放'] },
-		{ id: 'connections', title: '外部连接', keywords: ['connections', '外部连接', 'openai', 'api'] },
-		{ id: 'tools', title: '扩展功能', keywords: ['integrations', '扩展功能', '工具', 'openapi'] },
-		{ id: 'personalization', title: '个性化', keywords: ['personalization', '个性化', '记忆'] },
-		{ id: 'audio', title: '语音', keywords: ['audio', '语音', 'stt', 'tts'] },
-		{ id: 'data_controls', title: '数据', keywords: ['data', '数据', '导入', '导出', '归档'] },
-		{ id: 'account', title: '账号', keywords: ['account', '账号', '名称', '头像'] },
-		{ id: 'about', title: '关于', keywords: ['about', '关于', '版本'] }
+		{ id: 'general', title: 'General', keywords: ['general', 'theme', 'language', 'notification', 'system prompt', 'advanced params', '通用', '主题', '语言', '通知', '系统提示', '高级参数'] },
+		{ id: 'interface', title: 'Interface', keywords: ['interface', 'wide', 'bubble', 'zoom', '界面', '宽屏', '气泡', '缩放'] },
+		{ id: 'connections', title: 'Connections', keywords: ['connections', 'external', 'openai', 'api', '外部连接', '连接'] },
+		{ id: 'tools', title: 'Extensions', keywords: ['integrations', 'extensions', 'tools', 'openapi', '扩展功能', '工具'] },
+		{ id: 'personalization', title: 'Personalization', keywords: ['personalization', 'memory', '个性化', '记忆'] },
+		{ id: 'audio', title: 'Audio', keywords: ['audio', 'voice', 'stt', 'tts', '语音'] },
+		{ id: 'data_controls', title: 'Data', keywords: ['data', 'import', 'export', 'archive', '数据', '导入', '导出', '归档'] },
+		{ id: 'account', title: 'Account', keywords: ['account', 'name', 'avatar', '账号', '名称', '头像'] },
+		{ id: 'about', title: 'About', keywords: ['about', 'version', '关于', '版本'] }
 	];
 
 	let filteredIds = $state<TabId[]>(allTabs.map((t) => t.id));
+
+	// Tab titles with i18n
+	const tabTitles: Record<TabId, string> = $derived({
+		general: $i18n.t('General'),
+		interface: $i18n.t('Interface'),
+		connections: $i18n.t('Connections'),
+		tools: $i18n.t('Extensions'),
+		personalization: $i18n.t('个性化'),
+		audio: $i18n.t('音频'),
+		data_controls: $i18n.t('数据'),
+		account: $i18n.t('Account'),
+		about: $i18n.t('About')
+	});
 
 	const tabLoaders: Partial<Record<TabId, () => Promise<{ default: Component<any> }>>> = {
 		interface: () => import('$lib/components/chat/Settings/Interface.svelte'),
@@ -205,14 +221,14 @@
 			role="dialog"
 			tabindex="-1"
 			aria-modal="true"
-			aria-label="设置"
+			aria-label={$i18n.t('Settings')}
 		>
 			<div class="flex justify-between px-4 pt-4.5 pb-0.5 text-gray-300 md:px-4.5 md:pb-2.5">
-				<div class="self-center text-lg font-medium">设置</div>
+				<div class="self-center text-lg font-medium">{$i18n.t('Settings')}</div>
 				<button
 					type="button"
 					class="self-center"
-					aria-label="关闭设置"
+					aria-label={$i18n.t('Close')}
 					onclick={onClose}
 				>
 					<XMark className="h-5 w-5" />
@@ -232,7 +248,7 @@
 						<div class="self-center rounded-l-xl bg-transparent">
 							<Search className="size-3.5" strokeWidth="1.5" />
 						</div>
-						<label class="sr-only" for="search-input-settings-modal">搜索</label>
+						<label class="sr-only" for="search-input-settings-modal">{$i18n.t('Search')}</label>
 						<input
 							class="w-full bg-transparent py-1 text-sm outline-none"
 							bind:value={search}
@@ -253,7 +269,7 @@
 									onclick={() => { void selectTab('general'); }}
 								>
 									<div class="mr-2 self-center"><SettingsAlt strokeWidth="2" /></div>
-									<div class="self-center">通用</div>
+									<div class="self-center">{tabTitles.general}</div>
 								</button>
 							{:else if tabId === 'interface'}
 								<button
@@ -264,7 +280,7 @@
 									onclick={() => { void selectTab('interface'); }}
 								>
 									<div class="mr-2 self-center"><AppNotification strokeWidth="2" /></div>
-									<div class="self-center">界面</div>
+									<div class="self-center">{tabTitles.interface}</div>
 								</button>
 							{:else if tabId === 'connections'}
 								<button
@@ -275,7 +291,7 @@
 									onclick={() => { void selectTab('connections'); }}
 								>
 									<div class="mr-2 self-center"><Link strokeWidth="2" /></div>
-									<div class="self-center">外部连接</div>
+									<div class="self-center">{tabTitles.connections}</div>
 								</button>
 							{:else if tabId === 'tools'}
 								<button
@@ -286,7 +302,7 @@
 									onclick={() => { void selectTab('tools'); }}
 								>
 									<div class="mr-2 self-center"><WrenchAlt strokeWidth="2" /></div>
-									<div class="self-center">扩展功能</div>
+									<div class="self-center">{tabTitles.tools}</div>
 								</button>
 							{:else if tabId === 'personalization'}
 								<button
@@ -297,7 +313,7 @@
 									onclick={() => { void selectTab('personalization'); }}
 								>
 									<div class="mr-2 self-center"><Face strokeWidth="2" /></div>
-									<div class="self-center">个性化</div>
+									<div class="self-center">{tabTitles.personalization}</div>
 								</button>
 							{:else if tabId === 'audio'}
 								<button
@@ -308,7 +324,7 @@
 									onclick={() => { void selectTab('audio'); }}
 								>
 									<div class="mr-2 self-center"><SoundHigh strokeWidth="2" /></div>
-									<div class="self-center">语音</div>
+									<div class="self-center">{tabTitles.audio}</div>
 								</button>
 							{:else if tabId === 'data_controls'}
 								<button
@@ -319,7 +335,7 @@
 									onclick={() => { void selectTab('data_controls'); }}
 								>
 									<div class="mr-2 self-center"><DatabaseSettings strokeWidth="2" /></div>
-									<div class="self-center">数据</div>
+									<div class="self-center">{tabTitles.data_controls}</div>
 								</button>
 							{:else if tabId === 'account'}
 								<button
@@ -330,7 +346,7 @@
 									onclick={() => { void selectTab('account'); }}
 								>
 									<div class="mr-2 self-center"><UserCircle strokeWidth="2" /></div>
-									<div class="self-center">账号</div>
+									<div class="self-center">{tabTitles.account}</div>
 								</button>
 							{:else if tabId === 'about'}
 								<button
@@ -341,12 +357,12 @@
 									onclick={() => { void selectTab('about'); }}
 								>
 									<div class="mr-2 self-center"><InfoCircle strokeWidth="2" /></div>
-									<div class="self-center">关于</div>
+									<div class="self-center">{tabTitles.about}</div>
 								</button>
 							{/if}
 						{/each}
 					{:else}
-						<div class="mt-4 text-center text-gray-500">无匹配结果</div>
+						<div class="mt-4 text-center text-gray-500">{$i18n.t('No results found')}</div>
 					{/if}
 
 					{#if userRole === 'admin'}
@@ -362,7 +378,7 @@
 							}}
 						>
 							<div class="mr-2 self-center"><UserBadgeCheck strokeWidth="2" /></div>
-							<div class="self-center">管理员设置</div>
+							<div class="self-center">{$i18n.t('Admin Settings')}</div>
 						</a>
 					{/if}
 				</div>
@@ -374,17 +390,15 @@
 						<General {settings} {saveSettings} onSave={notifySaved} />
 					{:else if selectedTab === 'data_controls'}
 						<DataControls
+							allChats={[]}
+							files={[]}
 							onImport={onImportChats}
 							onExport={onExportChats}
 							onArchiveAll={onArchiveAllChats}
 							onDeleteAll={onDeleteAllChats}
-							onOpenArchived={() => {
-								onClose();
-								onOpenArchived();
-							}}
 						/>
 					{:else if tabLoading && !lazyTabs[selectedTab]}
-						<p class="py-6 text-xs text-gray-500">加载中…</p>
+						<p class="py-6 text-xs text-gray-500">{$i18n.t('Loading...')}</p>
 					{:else if lazyTabs[selectedTab]}
 						{@const Tab = lazyTabs[selectedTab]}
 						{#if selectedTab === 'about'}
