@@ -33,8 +33,12 @@ class FakeLLM:
         return FakeResponse(f"{self.model}:{question}")
 
     def stream(self, _messages):
-        for token in [self.model, "-stream"]:
-            yield FakeResponse(token)
+        # 和真实的 ChatOpenAI 一样：流正常结束时最后一块带 finish_reason。
+        # 没有它就是流被截断了，服务端会补一句「回答中断」（见 tests/test_chat_mode.py）。
+        yield FakeResponse(self.model)
+        final = FakeResponse("-stream")
+        final.response_metadata = {"finish_reason": "stop"}
+        yield final
 
 
 class FakeClientFactory:

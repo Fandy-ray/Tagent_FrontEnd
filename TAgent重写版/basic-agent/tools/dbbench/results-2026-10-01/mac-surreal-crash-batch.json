@@ -1,0 +1,11 @@
+{
+  "db": "SurrealDB",
+  "mode": "batch",
+  "killed": "数据库服务 kill -9",
+  "acked": 35000,
+  "stored": 35000,
+  "lost_acked": 0,
+  "recovery_s": 0.86,
+  "partial_batches": 0,
+  "ok": true
+}

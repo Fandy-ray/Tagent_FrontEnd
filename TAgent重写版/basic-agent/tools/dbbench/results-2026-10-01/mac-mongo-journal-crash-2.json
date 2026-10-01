@@ -1,0 +1,10 @@
+{
+  "db": "MongoDB",
+  "mode": "single",
+  "killed": "数据库服务 kill -9",
+  "acked": 5551,
+  "stored": 5551,
+  "lost_acked": 0,
+  "recovery_s": 1.33,
+  "ok": true
+}

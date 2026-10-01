@@ -33,23 +33,25 @@ EMBEDDING_MODEL = "shibing624/text2vec-base-chinese"
 
 
 def _load_default_embeddings():
-    """优先用本机 Hugging Face 缓存，避免启动时再打镜像（国内 SSL 经常直接断）。"""
+    """优先只读本机 Hugging Face 缓存，缓存里没有才联网下载。
+
+    以前用 snapshot_download(local_files_only=True) 判断缓存在不在，但它按模型仓库的
+    **完整**文件清单核对：这个仓库还带 onnx / openvino 等我们用不到的文件，缓存里没有，
+    于是每次都被判「缓存不完整」而改走联网——联网时启动慢（实测 27.7 秒后仍然失败），
+    断网时直接失败，本地教材检索跟着不能用。其实 sentence-transformers 要的权重、
+    分词器、池化配置都在缓存里，让它自己只读本地，断网也是 3 秒左右加载完。
+    """
     from langchain_huggingface import HuggingFaceEmbeddings
 
-    model_name = EMBEDDING_MODEL
     try:
-        from huggingface_hub import snapshot_download
-
-        model_name = snapshot_download(EMBEDDING_MODEL, local_files_only=True)
-        log.info("嵌入模型走本地缓存：%s", model_name)
-    except Exception as exc:
-        log.warning(
-            "本地缓存不可用（%s），改为联网下载 %s",
-            exc,
-            EMBEDDING_MODEL,
+        embeddings = HuggingFaceEmbeddings(
+            model_name=EMBEDDING_MODEL, model_kwargs={"local_files_only": True}
         )
-        model_name = EMBEDDING_MODEL
-    return HuggingFaceEmbeddings(model_name=model_name)
+        log.info("嵌入模型走本地缓存：%s", EMBEDDING_MODEL)
+        return embeddings
+    except Exception as exc:
+        log.warning("本地缓存里没有可用的嵌入模型（%s），改为联网下载 %s", exc, EMBEDDING_MODEL)
+    return HuggingFaceEmbeddings(model_name=EMBEDDING_MODEL)
 
 
 class KnowledgeBase:

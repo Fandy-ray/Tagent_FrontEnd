@@ -1,0 +1,38 @@
+{
+  "db": "SQLite（调优+写锁）",
+  "phases": {
+    "mixed_8_threads": {
+      "threads": 8,
+      "seconds": 10.01,
+      "ops": 27207,
+      "ops_per_s": 2717.7,
+      "errors": 0,
+      "error_samples": [],
+      "p50_ms": 3.543,
+      "p95_ms": 5.423,
+      "p99_ms": 6.237
+    },
+    "mixed_32_threads": {
+      "threads": 32,
+      "seconds": 10.03,
+      "ops": 18215,
+      "ops_per_s": 1816.8,
+      "errors": 0,
+      "error_samples": [],
+      "p50_ms": 22.596,
+      "p95_ms": 29.764,
+      "p99_ms": 33.449
+    },
+    "mixed_64_threads": {
+      "threads": 64,
+      "seconds": 10.04,
+      "ops": 17403,
+      "ops_per_s": 1734.0,
+      "errors": 0,
+      "error_samples": [],
+      "p50_ms": 44.026,
+      "p95_ms": 59.186,
+      "p99_ms": 66.179
+    }
+  }
+}

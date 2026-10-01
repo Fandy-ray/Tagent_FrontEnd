@@ -1,0 +1,50 @@
+{
+  "db": "SQLite（调优+写锁）",
+  "phases": {
+    "mixed_8_threads": {
+      "threads": 8,
+      "seconds": 10.01,
+      "ops": 19769,
+      "ops_per_s": 1974.1,
+      "errors": 2115,
+      "error_samples": [
+        "IntegrityError: UNIQUE constraint failed: messages.id",
+        "IntegrityError: UNIQUE constraint failed: messages.id",
+        "IntegrityError: UNIQUE constraint failed: messages.id"
+      ],
+      "p50_ms": 4.506,
+      "p95_ms": 7.497,
+      "p99_ms": 8.924
+    },
+    "mixed_32_threads": {
+      "threads": 32,
+      "seconds": 10.04,
+      "ops": 9527,
+      "ops_per_s": 949.3,
+      "errors": 1366,
+      "error_samples": [
+        "IntegrityError: UNIQUE constraint failed: messages.id",
+        "IntegrityError: UNIQUE constraint failed: messages.id",
+        "IntegrityError: UNIQUE constraint failed: messages.id"
+      ],
+      "p50_ms": 39.805,
+      "p95_ms": 49.346,
+      "p99_ms": 54.062
+    },
+    "mixed_64_threads": {
+      "threads": 64,
+      "seconds": 10.06,
+      "ops": 9489,
+      "ops_per_s": 943.2,
+      "errors": 1383,
+      "error_samples": [
+        "IntegrityError: UNIQUE constraint failed: messages.id",
+        "IntegrityError: UNIQUE constraint failed: messages.id",
+        "IntegrityError: UNIQUE constraint failed: messages.id"
+      ],
+      "p50_ms": 78.279,
+      "p95_ms": 97.522,
+      "p99_ms": 106.05
+    }
+  }
+}

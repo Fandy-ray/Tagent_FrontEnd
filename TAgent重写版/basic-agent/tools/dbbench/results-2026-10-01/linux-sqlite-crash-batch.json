@@ -1,0 +1,12 @@
+{
+  "db": "SQLite",
+  "mode": "batch",
+  "killed": "写入进程 kill -9",
+  "acked": 65000,
+  "stored": 65000,
+  "lost_acked": 0,
+  "recovery_s": 0.0,
+  "partial_batches": 0,
+  "integrity_check": "ok",
+  "ok": true
+}

@@ -321,3 +321,48 @@ def test_connection_error_is_not_reported_as_a_structure_problem():
 
     assert "连不上模型服务" in str(excinfo.value)
     assert "结构异常" not in str(excinfo.value)
+
+
+class _Status:
+    """上游明确回了错误码（HTTP 4xx/5xx），不是连不上、也不是输出坏了。"""
+
+    def __init__(self, status):
+        self.status = status
+        self.calls = 0
+
+    def bind(self, **_kwargs):
+        return self
+
+    async def ainvoke(self, _prompt):
+        self.calls += 1
+        response = httpx.Response(self.status, request=httpx.Request("POST", "http://upstream/v1/chat/completions"))
+        raise openai.APIStatusError("upstream said no", response=response, body=None)
+
+
+def _call(llm):
+    return call_json_llm(llm, "prompt", Payload, attempt_timeout=1.0, budget_seconds=30.0)
+
+
+def test_upstream_5xx_is_reported_as_unavailable_not_as_bad_output():
+    # 压测 S5：上游 500 以前被报成「AI 输出结构异常」，会把人引去查 prompt
+    llm = _Status(500)
+    with pytest.raises(UpstreamLLMError) as excinfo:
+        _call(llm)
+    assert "暂时不可用" in str(excinfo.value)
+    assert "结构异常" not in str(excinfo.value)
+    assert llm.calls == 2, "5xx 可能是一时的，按原来的规矩重试一次"
+
+
+def test_rejected_key_fails_fast_without_retrying():
+    llm = _Status(401)
+    with pytest.raises(UpstreamLLMError) as excinfo:
+        _call(llm)
+    assert "Key" in str(excinfo.value)
+    assert llm.calls == 1, "Key 不对重试也一样，别再白等一轮"
+
+
+def test_upstream_rate_limit_is_named_as_such():
+    with pytest.raises(UpstreamLLMError) as excinfo:
+        _call(_Status(429))
+    assert "限流" in str(excinfo.value)
+

@@ -3,7 +3,7 @@
 	import { onDestroy, onMount } from 'svelte';
 
 	import { getAgentModels } from '$lib/apis/agent';
-	import { type ExamMode } from '$lib/data/exam';
+	import { clearFullExam, loadFullExam, type ExamMode, type SavedFullExam } from '$lib/data/exam';
 	import ExamModePicker from '$lib/components/quiz/ExamModePicker.svelte';
 	import FlashcardPanel from '$lib/components/quiz/FlashcardPanel.svelte';
 	import FullExamPanel from '$lib/components/quiz/FullExamPanel.svelte';
@@ -56,6 +56,8 @@
 	let running = $state<'' | ExamMode>('');
 	/** 只用来强制重挂面板：同一个模式再来一局时 {#if} 分支不变，靠它触发重建 */
 	let runToken = $state(0);
+	/** 刷新前正在做的整卷（同一标签页的存档）。有它就直接回到那张卷，不回首屏、不重新出卷 */
+	let resume = $state<SavedFullExam | null>(null);
 
 	let topic = $state('');
 	let selectedSourceKeys = $state<string[]>([]);
@@ -124,6 +126,9 @@
 	};
 
 	const backToPicker = () => {
+		// 主动离开这张卷：之后刷新不该再把人拉回来
+		resume = null;
+		clearFullExam();
 		running = '';
 		panelTitle = '';
 	};
@@ -135,6 +140,8 @@
 	 * 触发重挂，取决于它和 Svelte 的 flush 谁先跑到，属于碰运气。
 	 */
 	const switchRunningMode = (next: ExamMode) => {
+		resume = null;
+		clearFullExam();
 		pickMode(next);
 		panelTitle = '';
 		errorMsg = '';
@@ -161,6 +168,16 @@
 
 	onMount(() => {
 		document.addEventListener('fullscreenchange', onFullscreenChange);
+
+		// 整卷答到一半刷新了：接着做。这和「刷新不自动开跑」不冲突——那条是怕误刷新白花一轮
+		// 模型调用，这里只是把本地存档摆回来，一次调用都不花
+		const saved = loadFullExam();
+		if (saved) {
+			resume = saved;
+			mode = 'full';
+			running = 'full';
+			runToken += 1;
+		}
 
 		if (rootEl) {
 			resizeObserver = new ResizeObserver(([entry]) => {
@@ -318,9 +335,10 @@
 				/>
 			{:else if running === 'full'}
 				<FullExamPanel
-					modelId={selectedModelId}
-					{topic}
-					{notebookIds}
+					modelId={resume?.modelId ?? selectedModelId}
+					topic={resume?.topic ?? topic}
+					notebookIds={resume?.notebookIds ?? notebookIds}
+					{resume}
 					{wide}
 					onTitle={(value) => (panelTitle = value)}
 					onError={(value) => (errorMsg = value)}

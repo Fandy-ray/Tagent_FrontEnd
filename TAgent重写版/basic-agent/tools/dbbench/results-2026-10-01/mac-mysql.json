@@ -1,0 +1,135 @@
+{
+  "db": "MySQL",
+  "label": "mac",
+  "n": 1000000,
+  "essays": 20000,
+  "phases": {
+    "reset_schema_s": 0.948,
+    "bulk_insert_messages": {
+      "rows": 1000000,
+      "batch": 5000,
+      "seconds": 42.85,
+      "rows_per_s": 23337
+    },
+    "bulk_insert_essays": {
+      "rows": 20000,
+      "seconds": 10.4,
+      "rows_per_s": 1923
+    },
+    "insert_single": {
+      "ops": 5000,
+      "seconds": 6.237,
+      "ops_per_s": 801.7,
+      "p50_ms": 1.196,
+      "p95_ms": 1.701,
+      "p99_ms": 2.528
+    },
+    "point_read": {
+      "ops": 20000,
+      "seconds": 4.614,
+      "ops_per_s": 4334.6,
+      "p50_ms": 0.211,
+      "p95_ms": 0.37,
+      "p99_ms": 0.504
+    },
+    "recent_by_student": {
+      "ops": 5000,
+      "seconds": 4.113,
+      "ops_per_s": 1215.7,
+      "p50_ms": 0.74,
+      "p95_ms": 1.126,
+      "p99_ms": 2.297
+    },
+    "class_avg_aggregate": {
+      "ops": 5,
+      "seconds": 26.326,
+      "ops_per_s": 0.2,
+      "p50_ms": 5217.088,
+      "p95_ms": 5530.128,
+      "p99_ms": 5530.128
+    },
+    "like_search_scan": {
+      "ops": 5,
+      "seconds": 0.014,
+      "ops_per_s": 367.2,
+      "p50_ms": 2.387,
+      "p95_ms": 4.13,
+      "p99_ms": 4.13
+    },
+    "essay_read_json": {
+      "ops": 5000,
+      "seconds": 3.071,
+      "ops_per_s": 1627.9,
+      "p50_ms": 0.584,
+      "p95_ms": 0.952,
+      "p99_ms": 1.183
+    },
+    "update_single": {
+      "ops": 5000,
+      "seconds": 6.251,
+      "ops_per_s": 799.8,
+      "p50_ms": 1.175,
+      "p95_ms": 1.693,
+      "p99_ms": 2.407
+    },
+    "update_bulk": {
+      "rows": 100000,
+      "batch": 1000,
+      "seconds": 16.37,
+      "rows_per_s": 6109
+    },
+    "delete_single": {
+      "ops": 5000,
+      "seconds": 6.579,
+      "ops_per_s": 760.0,
+      "p50_ms": 1.21,
+      "p95_ms": 2.152,
+      "p99_ms": 2.946
+    },
+    "delete_bulk": {
+      "rows": 100000,
+      "batch": 1000,
+      "seconds": 21.91,
+      "rows_per_s": 4564
+    },
+    "count_check": {
+      "expected": 900000,
+      "got": 900000,
+      "ok": true
+    },
+    "disk_mb": 1284.8,
+    "mixed_8_threads": {
+      "threads": 8,
+      "seconds": 10.01,
+      "ops": 18232,
+      "ops_per_s": 1821.2,
+      "errors": 0,
+      "error_samples": [],
+      "p50_ms": 1.457,
+      "p95_ms": 13.574,
+      "p99_ms": 41.99
+    },
+    "mixed_32_threads": {
+      "threads": 32,
+      "seconds": 10.02,
+      "ops": 32756,
+      "ops_per_s": 3269.5,
+      "errors": 0,
+      "error_samples": [],
+      "p50_ms": 7.073,
+      "p95_ms": 28.141,
+      "p99_ms": 45.138
+    },
+    "mixed_64_threads": {
+      "threads": 64,
+      "seconds": 10.03,
+      "ops": 39374,
+      "ops_per_s": 3927.0,
+      "errors": 0,
+      "error_samples": [],
+      "p50_ms": 10.336,
+      "p95_ms": 47.633,
+      "p99_ms": 80.352
+    }
+  }
+}

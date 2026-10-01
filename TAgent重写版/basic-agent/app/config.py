@@ -6,6 +6,7 @@
 from __future__ import annotations
 
 import os
+import sys
 from dataclasses import dataclass
 from pathlib import Path
 from urllib.parse import urlsplit, urlunsplit
@@ -22,6 +23,22 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 DEFAULT_MODEL_PROVIDERS_PATH = BASE_DIR / "config" / "model_providers.json"
 DEFAULT_TEXT_DB_DIR = BASE_DIR / "text_db"
 DEFAULT_KNOWLEDGE_FILE = BASE_DIR / "book1.md"
+
+LEARNING_DB_FILENAME = "tagent.sqlite3"
+
+
+def default_data_dir() -> Path:
+    """各系统放应用数据的标准位置（学习记录库默认放这里）。
+
+    刻意不放在项目目录里：项目常在桌面上，而 macOS 的桌面经常开着 iCloud 同步——
+    正在写的 SQLite 文件被同步，轻则生成「tagent 2.sqlite3」冲突副本，重则把库弄坏。
+    Windows 上同理避开 OneDrive 接管的「文档 / 桌面」，用 LOCALAPPDATA（不漫游、不同步）。
+    """
+    if sys.platform == "darwin":
+        return Path.home() / "Library" / "Application Support" / "TAgent"
+    if os.name == "nt":
+        return Path(os.getenv("LOCALAPPDATA") or Path.home() / "AppData" / "Local") / "TAgent"
+    return Path(os.getenv("XDG_DATA_HOME") or Path.home() / ".local" / "share") / "tagent"
 
 
 def _env(*names: str, default: str = "") -> str:
@@ -97,7 +114,9 @@ class AgentConfig:
     host: str = "127.0.0.1"
     port: int = 5000
     use_waitress: bool = True
-    waitress_threads: int = 8
+    # 流式回答整段占一个线程。8 个线程时 12 人同时提问，后 4 人的首字要等 6 秒多，
+    # 连 /health 都跟着卡住（压测 S7）。这些线程都在等网络，多开很便宜。
+    waitress_threads: int = 32
 
     admin_token: str = ""
     internal_token: str = ""
@@ -116,6 +135,11 @@ class AgentConfig:
 
     exam_max_concurrent_llm: int = 2
     llm_max_orphan_tasks: int = 2
+
+    # 学习记录库（SQLite）。None = 用 default_data_dir() 下的默认文件。
+    learning_store_enabled: bool = True
+    learning_db_path: Path | None = None
+    learning_backup_keep: int = 7
 
     @classmethod
     def from_env(cls) -> "AgentConfig":
@@ -136,6 +160,7 @@ class AgentConfig:
             host=_env("BASIC_AGENT_HOST", "AGENT_HOST", default="127.0.0.1"),
             port=int(_env("BASIC_AGENT_PORT", "AGENT_PORT", default="5000")),
             use_waitress=os.getenv("USE_WAITRESS", "1") == "1",
+            waitress_threads=int(os.getenv("WAITRESS_THREADS", "32")),
             admin_token=os.getenv("AGENT_ADMIN_TOKEN", ""),
             internal_token=os.getenv("AGENT_INTERNAL_TOKEN", ""),
             model_providers_path=Path(
@@ -150,7 +175,13 @@ class AgentConfig:
             ),
             exam_max_concurrent_llm=int(os.getenv("EXAM_MAX_CONCURRENT_LLM", "2")),
             llm_max_orphan_tasks=int(os.getenv("LLM_MAX_ORPHAN_TASKS", "2")),
+            learning_store_enabled=os.getenv("LEARNING_STORE", "1") != "0",
+            learning_db_path=Path(db_path).expanduser() if (db_path := _env("TAGENT_DB_PATH")) else None,
+            learning_backup_keep=max(1, int(os.getenv("LEARNING_BACKUP_KEEP", "7"))),
         )
+
+    def resolved_learning_db_path(self) -> Path:
+        return self.learning_db_path or default_data_dir() / LEARNING_DB_FILENAME
 
 
 # ====================== LLM 调用超时与预算（压测所得，勿凭直觉改） ======================
@@ -275,3 +306,26 @@ ESSAY_TOPIC_MIN_ATTEMPT_TIMEOUT = 20
 # 夹一下即可，不值得为它判不合格再重试一轮
 ESSAY_TOPIC_MIN_SUGGESTED_CHARS = 500
 ESSAY_TOPIC_MAX_SUGGESTED_CHARS = 2000
+
+
+# ====================== 请求合并 / 上游连接 ======================
+#
+# 同样内容的批改、判卷、批注请求，跑完之后这么多秒内直接重放那份结果
+# （见 app/util/singleflight.py）。只在内存里、按内容哈希索引、过期即删，不落盘；
+# 设成 0 就只合并「正在跑的」、不重放。
+IDEMPOTENT_REPLAY_SECONDS = 90
+
+# 连上游时 TCP/TLS 握手单独限时。断网但包被丢弃（不报错）时，不必等满整段读超时
+# （最长 90 秒）才发现连不上；已经连上、只是生成得慢的请求不受影响。
+UPSTREAM_CONNECT_TIMEOUT = 10
+
+
+# ====================== 学习记录库（SQLite） ======================
+#
+# 写库时遇到别的线程正占着写锁，最多等这么久。记录是尽力而为的（存不进去只记日志），
+# 所以宁可丢一条记录也不让学生的请求多卡几秒。压测里单条写入 0.1 毫秒量级，
+# 2 秒足够排过几千个排队的写入。
+LEARNING_BUSY_TIMEOUT_MS = 2000
+# 备份线程多久看一次「距上次备份满一天没有」
+LEARNING_BACKUP_CHECK_SECONDS = 3600
+LEARNING_BACKUP_EVERY_SECONDS = 86_400

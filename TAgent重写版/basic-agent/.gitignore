@@ -152,3 +152,8 @@ cython_debug/
 
 # start.sh 走镜像重装依赖前留下的原始锁文件备份
 uv.lock.bak
+
+# 学习记录库（含学生原文与成绩）：放到项目里时也别提交
+*.sqlite3-wal
+*.sqlite3-shm
+backups/tagent-*.sqlite3

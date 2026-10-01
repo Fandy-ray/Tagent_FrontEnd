@@ -1,0 +1,10 @@
+{
+  "db": "SurrealDB",
+  "mode": "single",
+  "killed": "数据库服务 kill -9",
+  "acked": 10068,
+  "stored": 10068,
+  "lost_acked": 0,
+  "recovery_s": 0.65,
+  "ok": true
+}

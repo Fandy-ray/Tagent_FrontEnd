@@ -19,6 +19,8 @@ export type QaMessage = {
 	tags?: string[];
 	/** 论文模式的出题卡 / 批改卡：有它时渲染卡片而不是 Markdown（见 $lib/data/essay 的 PaperCard） */
 	paperCard?: PaperCard;
+	/** 生成到一半被打断（刷新、关页、断网）：存下来的是半截，刷新后提示可以「重新生成」 */
+	interrupted?: boolean;
 };
 
 export type QaChat = {
@@ -51,6 +53,8 @@ const snapshotMessage = (message: QaMessage): QaMessage => ({
 	citations: message.citations?.map((citation) => ({ ...citation })),
 	followUps: message.followUps?.slice(),
 	tags: message.tags?.slice(),
+	// 存盘时还在吐字的消息就是被打断的那条
+	interrupted: message.interrupted || message.streaming ? true : undefined,
 	// 页面里的消息是 $state 代理，structuredClone 会直接抛错；卡片本来就是纯 JSON，走一遍 JSON 最稳
 	paperCard: message.paperCard
 		? (JSON.parse(JSON.stringify(message.paperCard)) as PaperCard)

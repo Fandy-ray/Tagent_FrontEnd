@@ -4,6 +4,7 @@ from urllib.parse import urlparse
 import httpx
 from langchain_openai import ChatOpenAI
 
+from app.config import UPSTREAM_CONNECT_TIMEOUT
 from app.schema.provider import ModelProvider
 
 
@@ -42,8 +43,13 @@ class ModelClientFactory:
 
             self._invalidate_unlocked(provider.served_model_id)
             hooks = {"request": [_remove_authorization]} if provider.auth_mode == "none" else None
+            # 读超时照旧（生成慢是正常的）；握手单独 UPSTREAM_CONNECT_TIMEOUT 秒，
+            # 断网丢包时不必等满整段读超时才发现连不上
+            timeout = httpx.Timeout(
+                request_timeout, connect=min(UPSTREAM_CONNECT_TIMEOUT, request_timeout)
+            )
             http_client = httpx.Client(
-                timeout=request_timeout,
+                timeout=timeout,
                 event_hooks=hooks,
                 trust_env=_uses_environment_proxy(provider.base_url),
             )
@@ -52,7 +58,7 @@ class ModelClientFactory:
                 base_url=provider.base_url,
                 api_key=provider.api_key if provider.auth_mode == "bearer" else "local-no-auth",
                 temperature=provider.temperature,
-                timeout=request_timeout,
+                timeout=timeout,
                 max_retries=request_retries,
                 http_client=http_client,
             )

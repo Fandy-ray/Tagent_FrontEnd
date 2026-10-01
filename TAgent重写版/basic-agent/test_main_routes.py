@@ -231,6 +231,22 @@ class MainRoutesTest(unittest.TestCase):
         frames = [chunk.decode("utf-8") for chunk in response.response]
         self.assertTrue(any('"finish_reason": "length"' in frame for frame in frames))
 
+    def test_stream_failure_midway_tells_the_user_in_chinese(self):
+        class BrokenService(FakeAgentService):
+            def stream_answer(self, messages, provider, notebook_ids=None, **_options):
+                yield "partial", None
+                raise RuntimeError("upstream vanished")
+
+        app = create_app({"TESTING": True}, registry=self.registry, services=fake_services(BrokenService()))
+        response = app.test_client().post(
+            "/v1/chat/completions",
+            json={"model": "teacher-default", "stream": True, "messages": [{"role": "user", "content": "hi"}]},
+            buffered=False,
+        )
+        text = "".join(chunk.decode("utf-8") for chunk in response.response)
+        self.assertIn("回答中断", text)
+        self.assertNotIn("ended unexpectedly", text)
+
     def test_chat_defaults_to_qa_mode(self):
         self.client.post(
             "/v1/chat/completions",

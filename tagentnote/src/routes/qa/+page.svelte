@@ -658,13 +658,30 @@
 			citations: message.citations?.map((citation) => ({ ...citation })),
 			followUps: message.followUps?.slice(),
 			tags: message.tags?.slice(),
+			// 落盘那一刻还在吐字，就记成「被打断」：刷新后能看出这条没答完
+			interrupted: message.streaming || message.interrupted ? true : undefined,
 			streaming: false
 		}));
+
+	// 流式回答中途也落盘（每秒最多一次，刷新 / 关页时再补一次）：已经吐出来的部分不丢，
+	// 刷新后标成「没有完成」、可以重新生成。以前只在答完时才存，刷新就只剩一个问题（压测 F2）
+	let streamingCommitTimer: number | null = null;
+	const scheduleStreamingCommit = () => {
+		if (streamingCommitTimer !== null) {
+			return;
+		}
+		streamingCommitTimer = window.setTimeout(() => {
+			streamingCommitTimer = null;
+			if (generating) {
+				commitActive();
+			}
+		}, 1000);
+	};
 
 	const restoreChatMessages = (chat: QaChat | undefined) => {
 		const task = chat?.paperTask ?? paperTask;
 
-		return cloneMessages(chat?.messages ?? []).map((message) => {
+		const restored: MockMessage[] = cloneMessages(chat?.messages ?? []).map((message) => {
 			if (chat?.mode !== 'paper' || message.role !== 'user' || message.requestContent) {
 				return message;
 			}
@@ -679,6 +696,19 @@
 					}
 				: message;
 		});
+
+		// 问题发出去、一个字还没回就刷新了：补一条空的「没有完成」，好让「重新生成」有处可点
+		const last = restored.at(-1);
+		if (last?.role === 'user') {
+			restored.push({
+				id: `assistant-interrupted-${last.id}`,
+				role: 'assistant',
+				content: '',
+				interrupted: true
+			});
+		}
+
+		return restored;
 	};
 
 	const isTemporarySession = () =>
@@ -1444,10 +1474,13 @@
 				created = true;
 			} else {
 				messages = messages.map((message) =>
-					message.id === assistantId ? { ...message, content, streaming } : message
+					message.id === assistantId
+						? { ...message, content, streaming, interrupted: undefined }
+						: message
 				);
 			}
 
+			scheduleStreamingCommit();
 			void scrollToBottom();
 		};
 
@@ -1709,8 +1742,10 @@
 				content = paperReviewMarkdown(review, card.topic, card.text);
 			}
 		} catch (error) {
-			// 停止了或开了新一轮：卡片已被 finishStreamingMessages 标成「没有完成」，不用再写
-			if (seq !== generationSeq) {
+			// 停止了、开了新一轮，或者页面正在刷新：卡片保持「没有完成」，不写错误
+			// （刷新时浏览器掐断请求报的是 AbortError，见 $lib/apis/agent 的 pageUnloading）
+			const aborted = error instanceof DOMException && error.name === 'AbortError';
+			if (seq !== generationSeq || (aborted && !timedOut)) {
 				return;
 			}
 			const message = timedOut
@@ -1971,8 +2006,11 @@
 			}
 			const joined = delta ? `${existing}\n${delta}` : existing;
 			messages = messages.map((message) =>
-				message.id === messageId ? { ...message, content: joined, streaming: true } : message
+				message.id === messageId
+					? { ...message, content: joined, streaming: true, interrupted: undefined }
+					: message
 			);
+			scheduleStreamingCommit();
 			void scrollToBottom();
 		};
 
@@ -2061,6 +2099,9 @@
 		if (paperTaskSyncTimer !== null) {
 			window.clearTimeout(paperTaskSyncTimer);
 		}
+		if (streamingCommitTimer !== null) {
+			window.clearTimeout(streamingCommitTimer);
+		}
 		if (!isTemporarySession()) {
 			commitActive();
 		}
@@ -2071,6 +2112,15 @@
 <svelte:head>
 	<title>{pageTitle}</title>
 </svelte:head>
+
+<!-- 刷新、关页时把正在吐字的回答再存一次：定时落盘之间的那一秒也不丢（onDestroy 管不到整页刷新） -->
+<svelte:window
+	onpagehide={() => {
+		if (generating && !isTemporarySession()) {
+			commitActive();
+		}
+	}}
+/>
 
 <main class="flex h-screen overflow-hidden bg-[#171717] text-white">
 	{#if sidebarOpen}

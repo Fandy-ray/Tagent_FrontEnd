@@ -135,3 +135,30 @@ def test_a_request_without_user_messages_is_still_rejected():
                 [{"role": "system", "content": "x"}], PROVIDER, retrieval_query="排队论"
             )
         )
+
+
+# ====================== 流被截断 ======================
+
+
+class TruncatedModel(RecordingModel):
+    """连接中途断开：吐了几个字就结束，没有 finish_reason，也不抛异常（真实客户端实测如此）。"""
+
+    def stream(self, messages):
+        self.messages = messages
+        yield types.SimpleNamespace(content="到达率是", response_metadata={})
+
+
+def test_a_stream_that_ends_without_finish_reason_says_it_was_cut_off():
+    kb, model = RecordingKB(), TruncatedModel()
+    chunks = list(make(kb, model).stream_answer(MESSAGES, PROVIDER))
+    text = "".join(token for token, _ in chunks)
+    assert text.startswith("到达率是")
+    assert "回答中断" in text
+    assert chunks[-1] == ("", "stop")
+
+
+def test_a_complete_stream_gets_no_interruption_note():
+    kb, model = RecordingKB(), RecordingModel()
+    text = "".join(token for token, _ in make(kb, model).stream_answer(MESSAGES, PROVIDER))
+    assert "回答中断" not in text
+

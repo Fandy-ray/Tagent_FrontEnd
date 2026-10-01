@@ -1,0 +1,7 @@
+# 跑测试时生成的东西，动辄几 GB（镜像 tar、百万行的库文件），不入库
+venv/
+data-*/
+images/
+wheels-linux/
+results/
+smoke/

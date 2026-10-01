@@ -1,6 +1,7 @@
 import { env } from '$env/dynamic/public';
 
 import { type Citation } from '$lib/data/knowledge';
+import { learnerHeaders } from '$lib/data/learner';
 import type { AnswerAnnotations, EssayTopic, PaperReview } from '$lib/data/essay';
 import type { ExamReview, PublicExam } from '$lib/data/exam';
 import type { FlashDeck } from '$lib/data/flash';
@@ -64,12 +65,68 @@ const errorMessage = (payload: unknown, fallback: string) => {
 	return record.error?.message || (record.msg && record.msg !== 'success' ? record.msg : fallback);
 };
 
+// 刷新 / 关页时浏览器会掐断所有在飞的请求，报的也是网络错误。那不是断网：
+// 一律当成「停止」（AbortError）处理——页面自己在 pagehide 时已经把进行中的东西存成
+// 「没有完成」了，这时再写一句「连不上服务」反而会把它盖掉。
+let pageUnloading = false;
+if (typeof window !== 'undefined') {
+	window.addEventListener('pagehide', () => (pageUnloading = true));
+	// 从往返缓存里回来的页面还要接着用
+	window.addEventListener('pageshow', () => (pageUnloading = false));
+}
+
+const unloadAbort = () => new DOMException('页面正在刷新或关闭', 'AbortError');
+
+/**
+ * fetch 本身失败（断网、后端没起、代理连不上）时抛的是 TypeError，文案是浏览器的英文原文
+ * （Failed to fetch / Load failed），直接给学生看就是一句看不懂的话（压测 F4）。
+ * 用户主动停止的 AbortError 原样抛出：调用方靠它区分「停止」和「出错」。
+ */
+const connectionError = (error: unknown) => {
+	if (error instanceof DOMException && error.name === 'AbortError') {
+		return error;
+	}
+	if (pageUnloading) {
+		return unloadAbort();
+	}
+	if (typeof navigator !== 'undefined' && navigator.onLine === false) {
+		return new Error('网络已断开，恢复连接后再试。');
+	}
+	return new Error('连不上服务：请检查网络，或确认 basic-agent 已经启动。');
+};
+
+/** 所有发往 basic-agent 的请求都从这里走：统一带上设备编号与昵称（学习记录靠它归到人） */
+async function agentRequest(url: string, init?: RequestInit) {
+	const headers = new Headers(init?.headers);
+	for (const [name, value] of Object.entries(learnerHeaders())) {
+		headers.set(name, value);
+	}
+	try {
+		return await fetch(url, { ...init, headers });
+	} catch (error) {
+		throw connectionError(error);
+	}
+}
+
+/** 后端没回我们自己的错误体时（多半是开发代理连不上 basic-agent）的兜底说法（压测 F5） */
+const statusFallback = (status: number) =>
+	status === 502 || status === 503 || status === 504
+		? 'basic-agent 没有响应：它可能没有启动，或者刚刚停止了。确认它在运行后再试。'
+		: `请求失败（${status}）`;
+
+/** 流读到一半断了：已经收到的部分照样交回去，末尾明说断了，而不是整段丢掉或当成答完 */
+const STREAM_CUT_NOTE = '\n\n（回答中断：网络连接断开了，恢复后可以点「重新生成」再试一次。）';
+
 async function agentFetch<T>(path: string, init?: RequestInit): Promise<T> {
-	const response = await fetch(`${agentBase()}${path}`, init);
+	const response = await agentRequest(`${agentBase()}${path}`, init);
 	const payload = await response.json().catch(() => ({}));
 
+	if (pageUnloading) {
+		throw unloadAbort();
+	}
+
 	if (!response.ok) {
-		throw new Error(errorMessage(payload, `请求失败（${response.status}）`));
+		throw new Error(errorMessage(payload, statusFallback(response.status)));
 	}
 
 	return payload as T;
@@ -212,7 +269,7 @@ export async function streamAgentChat(
 		body[key] = value;
 	}
 
-	const response = await fetch(`${agentBase()}/v1/chat/completions`, {
+	const response = await agentRequest(`${agentBase()}/v1/chat/completions`, {
 		method: 'POST',
 		headers: {
 			'Content-Type': 'application/json',
@@ -224,7 +281,7 @@ export async function streamAgentChat(
 
 	if (!response.ok) {
 		const payload = await response.json().catch(() => ({}));
-		throw new Error(errorMessage(payload, `请求失败（${response.status}）`));
+		throw new Error(errorMessage(payload, statusFallback(response.status)));
 	}
 
 	if (!response.body) {
@@ -267,7 +324,27 @@ export async function streamAgentChat(
 	};
 
 	while (true) {
-		const { done, value } = await reader.read();
+		let chunk: ReadableStreamReadResult<Uint8Array>;
+		try {
+			chunk = await reader.read();
+		} catch (error) {
+			if (error instanceof DOMException && error.name === 'AbortError') {
+				throw error;
+			}
+			if (pageUnloading) {
+				throw unloadAbort();
+			}
+			content += STREAM_CUT_NOTE;
+			onDelta(content);
+			return {
+				model: servedModel,
+				content,
+				retrievedContext: extras.retrievedContext,
+				citations: extras.citations
+			};
+		}
+
+		const { done, value } = chunk;
 		if (done) {
 			break;
 		}

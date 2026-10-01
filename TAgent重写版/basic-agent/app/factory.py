@@ -26,8 +26,10 @@ def create_app(config: dict | None = None, *, registry=None, services=None) -> F
     app.extensions["settings"] = settings
     app.extensions["model_provider_registry"] = registry or build_registry(settings)
     # TESTING 时跳过预热：加载嵌入模型并建 FAISS 索引要几十秒。
+    # 也不建学习记录库：单测不该往真实的数据目录里写东西（要测它就自己注入一个）。
+    testing = app.config.get("TESTING", False)
     app.extensions["services"] = services or build_services(
-        settings, warm_up=not app.config.get("TESTING", False)
+        settings, warm_up=not testing, learning_store=not testing
     )
 
     register_blueprints(app)
@@ -38,7 +40,9 @@ def create_app(config: dict | None = None, *, registry=None, services=None) -> F
         origin = request.headers.get("Origin", "")
         if origin in {"http://127.0.0.1:5173", "http://localhost:5173"}:
             response.headers["Access-Control-Allow-Origin"] = origin
-            response.headers["Access-Control-Allow-Headers"] = "Content-Type"
+            response.headers["Access-Control-Allow-Headers"] = (
+                "Content-Type, X-Tagent-Client-Id, X-Tagent-Client-Name"
+            )
             response.headers["Access-Control-Allow-Methods"] = "GET, POST, OPTIONS"
         return response
 

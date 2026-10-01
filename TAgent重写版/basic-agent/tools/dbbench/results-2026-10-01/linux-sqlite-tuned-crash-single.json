@@ -1,0 +1,11 @@
+{
+  "db": "SQLite（调优）",
+  "mode": "single",
+  "killed": "写入进程 kill -9",
+  "acked": 37659,
+  "stored": 37659,
+  "lost_acked": 0,
+  "recovery_s": 0.0,
+  "integrity_check": "ok",
+  "ok": true
+}

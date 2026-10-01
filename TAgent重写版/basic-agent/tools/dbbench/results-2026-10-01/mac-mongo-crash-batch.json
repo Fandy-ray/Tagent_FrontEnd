@@ -1,0 +1,11 @@
+{
+  "db": "MongoDB",
+  "mode": "batch",
+  "killed": "数据库服务 kill -9",
+  "acked": 95000,
+  "stored": 95000,
+  "lost_acked": 0,
+  "recovery_s": 1.79,
+  "partial_batches": 0,
+  "ok": true
+}

@@ -1,0 +1,11 @@
+{
+  "db": "MySQL",
+  "mode": "batch",
+  "killed": "数据库服务 kill -9",
+  "acked": 60000,
+  "stored": 60000,
+  "lost_acked": 0,
+  "recovery_s": 2.06,
+  "partial_batches": 0,
+  "ok": true
+}

@@ -1,0 +1,134 @@
+{
+  "db": "SurrealDB",
+  "label": "linux",
+  "n": 1000000,
+  "essays": 20000,
+  "phases": {
+    "reset_schema_s": 10.318,
+    "bulk_insert_messages": {
+      "rows": 1000000,
+      "batch": 1000,
+      "seconds": 62.7,
+      "rows_per_s": 15948
+    },
+    "bulk_insert_essays": {
+      "rows": 20000,
+      "seconds": 9.77,
+      "rows_per_s": 2047
+    },
+    "insert_single": {
+      "ops": 5000,
+      "seconds": 0.889,
+      "ops_per_s": 5622.7,
+      "p50_ms": 0.175,
+      "p95_ms": 0.193,
+      "p99_ms": 0.204
+    },
+    "point_read": {
+      "ops": 20000,
+      "seconds": 3.253,
+      "ops_per_s": 6147.6,
+      "p50_ms": 0.143,
+      "p95_ms": 0.338,
+      "p99_ms": 0.372
+    },
+    "recent_by_student": {
+      "ops": 5000,
+      "seconds": 88.519,
+      "ops_per_s": 56.5,
+      "p50_ms": 17.635,
+      "p95_ms": 19.347,
+      "p99_ms": 20.836
+    },
+    "class_avg_aggregate": {
+      "ops": 5,
+      "seconds": 17.653,
+      "ops_per_s": 0.3,
+      "p50_ms": 3530.938,
+      "p95_ms": 3589.379,
+      "p99_ms": 3589.379
+    },
+    "like_search_scan": {
+      "ops": 5,
+      "seconds": 0.035,
+      "ops_per_s": 141.5,
+      "p50_ms": 6.849,
+      "p95_ms": 7.922,
+      "p99_ms": 7.922
+    },
+    "essay_read_json": {
+      "ops": 5000,
+      "seconds": 1.135,
+      "ops_per_s": 4407.1,
+      "p50_ms": 0.205,
+      "p95_ms": 0.374,
+      "p99_ms": 0.396
+    },
+    "update_single": {
+      "ops": 5000,
+      "seconds": 0.982,
+      "ops_per_s": 5089.4,
+      "p50_ms": 0.195,
+      "p95_ms": 0.22,
+      "p99_ms": 0.317
+    },
+    "update_bulk": {
+      "rows": 100000,
+      "batch": 1000,
+      "seconds": 5.39,
+      "rows_per_s": 18545
+    },
+    "delete_single": {
+      "ops": 5000,
+      "seconds": 1.477,
+      "ops_per_s": 3384.3,
+      "p50_ms": 0.288,
+      "p95_ms": 0.329,
+      "p99_ms": 0.439
+    },
+    "delete_bulk": {
+      "rows": 100000,
+      "batch": 1000,
+      "seconds": 16.48,
+      "rows_per_s": 6067
+    },
+    "count_check": {
+      "expected": 900000,
+      "got": 900000,
+      "ok": true
+    },
+    "mixed_8_threads": {
+      "threads": 8,
+      "seconds": 10.02,
+      "ops": 2813,
+      "ops_per_s": 280.6,
+      "errors": 0,
+      "error_samples": [],
+      "p50_ms": 32.516,
+      "p95_ms": 49.515,
+      "p99_ms": 56.627
+    },
+    "mixed_32_threads": {
+      "threads": 32,
+      "seconds": 10.11,
+      "ops": 2635,
+      "ops_per_s": 260.6,
+      "errors": 0,
+      "error_samples": [],
+      "p50_ms": 123.363,
+      "p95_ms": 234.771,
+      "p99_ms": 274.52
+    },
+    "mixed_64_threads": {
+      "threads": 64,
+      "seconds": 10.12,
+      "ops": 2547,
+      "ops_per_s": 251.6,
+      "errors": 0,
+      "error_samples": [],
+      "p50_ms": 233.327,
+      "p95_ms": 549.703,
+      "p99_ms": 685.972
+    }
+  }
+}

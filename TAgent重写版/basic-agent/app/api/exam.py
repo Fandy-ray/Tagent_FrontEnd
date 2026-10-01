@@ -5,6 +5,12 @@ from __future__ import annotations
 from flask import Blueprint
 
 from app.api.deps import get_essay_service, get_exam_service, select_provider
+from app.api.learner import (
+    current_learner,
+    note_essay_review,
+    note_exam_generated,
+    note_exam_reviewed,
+)
 from app.api.response import envelope
 from app.api.validators import (
     annotate_payload,
@@ -14,19 +20,46 @@ from app.api.validators import (
     exam_topic,
     optional_notebook_ids,
 )
+from app.config import IDEMPOTENT_REPLAY_SECONDS
 from app.errors.api_errors import ModelNotFoundError
 from app.errors.exam_errors import ExamGoneError
+from app.util.singleflight import SingleFlight, fingerprint
 
 
 blueprint = Blueprint("exam", __name__)
+
+# 同样内容的请求只算一次（为什么见 app/util/singleflight.py）。
+# 出卷、出卡、出题只合并「正在跑的」：学生主动点「再来一套」「重新出题」要的是新的。
+# 判卷、批改、批注再加短时重放：刷新后重交拿到的就是刚才那份，不会一刷新分数就变。
+#
+# 往学习记录库里记的那一笔都写在**领头那次的闭包里**：合并进来的、重放的请求不再跑闭包，
+# 所以同一次批改只记一条，不会因为学生连点或刷新重交记出好几条一样的。
+_flights = SingleFlight()
+
+
+def _once(route: str, provider, fields: dict, run, *, replay: bool):
+    key = fingerprint(route, provider.served_model_id, fields)
+    return _flights.do(key, run, replay_seconds=IDEMPOTENT_REPLAY_SECONDS if replay else 0.0)
 
 
 @blueprint.post("/quiz/exam/generate")
 def generate_exam():
     payload = exam_json_body()
     provider = select_provider(payload.get("model"))
-    result = get_exam_service().generate_exam(
-        exam_topic(payload), provider, notebook_ids=optional_notebook_ids(payload)
+    topic, notebook_ids = exam_topic(payload), optional_notebook_ids(payload)
+    learner = current_learner()
+
+    def run():
+        exam = get_exam_service().generate_exam(topic, provider, notebook_ids=notebook_ids)
+        note_exam_generated(learner, provider, topic=topic, exam=exam)
+        return exam
+
+    result = _once(
+        "exam/generate",
+        provider,
+        {"topic": topic, "notebooks": sorted(notebook_ids or [])},
+        run,
+        replay=False,
     )
     return envelope(result, provider)
 
@@ -36,8 +69,13 @@ def generate_flash():
     """闪卡：只出能本地判定的题型（填空 + 选择）、不计分、判定在前端做，所以没有配套的 review 接口。"""
     payload = exam_json_body()
     provider = select_provider(payload.get("model"))
-    result = get_exam_service().generate_flash_deck(
-        exam_topic(payload), provider, notebook_ids=optional_notebook_ids(payload)
+    topic, notebook_ids = exam_topic(payload), optional_notebook_ids(payload)
+    result = _once(
+        "flash/generate",
+        provider,
+        {"topic": topic, "notebooks": sorted(notebook_ids or [])},
+        lambda: get_exam_service().generate_flash_deck(topic, provider, notebook_ids=notebook_ids),
+        replay=False,
     )
     return envelope(result, provider)
 
@@ -51,7 +89,20 @@ def review_exam():
         # 判卷模型必须与出卷模型一致；模型已下线时试卷等同失效。
         raise ExamGoneError("出卷模型已不可用，请重新生成试卷") from exc
     exam_id, answers = exam_review_payload(payload)
-    result = get_exam_service().review_exam(exam_id, answers, provider)
+    learner = current_learner()
+
+    def run():
+        review = get_exam_service().review_exam(exam_id, answers, provider)
+        note_exam_reviewed(learner, provider, exam_id=exam_id, answers=answers, review=review)
+        return review
+
+    result = _once(
+        "exam/review",
+        provider,
+        {"exam_id": exam_id, "answers": answers},
+        run,
+        replay=True,
+    )
     return envelope(result, provider)
 
 
@@ -66,10 +117,20 @@ def annotate_essay_answer():
     payload = exam_json_body()
     provider = select_provider(payload.get("model"))
     exam_id, question_id, answer = annotate_payload(payload)
-    question, rubric = get_exam_service().essay_question_for_annotation(
-        exam_id, question_id, provider
+
+    def run():
+        question, rubric = get_exam_service().essay_question_for_annotation(
+            exam_id, question_id, provider
+        )
+        return get_essay_service().annotate_answer(answer, question, rubric, provider)
+
+    annotations = _once(
+        "exam/annotate",
+        provider,
+        {"exam_id": exam_id, "question_id": question_id, "answer": answer},
+        run,
+        replay=True,
     )
-    annotations = get_essay_service().annotate_answer(answer, question, rubric, provider)
     # envelope 只对**顶层**值调 model_dump，dict 里裹着的 pydantic 对象它看不见，
     # 直接交给 jsonify 会 TypeError。所以这里自己摊平。
     return envelope(
@@ -86,11 +147,20 @@ def review_essay():
     """论文辅助：三维并发打分 + 条件下钻出高亮。"""
     payload = exam_json_body()
     provider = select_provider(payload.get("model"))
-    result = get_essay_service().review_paper(
-        essay_text(payload),
-        exam_topic(payload),
+    text, topic, notebook_ids = essay_text(payload), exam_topic(payload), optional_notebook_ids(payload)
+    learner = current_learner()
+
+    def run():
+        review = get_essay_service().review_paper(text, topic, provider, notebook_ids=notebook_ids)
+        note_essay_review(learner, provider, topic=topic, text=text, review=review)
+        return review
+
+    result = _once(
+        "essay/review",
         provider,
-        notebook_ids=optional_notebook_ids(payload),
+        {"text": text, "topic": topic, "notebooks": sorted(notebook_ids or [])},
+        run,
+        replay=True,
     )
     return envelope(result, provider)
 
@@ -103,9 +173,12 @@ def propose_essay_topic():
     """
     payload = exam_json_body()
     provider = select_provider(payload.get("model"))
-    result = get_essay_service().propose_topic(
-        exam_topic(payload),
+    hint, notebook_ids = exam_topic(payload), optional_notebook_ids(payload)
+    result = _once(
+        "essay/topic",
         provider,
-        notebook_ids=optional_notebook_ids(payload),
+        {"hint": hint, "notebooks": sorted(notebook_ids or [])},
+        lambda: get_essay_service().propose_topic(hint, provider, notebook_ids=notebook_ids),
+        replay=False,
     )
     return envelope(result, provider)

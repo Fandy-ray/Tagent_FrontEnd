@@ -1,0 +1,135 @@
+{
+  "db": "DuckDB",
+  "label": "linux",
+  "n": 1000000,
+  "essays": 20000,
+  "phases": {
+    "reset_schema_s": 0.136,
+    "bulk_insert_messages": {
+      "rows": 1000000,
+      "batch": 5000,
+      "seconds": 37.76,
+      "rows_per_s": 26482
+    },
+    "bulk_insert_essays": {
+      "rows": 20000,
+      "seconds": 7.31,
+      "rows_per_s": 2737
+    },
+    "insert_single": {
+      "ops": 5000,
+      "seconds": 5.41,
+      "ops_per_s": 924.2,
+      "p50_ms": 0.826,
+      "p95_ms": 1.7,
+      "p99_ms": 3.455
+    },
+    "point_read": {
+      "ops": 20000,
+      "seconds": 3.137,
+      "ops_per_s": 6375.4,
+      "p50_ms": 0.152,
+      "p95_ms": 0.183,
+      "p99_ms": 0.219
+    },
+    "recent_by_student": {
+      "ops": 5000,
+      "seconds": 13.844,
+      "ops_per_s": 361.2,
+      "p50_ms": 2.699,
+      "p95_ms": 3.295,
+      "p99_ms": 4.341
+    },
+    "class_avg_aggregate": {
+      "ops": 5,
+      "seconds": 0.008,
+      "ops_per_s": 603.5,
+      "p50_ms": 1.497,
+      "p95_ms": 2.34,
+      "p99_ms": 2.34
+    },
+    "like_search_scan": {
+      "ops": 5,
+      "seconds": 0.015,
+      "ops_per_s": 332.6,
+      "p50_ms": 2.987,
+      "p95_ms": 3.109,
+      "p99_ms": 3.109
+    },
+    "essay_read_json": {
+      "ops": 5000,
+      "seconds": 0.873,
+      "ops_per_s": 5726.4,
+      "p50_ms": 0.159,
+      "p95_ms": 0.308,
+      "p99_ms": 0.361
+    },
+    "update_single": {
+      "ops": 5000,
+      "seconds": 3.17,
+      "ops_per_s": 1577.3,
+      "p50_ms": 0.483,
+      "p95_ms": 1.598,
+      "p99_ms": 1.892
+    },
+    "update_bulk": {
+      "rows": 100000,
+      "batch": 1000,
+      "seconds": 2.03,
+      "rows_per_s": 49169
+    },
+    "delete_single": {
+      "ops": 5000,
+      "seconds": 3.156,
+      "ops_per_s": 1584.4,
+      "p50_ms": 0.495,
+      "p95_ms": 1.616,
+      "p99_ms": 3.301
+    },
+    "delete_bulk": {
+      "rows": 100000,
+      "batch": 1000,
+      "seconds": 1.08,
+      "rows_per_s": 92610
+    },
+    "count_check": {
+      "expected": 900000,
+      "got": 900000,
+      "ok": true
+    },
+    "disk_mb": 554.7,
+    "mixed_8_threads": {
+      "threads": 8,
+      "seconds": 10.02,
+      "ops": 3884,
+      "ops_per_s": 387.6,
+      "errors": 0,
+      "error_samples": [],
+      "p50_ms": 13.472,
+      "p95_ms": 59.952,
+      "p99_ms": 68.79
+    },
+    "mixed_32_threads": {
+      "threads": 32,
+      "seconds": 10.02,
+      "ops": 4151,
+      "ops_per_s": 414.3,
+      "errors": 0,
+      "error_samples": [],
+      "p50_ms": 84.026,
+      "p95_ms": 171.392,
+      "p99_ms": 196.383
+    },
+    "mixed_64_threads": {
+      "threads": 64,
+      "seconds": 10.1,
+      "ops": 4212,
+      "ops_per_s": 417.0,
+      "errors": 0,
+      "error_samples": [],
+      "p50_ms": 146.656,
+      "p95_ms": 303.676,
+      "p99_ms": 393.563
+    }
+  }
+}

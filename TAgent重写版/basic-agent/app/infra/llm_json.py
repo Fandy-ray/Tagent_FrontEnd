@@ -189,6 +189,9 @@ def call_json_llm(
             raise UpstreamTimeoutError("AI 服务响应超时，请稍后重试") from e
         except Exception as e:
             log.warning(f"LLM 调用失败（attempt {attempt}）：{e!r}")
+            if isinstance(e, openai.APIStatusError) and e.status_code in _FINAL_STATUS:
+                # Key 不对、地址不对、请求本身不合法：重试也一样，别再白等一轮
+                raise UpstreamLLMError(_status_message(e)) from e
             last_err = e
             continue
 
@@ -213,4 +216,22 @@ def call_json_llm(
     # 会把人引去查 prompt，而真正该查的是网络或 base_url/Key。
     if isinstance(last_err, openai.APIConnectionError):
         raise UpstreamLLMError("连不上模型服务，请检查网络，或确认模型的地址与 Key 可用") from last_err
+    # 上游明确回了错误码，同样不是「输出结构」的问题（压测 S5：上游 500 被报成结构异常）
+    if isinstance(last_err, openai.APIStatusError):
+        raise UpstreamLLMError(_status_message(last_err)) from last_err
     raise UpstreamLLMError("AI 输出结构异常，请稍后重试") from last_err
+
+
+# 重试也不会变好的上游状态码
+_FINAL_STATUS = {400, 401, 403, 404, 422}
+
+
+def _status_message(err: "openai.APIStatusError") -> str:
+    code = err.status_code
+    if code in (401, 403):
+        return "模型服务拒绝了当前 Key，请重新登记模型"
+    if code == 429:
+        return "模型服务那边限流了，请稍后再试"
+    if code >= 500:
+        return f"模型服务暂时不可用（上游返回 {code}），请稍后再试"
+    return f"模型服务拒绝了这次请求（上游返回 {code}），请检查模型配置"

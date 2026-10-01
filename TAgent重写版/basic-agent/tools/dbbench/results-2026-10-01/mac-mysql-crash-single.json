@@ -1,0 +1,10 @@
+{
+  "db": "MySQL",
+  "mode": "single",
+  "killed": "数据库服务 kill -9",
+  "acked": 2229,
+  "stored": 2230,
+  "lost_acked": 0,
+  "recovery_s": 1.86,
+  "ok": true
+}

@@ -8,6 +8,7 @@ from app.api.exam import blueprint as exam_blueprint
 from app.api.health import blueprint as health_blueprint
 from app.api.internal import blueprint as internal_blueprint
 from app.api.knowledge import blueprint as knowledge_blueprint
+from app.api.learning_admin import blueprint as learning_admin_blueprint
 from app.api.openai_compat import blueprint as openai_blueprint
 from app.api.openai_passthrough import blueprint as openai_passthrough_blueprint
 
@@ -22,5 +23,6 @@ def register_blueprints(app) -> None:
         admin_blueprint,
         internal_blueprint,
         knowledge_blueprint,
+        learning_admin_blueprint,
     ):
         app.register_blueprint(blueprint)

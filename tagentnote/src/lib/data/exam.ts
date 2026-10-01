@@ -156,3 +156,63 @@ export const formatDuration = (seconds: number) => {
 	const total = Math.max(0, Math.round(seconds));
 	return `${Math.floor(total / 60)}:${String(total % 60).padStart(2, '0')}`;
 };
+
+// ====================== 整卷进度：刷新不丢 ======================
+
+/**
+ * 整卷答到一半刷新页面，以前整张卷子和已经写的答案全丢，只能重新出卷。现在把卷面、答案、
+ * 做到第几题、判卷结果存进 sessionStorage：同一个标签页里刷新能接着做，关掉标签页就没了
+ * （不跨标签、不长期留在本机）。
+ *
+ * 存的是公开卷面（不含参考答案）。判卷仍然要后端缓存里的那份私有卷，后端留 2 小时，
+ * 这里也只认 2 小时内出的卷。
+ */
+export type SavedFullExam = {
+	v: 1;
+	/** 出卷时刻，用来和后端的 2 小时缓存对齐 */
+	startedAt: number;
+	modelId: string;
+	topic: string;
+	notebookIds: string[];
+	exam: PublicExam;
+	answers: ExamAnswers;
+	pageIndex: number;
+	review: ExamReview | null;
+	resultIndex: number;
+};
+
+const FULL_EXAM_KEY = 'tagent:full-exam';
+const FULL_EXAM_TTL_MS = 2 * 60 * 60 * 1000;
+
+export const loadFullExam = (): SavedFullExam | null => {
+	try {
+		const raw = sessionStorage.getItem(FULL_EXAM_KEY);
+		if (!raw) {
+			return null;
+		}
+		const saved = JSON.parse(raw) as SavedFullExam;
+		if (saved?.v !== 1 || !saved.exam?.exam_id || Date.now() - saved.startedAt > FULL_EXAM_TTL_MS) {
+			sessionStorage.removeItem(FULL_EXAM_KEY);
+			return null;
+		}
+		return saved;
+	} catch {
+		return null;
+	}
+};
+
+export const saveFullExam = (saved: Omit<SavedFullExam, 'v'>) => {
+	try {
+		sessionStorage.setItem(FULL_EXAM_KEY, JSON.stringify({ ...saved, v: 1 }));
+	} catch {
+		// 隐私模式或存储满：照常答题，只是刷新后接不上
+	}
+};
+
+export const clearFullExam = () => {
+	try {
+		sessionStorage.removeItem(FULL_EXAM_KEY);
+	} catch {
+		// 同上
+	}
+};

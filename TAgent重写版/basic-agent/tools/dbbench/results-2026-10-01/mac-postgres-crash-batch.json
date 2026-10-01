@@ -1,0 +1,11 @@
+{
+  "db": "PostgreSQL",
+  "mode": "batch",
+  "killed": "数据库服务 kill -9",
+  "acked": 90000,
+  "stored": 90000,
+  "lost_acked": 0,
+  "recovery_s": 0.63,
+  "partial_batches": 0,
+  "ok": true
+}

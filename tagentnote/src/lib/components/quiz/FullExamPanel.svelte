@@ -22,11 +22,14 @@
 		resultNavClass,
 		verdictClass,
 		verdictLabel,
+		clearFullExam,
+		saveFullExam,
 		type ExamAnswers,
 		type ExamReview,
 		type PublicExam,
 		type PublicQuestion,
-		type ReviewResult
+		type ReviewResult,
+		type SavedFullExam
 	} from '$lib/data/exam';
 
 	type Phase = 'generating' | 'answering' | 'submitting' | 'result' | 'failed';
@@ -43,10 +46,21 @@
 		onError: (message: string) => void;
 		onExit: () => void;
 		onSwitchToFlash: () => void;
+		/** 刷新前存下的这张卷：有就接着做，不重新出卷（见 $lib/data/exam 的 saveFullExam） */
+		resume?: SavedFullExam | null;
 	};
 
-	let { modelId, topic, notebookIds, wide, onTitle, onError, onExit, onSwitchToFlash }: Props =
-		$props();
+	let {
+		modelId,
+		topic,
+		notebookIds,
+		wide,
+		onTitle,
+		onError,
+		onExit,
+		onSwitchToFlash,
+		resume = null
+	}: Props = $props();
 
 	// 只是生成中屏的静态说明，题量取自 app/schema/exam.py 的 *_COUNT_RANGE
 	const STAGES = [
@@ -62,6 +76,8 @@
 
 	let pageIndex = $state(0);
 	let resultIndex = $state(0);
+	/** 出卷时刻：存档过期按它算，和后端缓存的 2 小时对齐 */
+	let startedAt = 0;
 
 	// 出卷要等多久取决于接的是哪个模型（实测 DeepSeek 十秒上下，后端注释里那组
 	// 几十秒的旧数据出自另一个模型），所以屏上不写预期秒数、只报真实已用时——
@@ -214,6 +230,7 @@
 		}, CLIENT_TIMEOUT_MS);
 
 		failure = '';
+		clearFullExam();
 		exam = null;
 		review = null;
 		answers = {};
@@ -237,6 +254,7 @@
 				}
 
 				stopTicker();
+				startedAt = Date.now();
 				exam = data;
 				onTitle(data.title);
 				answers = {};
@@ -338,9 +356,43 @@
 		}
 	};
 
+	/** 刷新后接着做：卷面、答案、做到第几题、判卷结果都从本标签页的存档里恢复，不花模型调用 */
+	const restoreFrom = (saved: SavedFullExam) => {
+		startedAt = saved.startedAt;
+		exam = saved.exam;
+		answers = saved.answers ?? {};
+		pageIndex = saved.pageIndex ?? 0;
+		review = saved.review;
+		resultIndex = saved.resultIndex ?? 0;
+		onTitle(saved.exam.title);
+		phase = saved.review ? 'result' : 'answering';
+	};
+
+	// 答题、翻页、交卷后都存一份，刷新能接着做
+	$effect(() => {
+		if (!exam || !(phase === 'answering' || phase === 'submitting' || phase === 'result')) {
+			return;
+		}
+		saveFullExam({
+			startedAt,
+			modelId,
+			topic,
+			notebookIds,
+			exam,
+			answers: $state.snapshot(answers),
+			pageIndex,
+			review,
+			resultIndex
+		});
+	});
+
 	onMount(() => {
 		window.addEventListener('keydown', onKeydown);
-		startGenerate();
+		if (resume) {
+			restoreFrom(resume);
+		} else {
+			startGenerate();
+		}
 	});
 
 	onDestroy(() => {

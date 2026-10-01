@@ -1,0 +1,6 @@
+SQLite（在线备份 API）	1.6s	1139 MB
+DuckDB（EXPORT DATABASE，Parquet）	1.0s	247 MB
+PostgreSQL（pg_dump -Fc）	18.8s	142 MB
+MySQL（mysqldump）	2.7s	878 MB
+MongoDB（mongodump --gzip）	30.0s	150 MB
+SurrealDB（surreal export）	20.1s	937 MB

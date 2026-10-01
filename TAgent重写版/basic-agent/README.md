@@ -38,11 +38,38 @@ POST /quiz/generate
 POST /quiz/review
 POST /quiz/exam/generate
 POST /quiz/exam/review
+POST /quiz/exam/annotate
+POST /quiz/flash/generate
+POST /essay/review
+POST /essay/topic
 ```
 
 管理员接口位于 `/admin/model-providers`，要求 `X-Agent-Admin-Token`。私有模型使用的聊天、RAG、单题和整卷接口位于 `/internal/*`，要求独立内部 token。未配置相应 token 时接口返回 `503`，不会以无鉴权模式开放。
 
 整卷生成后，服务端缓存只保存模型 ID、题目、答案和评分规则，不保存 Key、Base URL 或 provider。判卷必须使用出卷时锁定的同一模型；模型不一致返回 `422`，缓存过期或模型失效返回 `410`。
+
+## 学习记录（SQLite）
+
+答疑、论文批改、整卷的记录存在本机一个 SQLite 文件里（选型与压测见 `../文档/数据库方案选型与压测报告.md`）：
+
+| 系统 | 默认位置 |
+| --- | --- |
+| macOS | `~/Library/Application Support/TAgent/tagent.sqlite3` |
+| Windows | `%LOCALAPPDATA%\TAgent\tagent.sqlite3` |
+| Linux | `~/.local/share/tagent/tagent.sqlite3` |
+
+- 同目录 `backups/` 每天自动备份一份，保留 7 份。恢复：停服务，把某份备份拷回 `tagent.sqlite3`（同时删掉旁边的 `-wal`、`-shm` 文件），再启动。
+- 环境变量：`TAGENT_DB_PATH`（换位置）、`LEARNING_BACKUP_KEEP`（备份份数）、`LEARNING_STORE=0`（不记录）。
+- 记录是尽力而为的：库打不开或写失败只记日志，不影响答疑和批改。`/health` 里的 `learning_store` 显示开没开。
+- 老师接口（要 `X-Agent-Admin-Token`）：
+
+```text
+GET  /admin/learning/summary                 全班概览：每个学生的提问数、批改数、平均分
+GET  /admin/learning/students/<设备编号>      某个学生最近的答疑、批改、整卷（含原文与批改结果）
+POST /admin/learning/backup                  立刻备份一份
+```
+
+学生身份是前端生成的匿名设备编号加设置里的昵称，不是登录账号。
 
 ## 独立开发
 

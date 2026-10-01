@@ -44,6 +44,11 @@ def get_essay_service():
     return get_services().essay
 
 
+def get_learning_store():
+    """学习记录库；没开、没建成、或测试替身里没有时返回 None。"""
+    return getattr(current_app.extensions.get("services"), "store", None)
+
+
 def invalidate_provider(model_id: str | None) -> None:
     services = current_app.extensions.get("services")
     if services is not None and hasattr(services, "invalidate_provider"):

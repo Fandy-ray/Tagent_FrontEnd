@@ -1,0 +1,10 @@
+{
+  "db": "DuckDB",
+  "mode": "single",
+  "killed": "写入进程 kill -9",
+  "acked": 7550,
+  "stored": 7550,
+  "lost_acked": 0,
+  "recovery_s": 0.68,
+  "ok": true
+}

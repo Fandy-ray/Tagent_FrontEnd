@@ -17,6 +17,8 @@ import uuid
 from flask import Response, jsonify, stream_with_context
 
 from app.api.deps import get_chat_service
+from app.api.learner import current_learner, note_chat
+from app.service.chat_service import STREAM_FAILED_NOTE
 from app.api.validators import (
     chat_mode,
     chat_retrieval_query,
@@ -54,9 +56,25 @@ def chat_completion_response(data, provider):
     service = get_chat_service()
     chat_id = f"chatcmpl-{uuid.uuid4().hex}"
     created = int(time.time())
+    # 认人要趁现在：流式回答的生成器是在这个函数返回之后才被消费的
+    learner = current_learner()
+    started_at = time.monotonic()
+
+    def remember(answer: str, finish_reason: str) -> None:
+        note_chat(
+            learner,
+            provider,
+            mode=options["mode"],
+            messages=messages,
+            answer=answer,
+            finish_reason=finish_reason,
+            notebook_ids=notebook_ids,
+            started_at=started_at,
+        )
 
     if not data.get("stream", False):
         result = service.answer(messages, provider, notebook_ids=notebook_ids, **options)
+        remember(result["content"], "stop")
         return jsonify(
             {
                 "id": chat_id,
@@ -79,6 +97,10 @@ def chat_completion_response(data, provider):
             service.stream_answer(messages, provider, notebook_ids=notebook_ids, **options)
         )
         finish_reason = "stop"
+        # 记进学习记录的那份回答。学生中途点了「停止」或刷新（GeneratorExit）、上游出错，
+        # 也把已经说出来的部分记下，并如实标成 interrupted / error，而不是当成答完了。
+        spoken: list[str] = []
+        outcome = "interrupted"
         try:
             role_chunk = _chunk(
                 chat_id,
@@ -96,6 +118,7 @@ def chat_completion_response(data, provider):
                 if item_finish_reason:
                     finish_reason = item_finish_reason
                 if token:
+                    spoken.append(str(token))
                     payload = _chunk(
                         chat_id,
                         created,
@@ -103,20 +126,23 @@ def chat_completion_response(data, provider):
                         str(token),
                     )
                     yield f"data: {json.dumps(payload, ensure_ascii=False)}\n\n"
+            outcome = finish_reason
         except GeneratorExit:
             raise
         except Exception:
+            outcome = "error"
             payload = _chunk(
                 chat_id,
                 created,
                 provider.served_model_id,
-                "The selected provider stream ended unexpectedly.",
+                STREAM_FAILED_NOTE,
             )
             yield f"data: {json.dumps(payload, ensure_ascii=False)}\n\n"
         finally:
             close = getattr(iterator, "close", None)
             if callable(close):
                 close()
+            remember("".join(spoken), outcome)
         final_chunk = _chunk(
             chat_id,
             created,

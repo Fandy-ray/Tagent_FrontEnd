@@ -1,6 +1,4 @@
 <script lang="ts">
-	import { read, utils } from 'xlsx';
-
 	import PaperNotePicker from '$lib/components/chat/PaperNotePicker.svelte';
 	import type { KnowledgeCollection } from '$lib/data/knowledge';
 	import {
@@ -95,6 +93,8 @@
 			let status = '';
 			try {
 				if (/\.(xlsx|xls)$/i.test(file.name)) {
+					// xlsx 有几百 KB，只有上传表格才用：用到时再加载，别压在答疑页首屏里
+					const { read, utils } = await import('xlsx');
 					const workbook = read(await file.arrayBuffer(), { type: 'array' });
 					content = workbook.SheetNames.slice(0, 3)
 						.map((sheetName) => {

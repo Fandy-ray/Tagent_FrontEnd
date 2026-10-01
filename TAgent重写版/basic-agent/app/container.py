@@ -29,6 +29,8 @@ class Services:
     essay: "object"
     knowledge_base: "object"
     client_factory: "object"
+    # 学习记录库。None = 没开或没建成：记录直接跳过，答疑、批改照常。
+    store: "object | None" = None
 
     def warm_up(self) -> None:
         """预热知识库。三个 service 共用它，热一次就够。
@@ -48,13 +50,50 @@ class Services:
 
     def close(self) -> None:
         self.client_factory.close()
+        if self.store is not None:
+            self.store.close()
 
 
 def build_registry(settings: AgentConfig):
     return load_model_registry(settings.model_providers_path)
 
 
-def build_services(settings: AgentConfig, *, warm_up: bool = True) -> Services:
+def build_learning_store(settings: AgentConfig):
+    """建学习记录库。建不成（目录不可写、磁盘满、文件损坏）只记日志、返回 None：
+
+    记录是附加功能，不能因为它让整个服务起不来——和知识库预热失败不拉死进程是同一条。
+    """
+    if not settings.learning_store_enabled:
+        log.info("学习记录库已关闭（LEARNING_STORE=0）")
+        return None
+
+    from app.config import (
+        LEARNING_BACKUP_CHECK_SECONDS,
+        LEARNING_BACKUP_EVERY_SECONDS,
+        LEARNING_BUSY_TIMEOUT_MS,
+    )
+    from app.repository.learning_store import LearningStore
+
+    path = settings.resolved_learning_db_path()
+    try:
+        store = LearningStore(
+            path,
+            busy_timeout_ms=LEARNING_BUSY_TIMEOUT_MS,
+            backup_keep=settings.learning_backup_keep,
+        )
+        store.start_daily_backup(
+            every_s=LEARNING_BACKUP_EVERY_SECONDS, check_s=LEARNING_BACKUP_CHECK_SECONDS
+        )
+    except Exception as exc:
+        log.error("学习记录库打不开，本次运行不记录学习数据（服务照常）：%s —— %s", path, exc)
+        return None
+    log.info("学习记录库：%s（第 %s 版表结构）", path, store.schema_version)
+    return store
+
+
+def build_services(
+    settings: AgentConfig, *, warm_up: bool = True, learning_store: bool = True
+) -> Services:
     # 延迟 import：这几个模块会拉起 langchain/langgraph，
     # 只想构造 app 做单测时不该付这个代价。
     from app.infra.model_client_factory import ModelClientFactory
@@ -81,6 +120,7 @@ def build_services(settings: AgentConfig, *, warm_up: bool = True) -> Services:
         ),
         knowledge_base=knowledge_base,
         client_factory=client_factory,
+        store=build_learning_store(settings) if learning_store else None,
     )
     if warm_up:
         services.warm_up()

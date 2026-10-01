@@ -325,6 +325,11 @@
 										{iframeSandboxAllowForms}
 									/>
 									<CitationLinks citations={message.citations ?? []} />
+									{#if message.interrupted && !message.streaming}
+										<p class="mt-2 text-xs leading-5 text-amber-300/80">
+											这次回答没有完成（页面在生成时刷新、关闭或断网了）。点下面的「重新生成」再答一次。
+										</p>
+									{/if}
 								{/if}
 							</div>
 

@@ -1,6 +1,5 @@
 <script lang="ts">
 	import Controls from '$lib/components/chat/Controls/Controls.svelte';
-	import Overview from '$lib/components/chat/Overview/Overview.svelte';
 	import type { MockMessage } from '$lib/components/chat/MockMessages.svelte';
 
 	type Props = {
@@ -96,12 +95,15 @@
 				}`}
 			>
 				{#if activeTab === 'overview'}
-					<Overview
-						{messages}
-						{modelName}
-						currentMessageId={messages.at(-1)?.id ?? null}
-						onNodeClick={onSelectMessage}
-					/>
+					<!-- 流程图（@xyflow）很少打开，点到「概览」才加载，别压在答疑页首屏里 -->
+					{#await import('$lib/components/chat/Overview/Overview.svelte') then { default: Overview }}
+						<Overview
+							{messages}
+							{modelName}
+							currentMessageId={messages.at(-1)?.id ?? null}
+							onNodeClick={onSelectMessage}
+						/>
+					{/await}
 				{:else}
 					<Controls embed={true} bind:params onClose={onClose} onChange={onChange} />
 				{/if}
