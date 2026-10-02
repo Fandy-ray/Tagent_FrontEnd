@@ -717,7 +717,7 @@ if [ -n "$FRONT_BUILD_PID" ]; then
     fi
 fi
 
-step "启动 tagentnote ($VITE_HOST:$FRONTEND_PORT，$FRONT_MODE)"
+step "启动 tagentnote (${VITE_HOST}:${FRONTEND_PORT}，${FRONT_MODE})"
 # 直接用 node 跑 vite，不经 npm：npm 会再派生一个 node 子进程，
 # PID 文件记到的是 npm 那一层，stop 时杀不掉真正监听端口的进程。
 nohup node "$VITE_BIN" "$FRONT_MODE" --port "$FRONTEND_PORT" --strictPort --host "$VITE_HOST" \

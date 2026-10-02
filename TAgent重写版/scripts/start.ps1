@@ -707,7 +707,7 @@ if ($buildProc) {
     }
 }
 
-Write-Step "启动 tagentnote (${viteHost}:$FrontendPort，$frontMode)"
+Write-Step "启动 tagentnote (${viteHost}:${FrontendPort}，${frontMode})"
 # 直接用 node 跑 vite，不经 npm.cmd：npm 会再派生一个 node 子进程，
 # PID 文件记到的是 npm 那一层，stop 时杀不掉真正监听端口的进程。
 $viteArgs = @($viteBin, $frontMode, '--port', "$FrontendPort", '--strictPort', '--host', $viteHost)
