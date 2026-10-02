@@ -31,10 +31,28 @@ from app.errors.exam_errors import ExamBusyError, UpstreamLLMError, UpstreamTime
 log = logging.getLogger(__name__)
 
 
+_OUTER_FENCE = re.compile(r"^```[A-Za-z]*\s*(.*)```\s*$", re.DOTALL)
+
+
 def extract_json(text: str) -> str:
-    """兜底：模型偶尔无视 JSON mode 包一层代码块时，剥出其中的 JSON。"""
-    match = re.search(r"```(?:json)?\s*(.+?)\s*```", text, re.DOTALL)
-    return match.group(1) if match else text
+    """兜底：模型偶尔无视 JSON mode 包一层代码块时，剥出其中的 JSON。
+
+    只剥**最外层**的包装。以前是在全文里找第一个 ``` 代码块：教材里有 C 代码，
+    模型把 ```c ... ``` 写进了大题的参考答案（JSON 字符串里），结果取出来的是那段 C 代码，
+    整卷连着两次「输出结构异常」出不了卷（2026-10-02 实测）。
+    """
+    stripped = (text or "").strip()
+    if stripped[:1] in ("{", "["):
+        return stripped  # 本身就是 JSON：字符串里的 ``` 是内容，不是包装
+    fenced = _OUTER_FENCE.match(stripped)
+    if fenced:
+        return fenced.group(1).strip()  # 贪婪到最后一个 ```：里面再有代码块也整段保留
+    # 前后夹了说明文字：取第一个 { / [ 到最后一个 } / ]
+    starts = [i for i in (stripped.find("{"), stripped.find("[")) if i >= 0]
+    end = max(stripped.rfind("}"), stripped.rfind("]"))
+    if starts and end > min(starts):
+        return stripped[min(starts) : end + 1]
+    return stripped
 
 
 # ====================== 硬墙钟超时调用 ======================

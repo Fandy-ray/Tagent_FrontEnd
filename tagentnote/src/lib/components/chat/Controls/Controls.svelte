@@ -28,11 +28,8 @@
 		localStorage.setItem(`chatControls.${key}`, String(open));
 	};
 
-	let showValves = $state(getOpen('valves', false));
 	let showSystemPrompt = $state(getOpen('systemPrompt'));
 	let showAdvancedParams = $state(false);
-	let valvesTab = $state<'tools' | 'functions'>('tools');
-	let selectedToolId = $state('');
 	let AdvancedParamsComp = $state<any>(null);
 	let advancedLoading = $state(false);
 
@@ -72,40 +69,6 @@
 	{/if}
 
 	<div class="px-0.5 py-0.5 text-sm text-gray-200">
-		<Collapsible
-			title="配置项"
-			bind:open={showValves}
-			onChange={setOpen('valves')}
-			buttonClassName="w-full text-gray-200 hover:text-white transition"
-		>
-			{#snippet content()}
-				<div class="mt-1.5 space-y-2 text-xs">
-					<div class="flex gap-2">
-						<select
-							class="w-full rounded-sm bg-transparent px-1 py-2 text-xs outline-none"
-							bind:value={valvesTab}
-						>
-							<option value="tools" class="bg-gray-800">工具</option>
-							<option value="functions" class="bg-gray-800">函数</option>
-						</select>
-						<select
-							class="w-full rounded-sm bg-transparent px-1 py-2 text-xs outline-none"
-							bind:value={selectedToolId}
-						>
-							<option value="" disabled selected class="bg-gray-800">
-								{valvesTab === 'tools' ? '选择工具' : '选择函数'}
-							</option>
-						</select>
-					</div>
-					<p class="px-0.5 text-[11px] leading-5 text-gray-500">
-						当前教学前端未接入 Open WebUI 工具阀门；选项已对齐布局，后续可接后端。
-					</p>
-				</div>
-			{/snippet}
-		</Collapsible>
-
-		<hr class="my-2 border-gray-800" />
-
 		<Collapsible
 			title="系统提示词"
 			bind:open={showSystemPrompt}

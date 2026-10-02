@@ -1,5 +1,6 @@
 """app.infra.llm_json.call_json_llm 单测：预算控制、硬 deadline、重试语义、错误脱敏。离线运行。"""
 
+import json
 import asyncio
 import threading
 import time
@@ -297,6 +298,25 @@ def test_empty_content_retries_then_fails_generic():
 def test_extract_json_strips_code_fence():
     assert extract_json('```json\n{"a": 1}\n```') == '{"a": 1}'
     assert extract_json('{"a": 1}') == '{"a": 1}'
+
+
+# 2026-10-02 实测：教材里有 C 代码，模型把 ```c 代码块写进了参考答案，旧实现取出来的是那段 C 代码
+CODE_IN_ANSWER = {"essay": [{"question": "写出事件调度的时间推进函数", "reference_answer": "```c\nvoid timing()\n{\n  min_time = 1e29;\n}\n```"}]}
+
+
+def test_code_fences_inside_json_strings_are_content_not_wrappers():
+    raw = json.dumps(CODE_IN_ANSWER, ensure_ascii=False)
+    assert json.loads(extract_json(raw)) == CODE_IN_ANSWER
+
+
+def test_an_outer_fence_with_inner_code_blocks_keeps_the_whole_json():
+    raw = "```json\n" + json.dumps(CODE_IN_ANSWER, ensure_ascii=False, indent=2) + "\n```"
+    assert json.loads(extract_json(raw)) == CODE_IN_ANSWER
+
+
+def test_json_surrounded_by_chatter_is_found():
+    raw = "好的，下面是题目：\n" + json.dumps({"a": [1, 2]}) + "\n希望有帮助。"
+    assert json.loads(extract_json(raw)) == {"a": [1, 2]}
 
 
 def test_connection_error_is_not_reported_as_a_structure_problem():

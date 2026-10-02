@@ -112,6 +112,8 @@ export type NotebookSummary = {
 	name: string;
 	description?: string | null;
 	note_count?: number;
+	/** 供前端组件使用的驼峰字段；由 listNotebooks 统一填充。 */
+	noteCount?: number;
 };
 
 export type CreatedNote = {
@@ -149,9 +151,31 @@ const postJson = async <T>(path: string, body: unknown, signal?: AbortSignal): P
 };
 
 export async function listNotebooks(signal?: AbortSignal): Promise<NotebookSummary[]> {
-	return fetchJson<NotebookSummary[]>(
+	const notebooks = await fetchJson<NotebookListItem[]>(
 		'/api/notebooks?archived=false&order_by=updated+desc',
 		signal
+	);
+
+	return Promise.all(
+		notebooks.map(async (notebook) => {
+			const reportedCount = notebook.note_count;
+			const count = await fetchJson<NoteListItem[]>(
+				`/api/notes?notebook_id=${encodeURIComponent(notebook.id)}`,
+				signal
+			)
+				.then((notes) => notes.length)
+				.catch(() =>
+					typeof reportedCount === 'number' && Number.isFinite(reportedCount)
+						? reportedCount
+						: 0
+				);
+
+			return {
+				...notebook,
+				note_count: count,
+				noteCount: count
+			};
+		})
 	);
 }
 

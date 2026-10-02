@@ -3,7 +3,6 @@
 	import Minus from '$lib/components/icons/Minus.svelte';
 	import Plus from '$lib/components/icons/Plus.svelte';
 	import ManageFloatingActionButtonsModal from './Interface/ManageFloatingActionButtonsModal.svelte';
-	import ManageImageCompressionModal from './Interface/ManageImageCompressionModal.svelte';
 	import {
 		applyHighContrast,
 		applyTextScale,
@@ -23,11 +22,8 @@
 	let showChatTitleInTab = $state(settings.showChatTitleInTab);
 	let notificationSound = $state(settings.notificationSound);
 	let notificationSoundAlways = $state(settings.notificationSoundAlways);
-	let userLocation = $state(settings.userLocation);
 	let hapticFeedback = $state(settings.hapticFeedback);
 	let copyFormatted = $state(settings.copyFormatted);
-	let showUpdateToast = $state(settings.showUpdateToast);
-	let showChangelog = $state(settings.showChangelog);
 	let enableMessageQueue = $state(settings.enableMessageQueue);
 	let chatDirection = $state(settings.chatDirection);
 	let landingPageMode = $state(settings.landingPageMode);
@@ -47,31 +43,19 @@
 	let regenerateMenu = $state(settings.regenerateMenu);
 	let collapseCodeBlocks = $state(settings.collapseCodeBlocks);
 	let expandDetails = $state(settings.expandDetails);
-	let renderMarkdownInPreviews = $state(settings.renderMarkdownInPreviews);
-	let displayMultiModelResponsesInTabs = $state(settings.displayMultiModelResponsesInTabs);
-	let scrollOnBranchChange = $state(settings.scrollOnBranchChange);
 	let stylizedPdfExport = $state(settings.stylizedPdfExport);
 	let showFloatingActionButtons = $state(settings.showFloatingActionButtons);
 	let floatingActionButtons = $state(settings.floatingActionButtons);
-	let webSearchAlways = $state(settings.webSearchAlways);
 	let ctrlEnterToSend = $state(settings.ctrlEnterToSend);
 	let richTextInput = $state(settings.richTextInput);
 	let promptAutocomplete = $state(settings.promptAutocomplete);
 	let showFormattingToolbar = $state(settings.showFormattingToolbar);
-	let insertPromptAsRichText = $state(settings.insertPromptAsRichText);
-	let largeTextAsFile = $state(settings.largeTextAsFile);
 	let detectArtifacts = $state(settings.detectArtifacts);
 	let iframeSandboxAllowSameOrigin = $state(settings.iframeSandboxAllowSameOrigin);
 	let iframeSandboxAllowForms = $state(settings.iframeSandboxAllowForms);
-	let voiceInterruption = $state(settings.voiceInterruption);
-	let showEmojiInCall = $state(settings.showEmojiInCall);
-	let imageCompression = $state(settings.imageCompression);
-	let imageCompressionSize = $state({ ...settings.imageCompressionSize });
-	let imageCompressionInChannels = $state(settings.imageCompressionInChannels);
 
 	let filesInputElement: HTMLInputElement | null = $state(null);
 	let showManageFloating = $state(false);
-	let showManageCompression = $state(false);
 
 	const setTextScaleHandler = (scale: number | null) => {
 		textScale = scale === 1 ? null : scale;
@@ -91,29 +75,9 @@
 		saveSettings({ landingPageMode });
 	};
 
-	const toggleWebSearch = () => {
-		webSearchAlways = !webSearchAlways;
-		saveSettings({ webSearchAlways });
-	};
-
 	const toggleCtrlEnter = () => {
 		ctrlEnterToSend = !ctrlEnterToSend;
 		saveSettings({ ctrlEnterToSend });
-	};
-
-	const toggleUserLocation = async () => {
-		if (userLocation && 'geolocation' in navigator) {
-			try {
-				await new Promise<GeolocationPosition>((resolve, reject) => {
-					navigator.geolocation.getCurrentPosition(resolve, reject, { timeout: 8000 });
-				});
-			} catch {
-				userLocation = false;
-				alert('无法获取位置，请检查浏览器权限。');
-				return;
-			}
-		}
-		await saveSettings({ userLocation });
 	};
 
 	const toggleResponseAutoCopy = async () => {
@@ -139,22 +103,12 @@
 	}}
 />
 
-<ManageImageCompressionModal
-	bind:show={showManageCompression}
-	bind:size={imageCompressionSize}
-	onSave={(size) => {
-		imageCompressionSize = size;
-		saveSettings({ imageCompressionSize: size });
-	}}
-/>
-
 <form
 	id="tab-interface"
 	class="flex h-full min-h-0 flex-col justify-between space-y-3 text-sm"
 	onsubmit={(e) => {
 		e.preventDefault();
 		saveSettings({
-			imageCompressionSize,
 			floatingActionButtons
 		});
 		onSave();
@@ -225,10 +179,6 @@
 			</div>
 		{/if}
 		<div class="flex w-full justify-between py-0.5">
-			<div class="self-center text-xs">允许使用用户位置</div>
-			<Switch bind:state={userLocation} onChange={toggleUserLocation} />
-		</div>
-		<div class="flex w-full justify-between py-0.5">
 			<div class="self-center text-xs">触觉反馈（Android）</div>
 			<Switch bind:state={hapticFeedback} onChange={() => saveSettings({ hapticFeedback })} />
 		</div>
@@ -236,15 +186,6 @@
 			<div class="self-center text-xs">复制格式化文本</div>
 			<Switch bind:state={copyFormatted} onChange={() => saveSettings({ copyFormatted })} />
 		</div>
-		<div class="flex w-full justify-between py-0.5">
-			<div class="self-center text-xs">检测到新版本时显示更新通知</div>
-			<Switch bind:state={showUpdateToast} onChange={() => saveSettings({ showUpdateToast })} />
-		</div>
-		<div class="flex w-full justify-between py-0.5">
-			<div class="self-center text-xs">版本更新后首次登录时显示“新功能介绍”弹窗</div>
-			<Switch bind:state={showChangelog} onChange={() => saveSettings({ showChangelog })} />
-		</div>
-
 		<div class="my-2 text-sm font-medium">对话</div>
 
 		<div class="flex w-full justify-between py-0.5">
@@ -339,19 +280,7 @@
 			<Switch bind:state={expandDetails} onChange={() => saveSettings({ expandDetails })} />
 		</div>
 		<div class="flex w-full justify-between py-0.5">
-			<div class="self-center text-xs">在文件和引用预览中渲染 Markdown</div>
-			<Switch bind:state={renderMarkdownInPreviews} onChange={() => saveSettings({ renderMarkdownInPreviews })} />
-		</div>
-		<div class="flex w-full justify-between py-0.5">
-			<div class="self-center text-xs">以标签页的形式展示多个模型的回答</div>
-			<Switch bind:state={displayMultiModelResponsesInTabs} onChange={() => saveSettings({ displayMultiModelResponsesInTabs })} />
-		</div>
-		<div class="flex w-full justify-between py-0.5">
-			<div class="self-center text-xs">切换对话分支时滚动到最新回答</div>
-			<Switch bind:state={scrollOnBranchChange} onChange={() => saveSettings({ scrollOnBranchChange })} />
-		</div>
-		<div class="flex w-full justify-between py-0.5">
-			<div class="self-center text-xs">美化 PDF 导出</div>
+			<div class="self-center text-xs">格式化 Markdown 导出</div>
 			<Switch bind:state={stylizedPdfExport} onChange={() => saveSettings({ stylizedPdfExport })} />
 		</div>
 		<div class="flex w-full justify-between py-0.5">
@@ -363,13 +292,6 @@
 				<Switch bind:state={showFloatingActionButtons} onChange={() => saveSettings({ showFloatingActionButtons })} />
 			</div>
 		</div>
-		<div class="flex w-full justify-between py-0.5">
-			<div class="self-center text-xs">在对话时进行联网搜索</div>
-			<button class="rounded-sm px-3 py-1 text-xs" type="button" onclick={toggleWebSearch}>
-				{webSearchAlways ? '始终' : '默认'}
-			</button>
-		</div>
-
 		<div class="my-2 text-sm font-medium">输入</div>
 
 		<div class="flex w-full justify-between py-0.5">
@@ -391,16 +313,7 @@
 				<div class="self-center text-xs">显示格式工具栏</div>
 				<Switch bind:state={showFormattingToolbar} onChange={() => saveSettings({ showFormattingToolbar })} />
 			</div>
-			<div class="flex w-full justify-between py-0.5">
-				<div class="self-center text-xs">以富文本的形式回填提示词</div>
-				<Switch bind:state={insertPromptAsRichText} onChange={() => saveSettings({ insertPromptAsRichText })} />
-			</div>
 		{/if}
-		<div class="flex w-full justify-between py-0.5">
-			<div class="self-center text-xs">将大段文本粘贴为文件</div>
-			<Switch bind:state={largeTextAsFile} onChange={() => saveSettings({ largeTextAsFile })} />
-		</div>
-
 		<div class="my-2 text-sm font-medium">产物</div>
 
 		<div class="flex w-full justify-between py-0.5">
@@ -416,34 +329,6 @@
 			<Switch bind:state={iframeSandboxAllowForms} onChange={() => saveSettings({ iframeSandboxAllowForms })} />
 		</div>
 
-		<div class="my-2 text-sm font-medium">语音</div>
-
-		<div class="flex w-full justify-between py-0.5">
-			<div class="self-center text-xs">允许语音通话时打断对话</div>
-			<Switch bind:state={voiceInterruption} onChange={() => saveSettings({ voiceInterruption })} />
-		</div>
-		<div class="flex w-full justify-between py-0.5">
-			<div class="self-center text-xs">在通话中显示 Emoji</div>
-			<Switch bind:state={showEmojiInCall} onChange={() => saveSettings({ showEmojiInCall })} />
-		</div>
-
-		<div class="my-2 text-sm font-medium">文件</div>
-
-		<div class="flex w-full justify-between py-0.5">
-			<div class="self-center text-xs">压缩图像</div>
-			<div class="flex items-center gap-3 p-1">
-				{#if imageCompression}
-					<button class="text-xs text-gray-400 underline" type="button" onclick={() => { showManageCompression = true; }}>管理</button>
-				{/if}
-				<Switch bind:state={imageCompression} onChange={() => saveSettings({ imageCompression })} />
-			</div>
-		</div>
-		{#if imageCompression}
-			<div class="flex w-full justify-between py-0.5">
-				<div class="self-center text-xs">压缩频道中的图片</div>
-				<Switch bind:state={imageCompressionInChannels} onChange={() => saveSettings({ imageCompressionInChannels })} />
-			</div>
-		{/if}
 	</div>
 
 	<div class="flex shrink-0 justify-end pt-2 text-sm font-medium">

@@ -1,18 +1,13 @@
 <script lang="ts">
 	import DataControls from '$lib/components/chat/Settings/DataControls.svelte';
-	import type { ChatRow } from '$lib/components/layout/ChatsModal.svelte';
 	import General from '$lib/components/chat/Settings/General.svelte';
 	import AppNotification from '$lib/components/icons/AppNotification.svelte';
 	import DatabaseSettings from '$lib/components/icons/DatabaseSettings.svelte';
-	import Face from '$lib/components/icons/Face.svelte';
-	import InfoCircle from '$lib/components/icons/InfoCircle.svelte';
-	import Link from '$lib/components/icons/Link.svelte';
 	import Search from '$lib/components/icons/Search.svelte';
 	import SettingsAlt from '$lib/components/icons/SettingsAlt.svelte';
 	import SoundHigh from '$lib/components/icons/SoundHigh.svelte';
 	import UserBadgeCheck from '$lib/components/icons/UserBadgeCheck.svelte';
 	import UserCircle from '$lib/components/icons/UserCircle.svelte';
-	import WrenchAlt from '$lib/components/icons/WrenchAlt.svelte';
 	import XMark from '$lib/components/icons/XMark.svelte';
 	import {
 		applyTextScale,
@@ -29,13 +24,9 @@
 	type TabId =
 		| 'general'
 		| 'interface'
-		| 'connections'
-		| 'tools'
-		| 'personalization'
 		| 'audio'
 		| 'data_controls'
-		| 'account'
-		| 'about';
+		| 'account';
 
 	type Props = {
 		open?: boolean;
@@ -48,13 +39,10 @@
 		onDeleteAllChats?: () => void;
 		onOpenArchived?: () => void;
 		onToast?: (message: string) => void;
+		/** 当前版本暂不提供管理员面板入口。 */
+		showAdminPanel?: boolean;
 		/** 打开时先显示哪个标签页，默认「通用」（导航栏的「数据」按钮用它直达数据管理） */
 		initialTab?: TabId;
-		/** 数据页「已归档 / 已分享的对话」要列的对话，以及对单条对话的操作 */
-		chats?: ChatRow[];
-		onUnarchiveChat?: (id: string) => void;
-		onDeleteChat?: (id: string) => void;
-		onOpenChat?: (id: string) => void;
 	};
 
 	let {
@@ -68,11 +56,8 @@
 		onDeleteAllChats = () => {},
 		onOpenArchived = () => {},
 		onToast = () => {},
-		initialTab = 'general',
-		chats = [],
-		onUnarchiveChat = () => {},
-		onDeleteChat = () => {},
-		onOpenChat
+		showAdminPanel = false,
+		initialTab = 'general'
 	}: Props = $props();
 
 	let selectedTab = $state<TabId>('general');
@@ -86,38 +71,28 @@
 	const allTabs: { id: TabId; title: string; keywords: string[] }[] = [
 		{ id: 'general', title: 'General', keywords: ['general', 'theme', 'language', 'notification', 'system prompt', 'advanced params', '通用', '主题', '语言', '通知', '系统提示', '高级参数'] },
 		{ id: 'interface', title: 'Interface', keywords: ['interface', 'wide', 'bubble', 'zoom', '界面', '宽屏', '气泡', '缩放'] },
-		{ id: 'connections', title: 'Connections', keywords: ['connections', 'external', 'openai', 'api', '外部连接', '连接'] },
-		{ id: 'tools', title: 'Extensions', keywords: ['integrations', 'extensions', 'tools', 'openapi', '扩展功能', '工具'] },
-		{ id: 'personalization', title: 'Personalization', keywords: ['personalization', 'memory', '个性化', '记忆'] },
 		{ id: 'audio', title: 'Audio', keywords: ['audio', 'voice', 'stt', 'tts', '语音'] },
 		{ id: 'data_controls', title: 'Data', keywords: ['data', 'import', 'export', 'archive', '数据', '导入', '导出', '归档'] },
-		{ id: 'account', title: 'Account', keywords: ['account', 'name', 'avatar', '账号', '名称', '头像'] },
-		{ id: 'about', title: 'About', keywords: ['about', 'version', '关于', '版本'] }
+		{ id: 'account', title: 'Account', keywords: ['account', 'name', 'avatar', '账号', '名称', '头像'] }
 	];
 
-	let filteredIds = $state<TabId[]>(allTabs.map((t) => t.id));
+	let filteredIds = $state<TabId[]>(
+		allTabs.filter((t) => t.id !== 'audio').map((t) => t.id)
+	);
 
 	// Tab titles with i18n
 	const tabTitles: Record<TabId, string> = $derived({
 		general: $i18n.t('General'),
 		interface: $i18n.t('Interface'),
-		connections: $i18n.t('Connections'),
-		tools: $i18n.t('Extensions'),
-		personalization: $i18n.t('个性化'),
 		audio: $i18n.t('音频'),
 		data_controls: $i18n.t('数据'),
-		account: $i18n.t('Account'),
-		about: $i18n.t('About')
+		account: $i18n.t('Account')
 	});
 
 	const tabLoaders: Partial<Record<TabId, () => Promise<{ default: Component<any> }>>> = {
 		interface: () => import('$lib/components/chat/Settings/Interface.svelte'),
-		connections: () => import('$lib/components/chat/Settings/Connections.svelte'),
-		tools: () => import('$lib/components/chat/Settings/Integrations.svelte'),
-		personalization: () => import('$lib/components/chat/Settings/Personalization.svelte'),
 		audio: () => import('$lib/components/chat/Settings/Audio.svelte'),
-		account: () => import('$lib/components/chat/Settings/Account.svelte'),
-		about: () => import('$lib/components/chat/Settings/About.svelte')
+		account: () => import('$lib/components/chat/Settings/Account.svelte')
 	};
 
 	const ensureTab = async (id: TabId) => {
@@ -155,6 +130,7 @@
 	const refreshFilter = () => {
 		const q = search.toLowerCase().trim();
 		const next = allTabs
+			.filter((tab) => tab.id !== 'audio')
 			.filter((tab) => {
 				if (!q) return true;
 				return (
@@ -206,7 +182,7 @@
 			search = '';
 			// 走 selectTab：懒加载的标签页要它去加载组件，直接赋值会是一片空白
 			void selectTab(initialTab);
-			filteredIds = allTabs.map((t) => t.id);
+			filteredIds = allTabs.filter((t) => t.id !== 'audio').map((t) => t.id);
 			tick().then(() => {
 				document
 					.getElementById('settings-tabs-container')
@@ -296,39 +272,6 @@
 									<div class="mr-2 self-center"><AppNotification strokeWidth="2" /></div>
 									<div class="self-center">{tabTitles.interface}</div>
 								</button>
-							{:else if tabId === 'connections'}
-								<button
-									type="button"
-									role="tab"
-									aria-selected={selectedTab === 'connections'}
-									class={tabClass('connections')}
-									onclick={() => { void selectTab('connections'); }}
-								>
-									<div class="mr-2 self-center"><Link strokeWidth="2" /></div>
-									<div class="self-center">{tabTitles.connections}</div>
-								</button>
-							{:else if tabId === 'tools'}
-								<button
-									type="button"
-									role="tab"
-									aria-selected={selectedTab === 'tools'}
-									class={tabClass('tools')}
-									onclick={() => { void selectTab('tools'); }}
-								>
-									<div class="mr-2 self-center"><WrenchAlt strokeWidth="2" /></div>
-									<div class="self-center">{tabTitles.tools}</div>
-								</button>
-							{:else if tabId === 'personalization'}
-								<button
-									type="button"
-									role="tab"
-									aria-selected={selectedTab === 'personalization'}
-									class={tabClass('personalization')}
-									onclick={() => { void selectTab('personalization'); }}
-								>
-									<div class="mr-2 self-center"><Face strokeWidth="2" /></div>
-									<div class="self-center">{tabTitles.personalization}</div>
-								</button>
 							{:else if tabId === 'audio'}
 								<button
 									type="button"
@@ -362,24 +305,13 @@
 									<div class="mr-2 self-center"><UserCircle strokeWidth="2" /></div>
 									<div class="self-center">{tabTitles.account}</div>
 								</button>
-							{:else if tabId === 'about'}
-								<button
-									type="button"
-									role="tab"
-									aria-selected={selectedTab === 'about'}
-									class={tabClass('about')}
-									onclick={() => { void selectTab('about'); }}
-								>
-									<div class="mr-2 self-center"><InfoCircle strokeWidth="2" /></div>
-									<div class="self-center">{tabTitles.about}</div>
-								</button>
 							{/if}
 						{/each}
 					{:else}
 						<div class="mt-4 text-center text-gray-500">{$i18n.t('No results found')}</div>
 					{/if}
 
-					{#if userRole === 'admin'}
+					{#if userRole === 'admin' && showAdminPanel}
 						<a
 							href="/admin"
 							class="mt-0 flex min-w-fit flex-1 select-none rounded-xl px-0.5 py-1 text-left transition md:mt-auto md:flex-none md:px-2.5 {settings.highContrastMode
@@ -404,16 +336,6 @@
 						<General {settings} {saveSettings} onSave={notifySaved} />
 					{:else if selectedTab === 'data_controls'}
 						<DataControls
-							allChats={chats}
-							onUnarchive={onUnarchiveChat}
-							onDeleteChat={onDeleteChat}
-							onOpenChat={onOpenChat
-								? (id) => {
-										onClose();
-										onOpenChat(id);
-									}
-								: undefined}
-							files={[]}
 							onImport={onImportChats}
 							onExport={onExportChats}
 							onArchiveAll={onArchiveAllChats}
@@ -423,11 +345,7 @@
 						<p class="py-6 text-xs text-gray-500">{$i18n.t('Loading...')}</p>
 					{:else if lazyTabs[selectedTab]}
 						{@const Tab = lazyTabs[selectedTab]}
-						{#if selectedTab === 'about'}
-							<Tab />
-						{:else}
-							<Tab {settings} {saveSettings} onSave={notifySaved} />
-						{/if}
+						<Tab {settings} {saveSettings} onSave={notifySaved} />
 					{/if}
 				</div>
 			</div>

@@ -90,7 +90,6 @@
 	);
 	let temporaryChat = $state($page.url.searchParams.get('temporary-chat') === 'true');
 	let messageQueue = $state<QueuedPrompt[]>([]);
-	let changelogOpen = $state(false);
 	let dictationEnabled = $state(false);
 	let controlsOpen = $state(false);
 	let chatControls = $state<ChatControlParams>(loadChatControls());
@@ -152,15 +151,6 @@
 			.sort((a, b) => b.updatedAt - a.updatedAt)
 	);
 
-	/** 设置 →「数据」里列的对话（已归档的、分享过的都从这里挑） */
-	const chatRows = $derived(
-		modeChats.map((chat) => ({
-			id: chat.id,
-			title: chat.title,
-			updatedAt: chat.updatedAt,
-			archived: !!chat.archived
-		}))
-	);
 
 	const currentModelName = $derived(
 		modelOptions.find((model) => model.id === selectedModelId)?.name ?? selectedModelId
@@ -212,27 +202,6 @@
 
 	const effectiveBackgroundUrl = $derived(
 		selectedFolder?.backgroundImageUrl || userSettings.backgroundImageUrl
-	);
-
-	const inputKnowledgeOptions = $derived(
-		collections.map((item) => ({
-			id: item.id,
-			name: item.name,
-			description: item.description,
-			files: item.files.map((f) => ({ id: f.id, name: f.title }))
-		}))
-	);
-
-	const inputNoteOptions = $derived(
-		collections.flatMap((nb) =>
-			nb.files.filter((f) => f.kind === 'note').map((f) => ({ id: f.id, name: f.title }))
-		)
-	);
-
-	const inputChatOptions = $derived(
-		chats
-			.filter((c) => !c.archived && c.id !== activeChatId)
-			.map((c) => ({ id: c.id, name: c.title }))
 	);
 
 	const toast = (message: string, ms = 2800) => {
@@ -492,24 +461,6 @@
 				collections = [];
 			});
 
-		if (userSettings.showUpdateToast) {
-			const key = 'tagentnote.update.toast.seen';
-			if (!localStorage.getItem(key)) {
-				saveToast = '已同步最新界面设置';
-				localStorage.setItem(key, '1');
-				window.setTimeout(() => {
-					saveToast = '';
-				}, 3200);
-			}
-		}
-		if (userSettings.showChangelog) {
-			const key = 'tagentnote.changelog.seen';
-			if (!localStorage.getItem(key)) {
-				changelogOpen = true;
-				localStorage.setItem(key, '1');
-			}
-		}
-
 		const onGlobalKeydown = (event: KeyboardEvent) => {
 			const target = event.target as HTMLElement | null;
 			const tag = target?.tagName?.toLowerCase() ?? '';
@@ -623,11 +574,10 @@
 			}
 
 			if (event.key === 'Escape') {
-				if (settingsOpen || shortcutsOpen || changelogOpen || archivedOpen || saveOpen) {
+				if (settingsOpen || shortcutsOpen || archivedOpen || saveOpen) {
 					event.preventDefault();
 					settingsOpen = false;
 					shortcutsOpen = false;
-					changelogOpen = false;
 					archivedOpen = false;
 					saveOpen = false;
 					return;
@@ -1966,6 +1916,14 @@
 	const stopResponse = () => {
 		bumpGeneration();
 		finishStreamingMessages();
+		// 一个字还没回就点了停止：补一条空的「没有完成」，问题下面不至于空着，也有「重新生成」可点
+		const last = messages.at(-1);
+		if (last?.role === 'user') {
+			messages = [
+				...messages,
+				{ id: `assistant-stopped-${last.id}`, role: 'assistant', content: '', interrupted: true }
+			];
+		}
 		generating = false;
 		commitActive();
 	};
@@ -2346,32 +2304,23 @@
 						{/if}
 						<div class="flex min-h-0 w-full flex-1 items-center">
 							<MockPlaceholder
-								modelName={currentModelName}
 								bind:prompt
 								{generating}
 								mode={assistMode}
 								{temporaryChat}
 								landingPageMode={userSettings.landingPageMode}
 								ctrlEnterToSend={userSettings.ctrlEnterToSend}
-								largeTextAsFile={userSettings.largeTextAsFile}
 								enableMessageQueue={userSettings.enableMessageQueue}
 								showFormattingToolbar={userSettings.showFormattingToolbar}
 								richTextInput={userSettings.richTextInput}
 								promptAutocomplete={userSettings.promptAutocomplete}
-								imageCompression={userSettings.imageCompression}
-								imageCompressionSize={userSettings.imageCompressionSize}
 								insertSuggestionPrompt={userSettings.insertSuggestionPrompt}
 								{lastUserMessage}
-								speechAutoSend={userSettings.speechAutoSend}
-								webSearchAlways={userSettings.webSearchAlways}
-								knowledgeOptions={inputKnowledgeOptions}
-								noteOptions={inputNoteOptions}
-								chatOptions={inputChatOptions}
+								modelName={currentModelName}
 								onSubmit={submitPrompt}
 								onReview={assistMode === 'paper' ? submitPaperForReview : null}
 								onFillSample={assistMode === 'paper' && samples.length > 0 ? fillSample : null}
 								onStop={stopResponse}
-								onToast={toast}
 							/>
 						</div>
 					</div>
@@ -2449,10 +2398,6 @@
 						</div>
 					{/if}
 
-					{#if userSettings.webSearchAlways}
-						<div class="px-4 pb-1 text-center text-[11px] text-sky-400/80">联网搜索：始终开启</div>
-					{/if}
-
 				<div
 						class="relative z-10 shrink-0 px-4 pt-4 pb-2"
 					>
@@ -2464,28 +2409,15 @@
 								placeholder="有什么我能帮您的吗？"
 								{generating}
 								ctrlEnterToSend={userSettings.ctrlEnterToSend}
-								largeTextAsFile={userSettings.largeTextAsFile}
 								enableMessageQueue={userSettings.enableMessageQueue}
 								showFormattingToolbar={userSettings.showFormattingToolbar}
 								richTextInput={userSettings.richTextInput}
 								promptAutocomplete={userSettings.promptAutocomplete}
-								imageCompression={userSettings.imageCompression}
-								imageCompressionSize={userSettings.imageCompressionSize}
 								{lastUserMessage}
-								speechAutoSend={userSettings.speechAutoSend}
-								webSearchAlways={userSettings.webSearchAlways}
-								knowledgeOptions={inputKnowledgeOptions}
-								noteOptions={inputNoteOptions}
-								chatOptions={inputChatOptions}
-								modelName={currentModelName}
 								onSubmit={submitPrompt}
 								onReview={assistMode === 'paper' ? submitPaperForReview : null}
 								onFillSample={assistMode === 'paper' && samples.length > 0 ? fillSample : null}
 								onStop={stopResponse}
-								onPasteAsFile={() => {
-									toast('内容已转为本地文件引用');
-								}}
-								onToast={toast}
 							/>
 						</div>
 
@@ -2547,6 +2479,7 @@
 			open={settingsOpen}
 			initialTab={settingsTab}
 			userRole="admin"
+			showAdminPanel={false}
 			onClose={() => {
 				settingsOpen = false;
 			}}
@@ -2556,10 +2489,6 @@
 			onArchiveAllChats={archiveAllChats}
 			onDeleteAllChats={deleteAllChats}
 			onOpenArchived={openArchivedChats}
-			chats={chatRows}
-			onUnarchiveChat={unarchiveChat}
-			onDeleteChat={deleteChatById}
-			onOpenChat={openArchivedChat}
 			onToast={(message) => {
 				saveToast = message;
 				window.setTimeout(() => {
@@ -2591,30 +2520,6 @@
 			}}
 		/>
 	{/await}
-{/if}
-
-{#if changelogOpen}
-	<div class="fixed inset-0 z-[80] flex items-center justify-center bg-black/60 p-4">
-		<div
-			class="w-full max-w-md rounded-2xl border border-white/10 bg-gray-900 p-5 text-left shadow-xl"
-		>
-			<h2 class="text-lg font-semibold text-white">新功能介绍</h2>
-			<p class="mt-2 text-sm leading-6 text-gray-400">
-				界面设置已对齐 Open
-				WebUI：支持消息队列、追问提示、产物预览、格式工具栏、图像压缩与通知音等。可在「设置 →
-				界面」中逐项开关。
-			</p>
-			<button
-				type="button"
-				class="mt-4 rounded-xl bg-white px-4 py-2 text-sm font-medium text-black hover:bg-gray-200"
-				onclick={() => {
-					changelogOpen = false;
-				}}
-			>
-				知道了
-			</button>
-		</div>
-	</div>
 {/if}
 
 {#if saveToast}
