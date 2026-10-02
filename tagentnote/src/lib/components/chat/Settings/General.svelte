@@ -1,7 +1,6 @@
 <script lang="ts">
 	import type { UserSettings } from '$lib/data/userSettings';
-	import languages from '$lib/i18n/locales/languages.json';
-	import { getI18nContext, changeLanguage } from '$lib/i18n';
+	import { getI18nContext } from '$lib/i18n';
 
 	const i18n = getI18nContext();
 
@@ -100,12 +99,6 @@
 		await saveSettings({ theme });
 	};
 
-	const langChangeHandler = async (newLang: string) => {
-		lang = newLang;
-		changeLanguage(newLang);
-		await saveSettings({ language: newLang });
-	};
-
 	const toggleNotification = async () => {
 		if (!notificationEnabled) {
 			const permission = await Notification.requestPermission().catch(() => 'denied');
@@ -198,21 +191,6 @@
 						<option value="dark" class="bg-gray-800">🌑 {$i18n.t('Dark')}</option>
 						<option value="oled-dark" class="bg-gray-800">🌃 {$i18n.t('OLED Dark')}</option>
 						<option value="light" class="bg-gray-800">☀️ {$i18n.t('Light')}</option>
-					</select>
-				</div>
-			</div>
-
-			<div class="flex w-full justify-between">
-				<div class="self-center text-xs font-medium">{$i18n.t('Language')}</div>
-				<div class="relative flex items-center">
-					<select
-						class="w-fit rounded-sm bg-transparent px-2 py-2 pr-8 text-right text-xs outline-none"
-						bind:value={lang}
-						onchange={(e) => langChangeHandler((e.target as HTMLSelectElement).value)}
-					>
-						{#each languages as language}
-							<option value={language.code}>{language.title}</option>
-						{/each}
 					</select>
 				</div>
 			</div>

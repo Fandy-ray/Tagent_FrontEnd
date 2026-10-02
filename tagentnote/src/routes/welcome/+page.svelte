@@ -80,7 +80,7 @@
     </h1>
 
     <p class="subtitle" class:show={phase >= 2}>
-      课程答疑 · 知识笔记本 · 智能测评（演示版）
+      课程答疑 · 论文辅助 · 知识笔记本 · 智能测评
     </p>
 
     <button class="cta-btn" class:show={phase >= 3} onclick={() => goto('/agent-select')}>

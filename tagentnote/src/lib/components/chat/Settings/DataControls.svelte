@@ -1,7 +1,4 @@
 <script lang="ts">
-	import ArchivedChatsModal from '$lib/components/layout/ArchivedChatsModal.svelte';
-	import SharedChatsModal from '$lib/components/layout/SharedChatsModal.svelte';
-	import FilesModal from '$lib/components/layout/FilesModal.svelte';
 	import ConfirmDialog from '$lib/components/common/ConfirmDialog.svelte';
 	import type { ChatRow } from '$lib/components/layout/ChatsModal.svelte';
 
@@ -40,9 +37,6 @@
 	let chatImportInputElement: HTMLInputElement | null = $state(null);
 	let showArchiveConfirmDialog = $state(false);
 	let showDeleteConfirmDialog = $state(false);
-	let showArchivedChatsModal = $state(false);
-	let showSharedChatsModal = $state(false);
-	let showFilesModal = $state(false);
 
 	$effect(() => {
 		if (importFiles && importFiles.length > 0) {
@@ -52,36 +46,7 @@
 		}
 	});
 
-	const handleUnarchive = (id: string) => {
-		onUnarchive(id);
-	};
-
-	const handleUnshare = (id: string) => {
-		onUnshare(id);
-	};
-
-	const handleDeleteChat = (id: string) => {
-		onDeleteChat(id);
-	};
-
-	const handleDeleteFile = (id: string) => {
-		onDeleteFile(id);
-	};
 </script>
-
-<ArchivedChatsModal
-	bind:show={showArchivedChatsModal}
-	chats={allChats}
-	onUpdate={() => {}}
-	onDelete={handleDeleteChat}
-/>
-<SharedChatsModal
-	bind:show={showSharedChatsModal}
-	chats={allChats}
-	onUpdate={() => {}}
-	onDelete={handleDeleteChat}
-/>
-<FilesModal bind:show={showFilesModal} {files} onDelete={handleDeleteFile} />
 
 <ConfirmDialog
 	bind:show={showArchiveConfirmDialog}
@@ -153,36 +118,6 @@
 
 			<div>
 				<div class="flex w-full justify-between py-0.5">
-					<div class="self-center text-xs">已归档的对话</div>
-					<button
-						class="flex rounded-sm p-1 px-3 text-xs transition hover:bg-gray-800"
-						onclick={() => {
-							showArchivedChatsModal = true;
-						}}
-						type="button"
-					>
-						<span class="self-center">管理</span>
-					</button>
-				</div>
-			</div>
-
-			<div>
-				<div class="flex w-full justify-between py-0.5">
-					<div class="self-center text-xs">已分享的对话</div>
-					<button
-						class="flex rounded-sm p-1 px-3 text-xs transition hover:bg-gray-800"
-						onclick={() => {
-							showSharedChatsModal = true;
-						}}
-						type="button"
-					>
-						<span class="self-center">管理</span>
-					</button>
-				</div>
-			</div>
-
-			<div>
-				<div class="flex w-full justify-between py-0.5">
 					<div class="self-center text-xs">归档所有对话记录</div>
 					<button
 						class="flex rounded-sm p-1 px-3 text-xs transition hover:bg-gray-800"
@@ -212,23 +147,5 @@
 			</div>
 		</div>
 
-		<div>
-			<div class="mb-1 text-sm font-medium">文件</div>
-
-			<div>
-				<div class="flex w-full justify-between py-0.5">
-					<div class="self-center text-xs">管理文件</div>
-					<button
-						class="flex rounded-sm p-1 px-3 text-xs transition hover:bg-gray-800"
-						onclick={() => {
-							showFilesModal = true;
-						}}
-						type="button"
-					>
-						<span class="self-center">管理</span>
-					</button>
-				</div>
-			</div>
-		</div>
 	</div>
 </div>

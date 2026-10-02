@@ -16,6 +16,8 @@
 		profile?: boolean;
 		help?: boolean;
 		showActiveUsers?: boolean;
+		showPlayground?: boolean;
+		showAdmin?: boolean;
 		userName?: string;
 		avatarText?: string;
 		activeUsers?: number;
@@ -43,6 +45,8 @@
 		profile = true,
 		help = false,
 		showActiveUsers = false,
+		showPlayground = false,
+		showAdmin = false,
 		userName = 'Tagent',
 		avatarText = 'T',
 		activeUsers = 1,
@@ -207,6 +211,7 @@
 				</div>
 			</div>
 
+			{#if false}
 			{#if statusEmoji || statusMessage}
 				<div class="mx-1">
 					<div
@@ -272,6 +277,7 @@
 					</button>
 				</div>
 			{/if}
+			{/if}
 
 			<hr class="my-1.5 border-gray-800/30 p-0" />
 		{/if}
@@ -313,7 +319,7 @@
 			<span class="truncate self-center">{$i18n.t('Archived Chats')}</span>
 		</button>
 
-		{#if userRole === 'admin'}
+		{#if userRole === 'admin' && showPlayground}
 			<button
 				type="button"
 				class="flex w-full cursor-pointer select-none rounded-xl px-3 py-1.5 transition hover:bg-gray-800"
@@ -331,7 +337,9 @@
 				</span>
 				<span class="truncate self-center">AI 对话探索区</span>
 			</button>
+		{/if}
 
+		{#if userRole === 'admin' && showAdmin}
 			<button
 				type="button"
 				class="flex w-full cursor-pointer select-none rounded-xl px-3 py-1.5 transition hover:bg-gray-800"
@@ -358,6 +366,7 @@
 		{#if showHelp}
 			<hr class="my-1 border-gray-800/30 p-0" />
 
+			{#if false}
 			{#if userRole === 'admin'}
 				<a
 					href="https://docs.openwebui.com"
@@ -399,6 +408,7 @@
 					<span class="truncate self-center">发行版</span>
 				</a>
 			{/if}
+			{/if}
 
 			<button
 				type="button"
@@ -418,6 +428,7 @@
 
 		<hr class="my-1 border-gray-800/30 p-0" />
 
+		{#if false}
 		<button
 			type="button"
 			class="flex w-full cursor-pointer select-none rounded-xl px-3 py-1.5 transition hover:bg-gray-800"
@@ -435,8 +446,9 @@
 			</span>
 			<span class="truncate self-center">登出</span>
 		</button>
+		{/if}
 
-		{#if showUsers}
+		{#if false}
 			<hr class="my-1 border-gray-800/30 p-0" />
 			<div class="flex items-center gap-2.5 rounded-xl px-3 py-1 text-xs text-gray-300">
 				<span class="relative flex size-2">

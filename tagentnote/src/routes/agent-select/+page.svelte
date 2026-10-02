@@ -38,7 +38,7 @@
 		{
 			type: 'qa',
 			name: '答疑智能体',
-			description: '基于课程知识库进行检索增强问答。',
+			description: '课程答疑与论文辅助：检索增强问答、分章写作与交稿批改。',
 			accent: 'cyan'
 		},
 		{

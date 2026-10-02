@@ -17,9 +17,7 @@
 	const tabs = [
 		{ href: '/workspace/models', label: '模型' },
 		{ href: '/workspace/knowledge', label: '知识库' },
-		{ href: '/workspace/prompts', label: '提示词' },
-		{ href: '/workspace/skills', label: '技能' },
-		{ href: '/workspace/tools', label: '工具' }
+		{ href: '/workspace/prompts', label: '提示词' }
 	] as const;
 
 	const withParams = (path: string, extra?: Record<string, string>) => {

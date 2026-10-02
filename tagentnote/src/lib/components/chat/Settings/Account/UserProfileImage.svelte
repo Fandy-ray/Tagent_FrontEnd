@@ -86,9 +86,6 @@
 		profileImageUrl = '';
 	};
 
-	const useGravatar = () => {
-		toast.info('Gravatar 集成未启用（mock）');
-	};
 </script>
 
 <input
@@ -154,12 +151,5 @@
 			首字母
 		</button>
 
-		<button
-			type="button"
-			class="rounded-lg py-0.5 text-center text-xs text-gray-400 opacity-0 transition-all group-hover:opacity-100"
-			onclick={useGravatar}
-		>
-			Gravatar
-		</button>
 	</div>
 </div>

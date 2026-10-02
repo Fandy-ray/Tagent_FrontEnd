@@ -324,7 +324,6 @@
 	cancelLabel="取消"
 	show={showClearConfirmDialog}
 	onConfirm={onClearConfirmed}
-	className="z-[10000]"
 />
 
 <ConfirmDialog
@@ -342,7 +341,6 @@
 		memories = await listMemories();
 		showDeleteConfirm = false;
 	}}
-	className="z-[10000]"
 />
 
 <AddMemoryModal bind:show={showAddMemoryModal} onSave={refresh} />

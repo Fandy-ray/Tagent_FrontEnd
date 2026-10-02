@@ -7,8 +7,6 @@
 	import Textarea from '$lib/components/common/Textarea.svelte';
 	import {
 		listKnowledge,
-		listSkills,
-		listTools,
 		slugify,
 		type WorkspaceModel
 	} from '$lib/data/workspaceResources';
@@ -18,8 +16,6 @@
 	import DefaultFeatures from './DefaultFeatures.svelte';
 	import KnowledgeAttach from './KnowledgeAttach.svelte';
 	import PromptSuggestions from './PromptSuggestions.svelte';
-	import SkillsSelector from './SkillsSelector.svelte';
-	import ToolsSelector from './ToolsSelector.svelte';
 
 	type SuggestionPrompt = { content: string; title: [string, string] };
 
@@ -86,8 +82,6 @@
 	let ttsVoice = $state('');
 	let agentModels = $state<{ id: string; name: string }[]>([]);
 	let knowledgeOptions = $state<{ id: string; name: string }[]>([]);
-	let toolOptions = $state<{ id: string; name: string; description?: string }[]>([]);
-	let skillOptions = $state<{ id: string; name: string; description?: string }[]>([]);
 	let fileInput: HTMLInputElement | null = $state(null);
 	let createdAt = $state(Date.now());
 	let error = $state('');
@@ -190,12 +184,6 @@
 			});
 
 		knowledgeOptions = listKnowledge().map((k) => ({ id: k.id, name: k.name }));
-		toolOptions = listTools().map((t) => ({ id: t.id, name: t.name, description: t.description }));
-		skillOptions = listSkills().map((s) => ({
-			id: s.id,
-			name: s.name,
-			description: s.description
-		}));
 	});
 
 	$effect(() => {
@@ -574,14 +562,6 @@
 					bind:knowledgeIds
 					bind:knowledgeFiles
 				/>
-			</div>
-
-			<div class="my-4">
-				<ToolsSelector tools={toolOptions} bind:selectedToolIds={toolIds} />
-			</div>
-
-			<div class="my-4">
-				<SkillsSelector skills={skillOptions} bind:selectedSkillIds={skillIds} />
 			</div>
 
 			<hr class="my-4 border-gray-850/30" />

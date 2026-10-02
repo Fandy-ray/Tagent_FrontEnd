@@ -273,7 +273,7 @@ export async function streamAgentChat(
 		method: 'POST',
 		headers: {
 			'Content-Type': 'application/json',
-			Accept: 'text/event-stream'
+			Accept: options.stream_response === false ? 'application/json' : 'text/event-stream'
 		},
 		body: JSON.stringify(body),
 		signal
@@ -282,6 +282,29 @@ export async function streamAgentChat(
 	if (!response.ok) {
 		const payload = await response.json().catch(() => ({}));
 		throw new Error(errorMessage(payload, statusFallback(response.status)));
+	}
+
+	// 高级参数允许关闭流式输出；这时后端返回的是普通 JSON，而不是 SSE。
+	// 之前仍按 SSE 读取，会把正常回答误判成空回答。
+	if (options.stream_response === false) {
+		const payload = (await response.json().catch(() => ({}))) as Record<string, unknown>;
+		const choices = Array.isArray(payload.choices) ? payload.choices : [];
+		const choice = asRecord(choices[0]);
+		const message = asRecord(choice?.message) ?? asRecord(choice?.delta);
+		const data = asRecord(payload.data);
+		const content =
+			(typeof message?.content === 'string' && message.content) ||
+			(typeof data?.final_answer === 'string' && data.final_answer) ||
+			'';
+		const extras: { retrievedContext?: string; citations?: unknown[] } = {};
+		mergeCitationPayload(extras, payload);
+		if (content) onDelta(content);
+		return {
+			model: typeof payload.model === 'string' ? payload.model : model,
+			content,
+			retrievedContext: extras.retrievedContext,
+			citations: extras.citations
+		};
 	}
 
 	if (!response.body) {
