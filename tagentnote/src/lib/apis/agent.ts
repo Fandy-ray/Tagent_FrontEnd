@@ -108,6 +108,21 @@ async function agentRequest(url: string, init?: RequestInit) {
 	}
 }
 
+/**
+ * 后端明确回了错误（不是没连上）。带着状态码和错误码，调用方能按「是哪一种」处理，
+ * 不必去比对提示文字——比如 410 = 试卷已经不在了，存着的那张卷也该清掉。
+ */
+export class AgentRequestError extends Error {
+	constructor(
+		message: string,
+		readonly status: number,
+		readonly code?: string
+	) {
+		super(message);
+		this.name = 'AgentRequestError';
+	}
+}
+
 /** 后端没回我们自己的错误体时（多半是开发代理连不上 basic-agent）的兜底说法（压测 F5） */
 const statusFallback = (status: number) =>
 	status === 502 || status === 503 || status === 504
@@ -126,7 +141,12 @@ async function agentFetch<T>(path: string, init?: RequestInit): Promise<T> {
 	}
 
 	if (!response.ok) {
-		throw new Error(errorMessage(payload, statusFallback(response.status)));
+		const code = (payload as { error?: { code?: string } })?.error?.code;
+		throw new AgentRequestError(
+			errorMessage(payload, statusFallback(response.status)),
+			response.status,
+			code
+		);
 	}
 
 	return payload as T;

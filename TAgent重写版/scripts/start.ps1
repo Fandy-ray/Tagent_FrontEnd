@@ -7,7 +7,7 @@
 
         OpenNotebook 8502 页面 / 5055 接口   笔记本（Docker Compose）
         basic-agent  127.0.0.1:5001          出题 / 判卷 / 检索
-        tagentnote   127.0.0.1:5173          前端（Vite dev）
+        tagentnote   127.0.0.1:5173          前端（先构建，再用 Vite preview 提供生产包）
 
     OpenNotebook 走 ..\opennotebook\docker-compose.yml，需要 Docker Desktop
     在跑。起不来时会说明原因并继续启动其余两个服务 —— 此时答疑只用本地教材。
@@ -22,6 +22,9 @@
 .PARAMETER WithTts
     连 aliyun-tts-bridge 一起启动（做播客用）。需要先在 opennotebook\.env
     里填 DASHSCOPE_API_KEY，且会现场 docker build。
+.PARAMETER Dev
+    前端改用开发服务器（改代码时用）。默认先构建生产包再用 vite preview 提供：
+    开发服务器把几百个源文件逐个现编现发，页面打开慢约 10 倍，第一次遇到新依赖还会整页刷新。
 .PARAMETER Prepare
     只装依赖、生成密钥，不启动任何服务。deploy\windows\install.ps1 用它做前置，
     这样"怎么装依赖"这条流程两边共用一份，不会走偏。
@@ -44,6 +47,7 @@ param(
     [switch]$SkipNotebook,
     [switch]$WithTts,
     [switch]$Prepare,
+    [switch]$Dev,
     [string]$PypiMirror = 'https://mirrors.aliyun.com/pypi/simple/',
     [int]$AgentTimeout = 300,
     [int]$NotebookTimeout = 180
@@ -246,8 +250,8 @@ if (-not (Test-Cmd 'uv')) {
     Stop-WithError '未找到 uv。请先安装：python -m pip install uv'
 }
 
-# 前端必须跑 npm run dev（不是 build）：/agent-api 代理只存在于 Vite dev server，
-# 生产构建里没有这个代理，前端会直接打 5173 自己，所有后端请求 404。
+# 前端默认先 vite build，再用 vite preview 提供生产包（开发服务器实测慢约 10 倍，见 start.sh 同一处）。
+# /agent-api 代理两种模式都有：vite preview 的 proxy 默认沿用 vite.config.ts 里 server.proxy 那份。
 if (-not (Test-Cmd 'node')) {
     Stop-WithError '未找到 Node.js。前端需要它，请安装 Node.js 22 LTS。'
 }
@@ -642,6 +646,20 @@ $agentProc = Start-Process -FilePath $AgentPy -ArgumentList 'main.py' `
     -RedirectStandardOutput $agentOut -RedirectStandardError $agentErr
 Write-PidFile $agentProc (Join-Path $RunDir 'agent.pid')
 
+# 前端构建和 basic-agent 加载互不相干：趁等后端的这几秒在后台先构建（实测省 4~5 秒）。
+# 每次都重新构建：源码改过而包是旧的，比多等几秒难查得多。
+$frontMode = 'preview'
+$buildProc = $null
+$buildOut = Join-Path $LogDir 'tagentnote.build.log'
+$buildErr = Join-Path $LogDir 'tagentnote.build.err.log'
+if ($Dev) {
+    $frontMode = 'dev'
+} else {
+    $buildProc = Start-Process -FilePath 'node' -ArgumentList @($viteBin, 'build') `
+        -WorkingDirectory $FrontendDir -WindowStyle Hidden -PassThru `
+        -RedirectStandardOutput $buildOut -RedirectStandardError $buildErr
+}
+
 Write-Warn2 "首次启动需加载嵌入模型并构建向量索引，最长等待 $AgentTimeout 秒..."
 if (-not (Wait-Health "http://127.0.0.1:$AgentPort/health" $AgentTimeout)) {
     Write-Host "`n[错误] basic-agent 在 $AgentTimeout 秒内未就绪。日志：$agentErr" -ForegroundColor Red
@@ -673,12 +691,26 @@ try {
 
 # ------------------------------------------------- 7. 启动前端
 if ($Lan) { $viteHost = '0.0.0.0' } else { $viteHost = '127.0.0.1' }
-Write-Step "启动 tagentnote (${viteHost}:$FrontendPort)"
 $frontOut = Join-Path $LogDir 'tagentnote.out.log'
 $frontErr = Join-Path $LogDir 'tagentnote.err.log'
+
+# 构建是在启动 basic-agent 时就放到后台开始的，这里等它收尾。
+# 构建失败不致命：退回开发服务器，慢一些但能用，并把原因留在日志里。
+if ($buildProc) {
+    Write-Step '构建前端（生产包）'
+    $buildProc.WaitForExit()
+    if ($buildProc.ExitCode -eq 0) {
+        Write-Ok '构建完成'
+    } else {
+        Write-Warn2 "构建失败，改用开发服务器启动（页面打开会慢一些）。构建日志：$buildOut / $buildErr"
+        $frontMode = 'dev'
+    }
+}
+
+Write-Step "启动 tagentnote (${viteHost}:$FrontendPort，$frontMode)"
 # 直接用 node 跑 vite，不经 npm.cmd：npm 会再派生一个 node 子进程，
 # PID 文件记到的是 npm 那一层，stop 时杀不掉真正监听端口的进程。
-$viteArgs = @($viteBin, 'dev', '--port', "$FrontendPort", '--strictPort', '--host', $viteHost)
+$viteArgs = @($viteBin, $frontMode, '--port', "$FrontendPort", '--strictPort', '--host', $viteHost)
 $frontProc = Start-Process -FilePath 'node' -ArgumentList $viteArgs `
     -WorkingDirectory $FrontendDir -WindowStyle Hidden -PassThru `
     -RedirectStandardOutput $frontOut -RedirectStandardError $frontErr

@@ -6,6 +6,7 @@ from flask import Blueprint
 
 from app.api.deps import get_essay_service, get_exam_service, select_provider
 from app.api.learner import (
+    Learner,
     current_learner,
     note_essay_review,
     note_exam_generated,
@@ -32,13 +33,17 @@ blueprint = Blueprint("exam", __name__)
 # 出卷、出卡、出题只合并「正在跑的」：学生主动点「再来一套」「重新出题」要的是新的。
 # 判卷、批改、批注再加短时重放：刷新后重交拿到的就是刚才那份，不会一刷新分数就变。
 #
+# 合并键里带着设备编号：只合并**同一个学生**的重复请求。不带的话，两个学生同时点
+# 「生成整卷」会拿到同一张卷（同一个 exam_id），交卷记录互相覆盖；两人交同一篇范例，
+# 后交的那个直接拿到重放结果、一条记录都没有。没带编号的请求（脚本调用等）照旧互相合并。
+#
 # 往学习记录库里记的那一笔都写在**领头那次的闭包里**：合并进来的、重放的请求不再跑闭包，
 # 所以同一次批改只记一条，不会因为学生连点或刷新重交记出好几条一样的。
 _flights = SingleFlight()
 
 
-def _once(route: str, provider, fields: dict, run, *, replay: bool):
-    key = fingerprint(route, provider.served_model_id, fields)
+def _once(route: str, provider, fields: dict, run, *, replay: bool, learner: Learner):
+    key = fingerprint(route, provider.served_model_id, learner.id, fields)
     return _flights.do(key, run, replay_seconds=IDEMPOTENT_REPLAY_SECONDS if replay else 0.0)
 
 
@@ -60,6 +65,7 @@ def generate_exam():
         {"topic": topic, "notebooks": sorted(notebook_ids or [])},
         run,
         replay=False,
+        learner=learner,
     )
     return envelope(result, provider)
 
@@ -70,12 +76,14 @@ def generate_flash():
     payload = exam_json_body()
     provider = select_provider(payload.get("model"))
     topic, notebook_ids = exam_topic(payload), optional_notebook_ids(payload)
+    learner = current_learner()
     result = _once(
         "flash/generate",
         provider,
         {"topic": topic, "notebooks": sorted(notebook_ids or [])},
         lambda: get_exam_service().generate_flash_deck(topic, provider, notebook_ids=notebook_ids),
         replay=False,
+        learner=learner,
     )
     return envelope(result, provider)
 
@@ -102,6 +110,7 @@ def review_exam():
         {"exam_id": exam_id, "answers": answers},
         run,
         replay=True,
+        learner=learner,
     )
     return envelope(result, provider)
 
@@ -117,6 +126,7 @@ def annotate_essay_answer():
     payload = exam_json_body()
     provider = select_provider(payload.get("model"))
     exam_id, question_id, answer = annotate_payload(payload)
+    learner = current_learner()
 
     def run():
         question, rubric = get_exam_service().essay_question_for_annotation(
@@ -130,6 +140,7 @@ def annotate_essay_answer():
         {"exam_id": exam_id, "question_id": question_id, "answer": answer},
         run,
         replay=True,
+        learner=learner,
     )
     # envelope 只对**顶层**值调 model_dump，dict 里裹着的 pydantic 对象它看不见，
     # 直接交给 jsonify 会 TypeError。所以这里自己摊平。
@@ -161,6 +172,7 @@ def review_essay():
         {"text": text, "topic": topic, "notebooks": sorted(notebook_ids or [])},
         run,
         replay=True,
+        learner=learner,
     )
     return envelope(result, provider)
 
@@ -174,11 +186,13 @@ def propose_essay_topic():
     payload = exam_json_body()
     provider = select_provider(payload.get("model"))
     hint, notebook_ids = exam_topic(payload), optional_notebook_ids(payload)
+    learner = current_learner()
     result = _once(
         "essay/topic",
         provider,
         {"hint": hint, "notebooks": sorted(notebook_ids or [])},
         lambda: get_essay_service().propose_topic(hint, provider, notebook_ids=notebook_ids),
         replay=False,
+        learner=learner,
     )
     return envelope(result, provider)

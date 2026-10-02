@@ -1,7 +1,8 @@
 <script lang="ts">
 	import { onDestroy, onMount } from 'svelte';
+	import { loadKatex } from '$lib/data/math';
 
-	import { annotateExamAnswer, generateExam, reviewExam } from '$lib/apis/agent';
+	import { AgentRequestError, annotateExamAnswer, generateExam, reviewExam } from '$lib/apis/agent';
 	import MathText from '$lib/components/MathText.svelte';
 	import AnnotatedText from '$lib/components/essay/AnnotatedText.svelte';
 	import {
@@ -92,6 +93,8 @@
 	// controller，离场即 abort，回调里再判一次 aborted。
 	let controller: AbortController | null = null;
 	let failure = $state('');
+	/** 交卷时发现这张卷在服务端已经没有了：失败页的标题换个说法 */
+	let paperGone = $state(false);
 
 	type AnswerNotes =
 		| { status: 'loading'; source: string }
@@ -230,6 +233,7 @@
 		}, CLIENT_TIMEOUT_MS);
 
 		failure = '';
+		paperGone = false;
 		clearFullExam();
 		exam = null;
 		review = null;
@@ -245,6 +249,8 @@
 			elapsed += 1;
 		}, 1000);
 
+		// 等模型出题的这几秒顺手把 KaTeX 下好（$lib/data/math 的 loadKatex），题目出来时公式不先闪一下原文
+		void loadKatex();
 		void generateExam(modelId, topic, notebookIds, signal)
 			.then((data) => {
 				clearTimeout(ceiling);
@@ -307,6 +313,18 @@
 			})
 			.catch((error: unknown) => {
 				if (signal.aborted) {
+					return;
+				}
+
+				// 410：这张卷在服务端已经没有了（超过 2 小时，或出卷模型被删了）。再点交卷也一样，
+				// 刷新又会把它从本标签页的存档里摆回来——所以清掉存档，直接给「重新出卷」
+				if (error instanceof AgentRequestError && error.status === 410) {
+					clearFullExam();
+					paperGone = true;
+					failure = error.message;
+					exam = null;
+					review = null;
+					phase = 'failed';
 					return;
 				}
 
@@ -446,13 +464,15 @@
 					></path>
 				</svg>
 
-				<div class="text-sm font-medium">这一轮没能出卷</div>
+				<div class="text-sm font-medium">
+					{paperGone ? '这张卷子已经交不了了' : '这一轮没能出卷'}
+				</div>
 
 				<p class="max-w-sm text-sm leading-relaxed text-gray-400">{failure}</p>
 
 				{#if failure.includes('过多')}
 					<p class="max-w-sm text-xs leading-relaxed text-gray-500">
-						服务端同时只接两个出题/判分请求，等十几秒再重试就好。
+						同时在出卷 / 判卷的人太多，服务端排队也满了，过一会儿再点重试就好。
 					</p>
 				{/if}
 
@@ -550,7 +570,7 @@
 				<div class="flex min-h-0 min-w-0 flex-1 items-center justify-center">
 					{#key currentQuestion.id}
 						<div
-							class="relative h-full max-h-[640px] min-h-0 w-full overflow-hidden rounded-2xl border border-gray-700 bg-gray-850 shadow-sm"
+							class="bg-gray-850 relative h-full max-h-[640px] min-h-0 w-full overflow-hidden rounded-2xl border border-gray-700 shadow-sm"
 						>
 							<div class="absolute top-0 bottom-0 left-0 w-1 bg-blue-500"></div>
 
@@ -581,7 +601,8 @@
 
 									{#if currentQuestion.type === 'cloze'}
 										<div class="mb-3 text-sm text-gray-400">
-											{currentQuestion.cue}
+											<!-- 填空题的提示句里也常有公式（$\lambda$ 之类），同样要渲染，不能原样露出 TeX -->
+											<MathText value={currentQuestion.cue} />
 										</div>
 
 										<div class="text-lg leading-relaxed font-medium">
@@ -744,7 +765,7 @@
 				<div class="flex min-h-0 min-w-0 flex-1 items-center justify-center">
 					{#if resultIndex === 0}
 						<div
-							class="flex h-full max-h-[640px] w-full flex-col items-center justify-center overflow-y-auto rounded-2xl border border-gray-700 bg-gray-850 px-5 text-center"
+							class="bg-gray-850 flex h-full max-h-[640px] w-full flex-col items-center justify-center overflow-y-auto rounded-2xl border border-gray-700 px-5 text-center"
 						>
 							<div class="mb-3 font-mono text-xs tracking-[0.2em] text-gray-500 uppercase">
 								Exam completed
@@ -778,7 +799,7 @@
 						</div>
 					{:else if currentResult}
 						<div
-							class="h-full max-h-[640px] min-h-0 w-full overflow-hidden rounded-2xl border border-gray-700 bg-gray-850 shadow-sm"
+							class="bg-gray-850 h-full max-h-[640px] min-h-0 w-full overflow-hidden rounded-2xl border border-gray-700 shadow-sm"
 						>
 							<div
 								class={`h-full min-h-0 ${
@@ -807,7 +828,7 @@
 									{#if currentResultQuestion}
 										{#if currentResultQuestion.type === 'cloze'}
 											<div class="mb-2 text-sm text-gray-400">
-												{currentResultQuestion.cue}
+												<MathText value={currentResultQuestion.cue} />
 											</div>
 
 											<div class="leading-relaxed font-medium">

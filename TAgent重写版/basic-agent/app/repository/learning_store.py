@@ -26,6 +26,7 @@ from typing import Any
 
 log = logging.getLogger(__name__)
 
+
 def now_ms() -> int:
     return int(time.time() * 1000)
 
@@ -86,6 +87,17 @@ MIGRATIONS: list[str] = [
     CREATE INDEX idx_exam_student_time ON exam_attempts (student_id, created_at);
     CREATE INDEX idx_exam_student_score ON exam_attempts (student_id, score, total_points);
     """,
+    # 第 2 版：出好的私有卷（含答案与评分规则）也落一份盘。以前只在内存里，
+    # basic-agent 一重启（崩溃、演示时重跑启动脚本）学生交卷就是「试卷不存在或已过期」，答案白写
+    """
+    CREATE TABLE exam_cache (
+        exam_id         TEXT PRIMARY KEY,
+        served_model_id TEXT NOT NULL,              -- 出卷模型：判卷必须用同一个
+        exam            TEXT NOT NULL,              -- 私有卷 JSON（含答案，只在服务端）
+        expires_at      INTEGER NOT NULL            -- 毫秒时间戳，和内存缓存同一个有效期
+    );
+    CREATE INDEX idx_exam_cache_expiry ON exam_cache (expires_at);
+    """,
 ]
 
 
@@ -97,6 +109,7 @@ class LearningStore:
         self.backup_dir = self.path.parent / "backups"
         self._local = threading.local()
         self._backup_thread: threading.Thread | None = None
+        self._backup_lock = threading.Lock()
         self._stop = threading.Event()
 
         self.path.parent.mkdir(parents=True, exist_ok=True)
@@ -131,19 +144,23 @@ class LearningStore:
         return conn
 
     def _migrate(self, conn: sqlite3.Connection) -> None:
-        version = conn.execute("PRAGMA user_version").fetchone()[0]
-        for target, script in enumerate(MIGRATIONS[version:], start=version + 1):
-            conn.execute("BEGIN IMMEDIATE")
-            try:
+        if conn.execute("PRAGMA user_version").fetchone()[0] >= len(MIGRATIONS):
+            return  # 已是最新：不必去抢写锁
+        # 拿到写锁之后**再读一次**版本：两个进程同时打开一个新库时，后到的那个要等前一个
+        # 建完表，这时版本已经变了；照着锁外读到的旧版本再建一遍表只会报「表已存在」
+        conn.execute("BEGIN IMMEDIATE")
+        try:
+            version = conn.execute("PRAGMA user_version").fetchone()[0]
+            for target, script in enumerate(MIGRATIONS[version:], start=version + 1):
                 for statement in (s.strip() for s in script.split(";")):
                     if statement:
                         conn.execute(statement)
                 conn.execute(f"PRAGMA user_version={target}")
-                conn.execute("COMMIT")
-            except Exception:
-                conn.execute("ROLLBACK")
-                raise
-            log.info("学习记录库升级到第 %s 版：%s", target, self.path)
+                log.info("学习记录库升级到第 %s 版：%s", target, self.path)
+            conn.execute("COMMIT")
+        except Exception:
+            conn.execute("ROLLBACK")
+            raise
 
     @property
     def schema_version(self) -> int:
@@ -229,6 +246,25 @@ class LearningStore:
              json.dumps(answers, ensure_ascii=False), json.dumps(review, ensure_ascii=False), at, at),
         )
 
+    # ====================== 出好的私有卷（重启后还能交卷） ======================
+    def save_cached_exam(self, exam_id: str, served_model_id: str, exam_json: str, expires_at_ms: int) -> None:
+        conn = self._conn()
+        conn.execute(
+            "INSERT INTO exam_cache (exam_id, served_model_id, exam, expires_at) VALUES (?, ?, ?, ?) "
+            "ON CONFLICT(exam_id) DO UPDATE SET served_model_id = excluded.served_model_id, "
+            "exam = excluded.exam, expires_at = excluded.expires_at",
+            (exam_id, served_model_id, exam_json, expires_at_ms),
+        )
+        conn.execute("DELETE FROM exam_cache WHERE expires_at <= ?", (now_ms(),))  # 顺手清掉过期的
+
+    def load_cached_exam(self, exam_id: str) -> tuple[str, str, int] | None:
+        """(出卷模型, 私有卷 JSON, 过期时刻)；没有或已过期返回 None。"""
+        row = self._conn().execute(
+            "SELECT served_model_id, exam, expires_at FROM exam_cache WHERE exam_id = ? AND expires_at > ?",
+            (exam_id, now_ms()),
+        ).fetchone()
+        return (row["served_model_id"], row["exam"], row["expires_at"]) if row else None
+
     # ====================== 读（老师看学情） ======================
     def summary(self, limit: int = 500) -> dict[str, Any]:
         conn = self._conn()
@@ -281,19 +317,30 @@ class LearningStore:
 
     # ====================== 备份 ======================
     def backup(self) -> Path:
-        """在线备份：不停服务、不挡写入（100 万条约 1.6 秒）。只保留最近 backup_keep 份。"""
-        self.backup_dir.mkdir(parents=True, exist_ok=True)
-        target = self.backup_dir / f"tagent-{time.strftime('%Y%m%d-%H%M%S')}.sqlite3"
-        partial = target.with_suffix(".partial")
-        dest = sqlite3.connect(partial)
-        try:
-            self._conn().backup(dest)
-        finally:
-            dest.close()
-        os.replace(partial, target)  # 写完整了才改名，备份目录里不会出现半截的文件
-        for old in sorted(self.backup_dir.glob("tagent-*.sqlite3"))[: -self.backup_keep]:
-            old.unlink(missing_ok=True)
-        return target
+        """在线备份：不停服务、不挡写入（100 万条约 1.6 秒）。只保留最近 backup_keep 份。
+
+        - 同一时刻只跑一份（老师手动备份撞上每日自动备份时排队，不会两边写同一个文件）；
+        - 先写到唯一的临时文件，写完整了才改名，备份目录里不会出现半截的 .sqlite3；
+          写失败就把临时文件删掉，不留垃圾；
+        - 文件名用 UTC 时间：按名字排序就是按时间排序，夏令时回拨也不会乱序。
+        """
+        with self._backup_lock:
+            self.backup_dir.mkdir(parents=True, exist_ok=True)
+            target = self.backup_dir / f"tagent-{time.strftime('%Y%m%d-%H%M%S', time.gmtime())}.sqlite3"
+            partial = self.backup_dir / f".{target.stem}.{os.getpid()}.{threading.get_ident()}.partial"
+            try:
+                dest = sqlite3.connect(partial)
+                try:
+                    self._conn().backup(dest)
+                finally:
+                    dest.close()
+                os.replace(partial, target)
+            except BaseException:
+                partial.unlink(missing_ok=True)
+                raise
+            for old in sorted(self.backup_dir.glob("tagent-*.sqlite3"))[: -self.backup_keep]:
+                old.unlink(missing_ok=True)
+            return target
 
     def latest_backup_age_s(self) -> float | None:
         backups = sorted(self.backup_dir.glob("tagent-*.sqlite3"))

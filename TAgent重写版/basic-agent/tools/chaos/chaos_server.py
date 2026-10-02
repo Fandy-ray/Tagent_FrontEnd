@@ -13,7 +13,7 @@ os.chdir(BA)
 
 from langchain_core.documents import Document  # noqa: E402
 
-from app.config import AgentConfig  # noqa: E402
+from app.config import LLM_GATE_MAX_WAITING, LLM_GATE_WAIT_SECONDS, AgentConfig  # noqa: E402
 from app.container import Services, build_learning_store  # noqa: E402
 from app.factory import create_app  # noqa: E402
 from app.infra.model_client_factory import ModelClientFactory  # noqa: E402
@@ -50,7 +50,7 @@ registry.create_provider({
     "upstream_model": "fake-model", "auth_mode": "none", "api_key": "", "enabled": True,
 })
 kb, factory = FakeKB(), ModelClientFactory()
-gate = LLMGate(max_concurrent=settings.exam_max_concurrent_llm)
+gate = LLMGate(max_concurrent=settings.exam_max_concurrent_llm, wait_seconds=LLM_GATE_WAIT_SECONDS, max_waiting=LLM_GATE_MAX_WAITING)
 services = Services(
     chat=ChatService(kb, factory),
     quiz=QuizService(kb, factory),

@@ -5,3 +5,5 @@ import os
 # 单测不往真实的应用数据目录里写学习记录，也不起备份线程。
 # 要测学习记录库的用例自己建临时库并注入（见 tests/test_learning_store.py）。
 os.environ["LEARNING_STORE"] = "0"
+# 同理，向量索引缓存也不往真实的应用数据目录里写（要测它的用例自己给临时目录）
+os.environ["TAGENT_VECTOR_CACHE"] = "0"

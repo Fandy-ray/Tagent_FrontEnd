@@ -154,7 +154,8 @@ def test_a_stream_that_ends_without_finish_reason_says_it_was_cut_off():
     text = "".join(token for token, _ in chunks)
     assert text.startswith("到达率是")
     assert "回答中断" in text
-    assert chunks[-1] == ("", "stop")
+    # 内部如实标成「没答完」（学习记录要用）；发给前端时由 openai_view 换回标准的 stop
+    assert chunks[-1] == ("", "interrupted")
 
 
 def test_a_complete_stream_gets_no_interruption_note():

@@ -1,5 +1,5 @@
 <script lang="ts">
-	import type { UserSettings } from '$lib/data/userSettings';
+	import { applyTheme, type UserSettings } from '$lib/data/userSettings';
 	import languages from '$lib/i18n/locales/languages.json';
 	import { getI18nContext, changeLanguage } from '$lib/i18n';
 
@@ -13,39 +13,6 @@
 
 	let { settings, saveSettings, onSave = () => {} }: Props = $props();
 
-	// Theme
-	const themes = ['dark', 'light', 'oled-dark', 'system'];
-
-	const applyTheme = (_theme: string) => {
-		const root = document.documentElement;
-
-		// 移除所有主题类
-		themes.forEach((t) => root.classList.remove(t));
-
-		// 重置 CSS 变量
-		root.style.removeProperty('--color-gray-800');
-		root.style.removeProperty('--color-gray-850');
-		root.style.removeProperty('--color-gray-900');
-		root.style.removeProperty('--color-gray-950');
-
-		let themeToApply = _theme;
-
-		if (_theme === 'oled-dark') {
-			root.style.setProperty('--color-gray-800', '#101010');
-			root.style.setProperty('--color-gray-850', '#050505');
-			root.style.setProperty('--color-gray-900', '#000000');
-			root.style.setProperty('--color-gray-950', '#000000');
-			themeToApply = 'dark';
-		} else if (_theme === 'dark') {
-			root.style.setProperty('--color-gray-800', '#333');
-			root.style.setProperty('--color-gray-850', '#262626');
-			root.style.setProperty('--color-gray-900', '#171717');
-			root.style.setProperty('--color-gray-950', '#0d0d0d');
-			themeToApply = 'dark';
-		}
-
-		root.classList.add(themeToApply);
-	};
 
 	const buildParams = (source: Record<string, any> = {}) => {
 		const next = { ...source };

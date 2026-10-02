@@ -49,8 +49,16 @@ class FakeEssay:
 
 
 class FakeExam:
+    def __init__(self, seconds=0.0):
+        self.seconds, self.generated = seconds, 0
+        self.lock = threading.Lock()
+
     def generate_exam(self, topic, provider, notebook_ids=None):
-        return {"exam_id": EXAM_ID, "title": "排队论测评", "total_points": 100, "cloze": [], "choice": [], "essay": []}
+        time.sleep(self.seconds)
+        with self.lock:
+            self.generated += 1
+            exam_id = EXAM_ID if self.generated == 1 else f"12345678-1234-5678-1234-{self.generated:012d}"
+        return {"exam_id": exam_id, "title": "排队论测评", "total_points": 100, "cloze": [], "choice": [], "essay": []}
 
     def review_exam(self, exam_id, answers, provider):
         return {"exam_id": exam_id, "total_score": 64, "total_points": 100, "results": []}
@@ -76,13 +84,13 @@ def store(tmp_path):
     instance.close()
 
 
-def make_client(store, *, chat=None, essay=None, admin_token="admin-token"):
+def make_client(store, *, chat=None, essay=None, exam=None, admin_token="admin-token"):
     registry = ModelProviderRegistry(Path(tempfile.mkdtemp()) / "providers.json")
     registry.create_provider({
         "name": "m", "served_model_id": "m", "base_url": "http://127.0.0.1:9/v1",
         "upstream_model": "u", "auth_mode": "none", "api_key": "", "enabled": True,
     })
-    services = Services(chat=chat or FakeChat(), quiz=None, exam=FakeExam(), essay=essay or FakeEssay(),
+    services = Services(chat=chat or FakeChat(), quiz=None, exam=exam or FakeExam(), essay=essay or FakeEssay(),
                         knowledge_base=None, client_factory=None, store=store)
     app = create_app({"TESTING": True, "AGENT_ADMIN_TOKEN": admin_token}, registry=registry, services=services)
     return app.test_client()
@@ -178,6 +186,87 @@ def test_exam_generation_and_review_share_one_row(store):
                    "total_points": 100, "answers": '{"q1": "A"}'}
 
 
+OTHER = {"X-Tagent-Client-Id": "dev_other_student_02", "X-Tagent-Client-Name": quote("小红")}
+
+
+def post_together(client, path, bodies_and_headers):
+    responses = [None] * len(bodies_and_headers)
+
+    def run(index, body, headers):
+        responses[index] = client.post(path, json=body, headers=headers)
+
+    threads = [threading.Thread(target=run, args=(i, b, h)) for i, (b, h) in enumerate(bodies_and_headers)]
+    for thread in threads:
+        thread.start()
+    for thread in threads:
+        thread.join(10)
+    return responses
+
+
+def test_two_students_generating_at_once_get_their_own_exams(store):
+    exam = FakeExam(seconds=0.2)
+    client = make_client(store, exam=exam)
+    body = {"model": "m"}
+    responses = post_together(client, "/quiz/exam/generate", [(body, ME), (body, OTHER)])
+
+    ids = {r.get_json()["data"]["exam_id"] for r in responses}
+    assert exam.generated == 2 and len(ids) == 2
+    assert sorted(r["student_id"] for r in rows(store, "SELECT student_id FROM exam_attempts")) == sorted(
+        [DEVICE, "dev_other_student_02"]
+    )
+
+
+def test_one_student_double_clicking_generate_still_gets_one_exam(store):
+    exam = FakeExam(seconds=0.2)
+    client = make_client(store, exam=exam)
+    responses = post_together(client, "/quiz/exam/generate", [({"model": "m"}, ME)] * 3)
+
+    assert exam.generated == 1
+    assert len({r.get_json()["data"]["exam_id"] for r in responses}) == 1
+    assert len(rows(store, "SELECT exam_id FROM exam_attempts")) == 1
+
+
+def test_two_students_submitting_the_same_sample_are_both_recorded(store):
+    essay = FakeEssay()
+    client = make_client(store, essay=essay)
+    body = {"model": "m", "text": PAPER}
+    client.post("/essay/review", json=body, headers=ME)
+    client.post("/essay/review", json=body, headers=OTHER)  # 90 秒内，同一篇范例
+
+    assert essay.calls == 2
+    assert sorted(r["student_id"] for r in rows(store, "SELECT student_id FROM essay_reviews")) == sorted(
+        [DEVICE, "dev_other_student_02"]
+    )
+
+
+# ====================== 临时对话不留记录 ======================
+PRIVATE = {**ME, "X-Tagent-No-Record": "1"}
+
+
+def test_temporary_chats_leave_no_trace(store):
+    client = make_client(store)
+    ask(client, stream=True, headers=PRIVATE).get_data()
+    ask(client, stream=False, headers=PRIVATE)
+    client.post("/essay/review", json={"model": "m", "text": PAPER}, headers=PRIVATE)
+
+    for table in ("chat_turns", "essay_reviews", "students"):
+        assert rows(store, f"SELECT COUNT(*) AS n FROM {table}") == [{"n": 0}]
+
+
+def test_cut_off_upstream_is_recorded_as_interrupted_but_sent_as_stop(store):
+    from app.service.chat_service import FINISH_INTERRUPTED
+
+    class CutOff(FakeChat):
+        def stream_answer(self, messages, provider, notebook_ids=None, *, mode="qa", retrieval_query=None):
+            yield "排队论", None
+            yield "", FINISH_INTERRUPTED
+
+    body = ask(make_client(store, chat=CutOff()), stream=True).get_data(as_text=True)
+
+    assert '"finish_reason": "stop"' in body and FINISH_INTERRUPTED not in body
+    assert rows(store, "SELECT finish_reason FROM chat_turns") == [{"finish_reason": FINISH_INTERRUPTED}]
+
+
 # ====================== 记不上也不能坏事 ======================
 def test_a_broken_store_never_breaks_the_request():
     client = make_client(BrokenStore())
@@ -234,3 +323,4 @@ def test_browser_may_send_the_identity_headers(store):
     response = make_client(store).options("/essay/review", headers={"Origin": "http://localhost:5173"})
     allowed = response.headers["Access-Control-Allow-Headers"]
     assert "X-Tagent-Client-Id" in allowed and "X-Tagent-Client-Name" in allowed
+    assert "X-Tagent-No-Record" in allowed

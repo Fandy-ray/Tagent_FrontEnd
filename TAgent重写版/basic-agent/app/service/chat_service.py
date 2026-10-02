@@ -20,6 +20,9 @@ from app.util.text import content_text
 # 上游没说「答完了」就断了流：多半是连接中途断开。不补这一句，前端会把半截回答
 # 当成完整回答显示，还带着追问建议（压测 F3）。
 STREAM_INTERRUPTED_NOTE = "\n\n（回答中断：和模型服务的连接断开了，可以点「重新生成」再试一次。）"
+# 上游没给 finish_reason 就断了：内部用这个值标出来（学习记录里如实记「没答完」），
+# 发给前端时 openai_view 会换回标准的 "stop"，OpenAI 兼容的客户端不认识自造的值
+FINISH_INTERRUPTED = "interrupted"
 # 流到一半服务端出错时发给前端的那一句（openai_view 用）
 STREAM_FAILED_NOTE = "\n\n（回答中断：模型服务出错了，可以点「重新生成」再试一次。）"
 
@@ -91,7 +94,8 @@ class ChatService:
                     yield content, None
             if finish_reason is None:
                 yield STREAM_INTERRUPTED_NOTE, None
-            yield "", finish_reason or "stop"
+                finish_reason = FINISH_INTERRUPTED
+            yield "", finish_reason
         except AgentAPIError:
             raise
         except Exception as exc:

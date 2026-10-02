@@ -18,6 +18,7 @@
 		onUnshare?: (id: string) => void;
 		onDeleteChat?: (id: string) => void;
 		onDeleteFile?: (id: string) => void;
+		onOpenChat?: (id: string) => void;
 		// 行为：是否显示导出按钮（默认管理员可见）
 		canExport?: boolean;
 	};
@@ -33,6 +34,7 @@
 		onUnshare = () => {},
 		onDeleteChat = () => {},
 		onDeleteFile = () => {},
+		onOpenChat,
 		canExport = true
 	}: Props = $props();
 
@@ -72,8 +74,14 @@
 <ArchivedChatsModal
 	bind:show={showArchivedChatsModal}
 	chats={allChats}
-	onUpdate={() => {}}
 	onDelete={handleDeleteChat}
+	onUnarchive={handleUnarchive}
+	onOpenChat={onOpenChat
+		? (id) => {
+				showArchivedChatsModal = false;
+				onOpenChat(id);
+			}
+		: undefined}
 />
 <SharedChatsModal
 	bind:show={showSharedChatsModal}

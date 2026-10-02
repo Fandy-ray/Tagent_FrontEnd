@@ -1,5 +1,6 @@
 <script lang="ts">
 	import DataControls from '$lib/components/chat/Settings/DataControls.svelte';
+	import type { ChatRow } from '$lib/components/layout/ChatsModal.svelte';
 	import General from '$lib/components/chat/Settings/General.svelte';
 	import AppNotification from '$lib/components/icons/AppNotification.svelte';
 	import DatabaseSettings from '$lib/components/icons/DatabaseSettings.svelte';
@@ -49,6 +50,11 @@
 		onToast?: (message: string) => void;
 		/** 打开时先显示哪个标签页，默认「通用」（导航栏的「数据」按钮用它直达数据管理） */
 		initialTab?: TabId;
+		/** 数据页「已归档 / 已分享的对话」要列的对话，以及对单条对话的操作 */
+		chats?: ChatRow[];
+		onUnarchiveChat?: (id: string) => void;
+		onDeleteChat?: (id: string) => void;
+		onOpenChat?: (id: string) => void;
 	};
 
 	let {
@@ -62,7 +68,11 @@
 		onDeleteAllChats = () => {},
 		onOpenArchived = () => {},
 		onToast = () => {},
-		initialTab = 'general'
+		initialTab = 'general',
+		chats = [],
+		onUnarchiveChat = () => {},
+		onDeleteChat = () => {},
+		onOpenChat
 	}: Props = $props();
 
 	let selectedTab = $state<TabId>('general');
@@ -194,7 +204,8 @@
 			applyTextScale(next.textScale);
 			settings = next;
 			search = '';
-			selectedTab = initialTab;
+			// 走 selectTab：懒加载的标签页要它去加载组件，直接赋值会是一片空白
+			void selectTab(initialTab);
 			filteredIds = allTabs.map((t) => t.id);
 			tick().then(() => {
 				document
@@ -393,7 +404,15 @@
 						<General {settings} {saveSettings} onSave={notifySaved} />
 					{:else if selectedTab === 'data_controls'}
 						<DataControls
-							allChats={[]}
+							allChats={chats}
+							onUnarchive={onUnarchiveChat}
+							onDeleteChat={onDeleteChat}
+							onOpenChat={onOpenChat
+								? (id) => {
+										onClose();
+										onOpenChat(id);
+									}
+								: undefined}
 							files={[]}
 							onImport={onImportChats}
 							onExport={onExportChats}

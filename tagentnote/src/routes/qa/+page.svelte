@@ -18,10 +18,6 @@
 	import MockNavbar from '$lib/components/chat/MockNavbar.svelte';
 	import MockPlaceholder from '$lib/components/chat/MockPlaceholder.svelte';
 	import MockSidebar from '$lib/components/chat/MockSidebar.svelte';
-	import ArchivedChatsModal from '$lib/components/layout/ArchivedChatsModal.svelte';
-	import SaveToNotebookDialog from '$lib/components/chat/SaveToNotebookDialog.svelte';
-	import SettingsModal from '$lib/components/chat/SettingsModal.svelte';
-	import ShortcutsModal from '$lib/components/chat/ShortcutsModal.svelte';
 	import { buildQaCitations, enrichCitationsWithPages } from '$lib/data/citations';
 	import {
 		countCharacters,
@@ -43,7 +39,13 @@
 		type ChatControlParams
 	} from '$lib/data/chatControls';
 	import type { KnowledgeCollection } from '$lib/data/knowledge';
-	import { loadQaChats, saveQaChats, type QaChat } from '$lib/data/qaConversations';
+	import {
+		loadQaChats,
+		saveQaChats,
+		saveStreamingDraft,
+		type QaChat
+	} from '$lib/data/qaConversations';
+	import { setRecordingPaused } from '$lib/data/learner';
 	import {
 		buildPaperPrompt,
 		DEFAULT_PAPER_CONTEXT,
@@ -148,6 +150,16 @@
 				archived: true
 			}))
 			.sort((a, b) => b.updatedAt - a.updatedAt)
+	);
+
+	/** 设置 →「数据」里列的对话（已归档的、分享过的都从这里挑） */
+	const chatRows = $derived(
+		modeChats.map((chat) => ({
+			id: chat.id,
+			title: chat.title,
+			updatedAt: chat.updatedAt,
+			archived: !!chat.archived
+		}))
 	);
 
 	const currentModelName = $derived(
@@ -665,8 +677,10 @@
 			streaming: false
 		}));
 
-	// 流式回答中途也落盘（每秒最多一次，刷新 / 关页时再补一次）：已经吐出来的部分不丢，
-	// 刷新后标成「没有完成」、可以重新生成。以前只在答完时才存，刷新就只剩一个问题（压测 F2）
+	// 流式回答中途也落盘（每秒最多一次，刷新 / 关页时再完整存一次）：已经吐出来的部分不丢，
+	// 刷新后标成「没有完成」、可以重新生成。以前只在答完时才存，刷新就只剩一个问题（压测 F2）。
+	// 每秒这次只存正在吐字的那一条（$lib/data/qaConversations 的 saveStreamingDraft），
+	// 不把整个会话库每秒重新序列化一遍——会话多、批改卡带全文时那样会卡住正在刷字的页面
 	let streamingCommitTimer: number | null = null;
 	const scheduleStreamingCommit = () => {
 		if (streamingCommitTimer !== null) {
@@ -674,8 +688,14 @@
 		}
 		streamingCommitTimer = window.setTimeout(() => {
 			streamingCommitTimer = null;
-			if (generating) {
-				commitActive();
+			if (!generating || !activeChatId || isTemporarySession()) {
+				return;
+			}
+			for (let index = messages.length - 1; index >= 0; index -= 1) {
+				if (messages[index].streaming) {
+					saveStreamingDraft(activeChatId, messages[index]);
+					return;
+				}
 			}
 		}, 1000);
 	};
@@ -715,6 +735,11 @@
 
 	const isTemporarySession = () =>
 		temporaryChat || (typeof activeChatId === 'string' && activeChatId.startsWith('local:'));
+
+	// 临时对话：后端也不留学习记录（界面答应过「消息不会被保存」）
+	$effect(() => {
+		setRecordingPaused(isTemporarySession());
+	});
 
 	const commitActive = (nextMessages = messages, title?: string) => {
 		const id = activeChatId;
@@ -939,6 +964,16 @@
 
 	const openArchivedChats = () => {
 		archivedOpen = true;
+	};
+
+	const deleteChatById = (chatId: string) => {
+		chats = chats.filter((chat) => chat.id !== chatId);
+		if (activeChatId === chatId) {
+			activeChatId = null;
+			messages = [];
+			syncUrl();
+		}
+		persistChats();
 	};
 
 	const openShortcuts = () => {
@@ -1535,9 +1570,21 @@
 					collections,
 					notebook
 				});
-				citations = await enrichCitationsWithPages(citations, question, (fileId) =>
-					getSourceText(fileId, controller.signal)
-				);
+				// 补页码要逐条去 OpenNotebook 取原文。它开着却卡住时，这一步没有上限就会一直挂着：
+				// 回答早就显示完了，「停止生成」却一直在、下一个问题发不出去。给它和检索一样的 4 秒，
+				// 超时的那条不补页码，照常收尾。
+				const enrichController = new AbortController();
+				const stopEnrich = () => enrichController.abort();
+				controller.signal.addEventListener('abort', stopEnrich, { once: true });
+				const enrichTimer = window.setTimeout(stopEnrich, 4000);
+				try {
+					citations = await enrichCitationsWithPages(citations, question, (fileId) =>
+						getSourceText(fileId, enrichController.signal)
+					);
+				} finally {
+					window.clearTimeout(enrichTimer);
+					controller.signal.removeEventListener('abort', stopEnrich);
+				}
 
 				if (seq !== generationSeq) {
 					return;
@@ -1871,7 +1918,14 @@
 				? { kind: 'topic', hint: card.hint, topic: null }
 				: { kind: 'review', text: card.text, topic: card.topic, review: null };
 		const seq = bumpGeneration();
-		patchMessage(messageId, { paperCard: fresh, content: pendingContent(fresh), streaming: true });
+		// 重跑就是新的一轮：上一轮被刷新打断留下的「没有完成」标记要清掉，
+		// 否则重批成功了，卡片下面还挂着「这次回答没有完成」
+		patchMessage(messageId, {
+			paperCard: fresh,
+			content: pendingContent(fresh),
+			streaming: true,
+			interrupted: undefined
+		});
 		generating = true;
 		commitActive();
 		void runPaperCard(messageId, fresh, seq);
@@ -2105,6 +2159,7 @@
 	};
 
 	onDestroy(() => {
+		setRecordingPaused(false);
 		if (paperTaskSyncTimer !== null) {
 			window.clearTimeout(paperTaskSyncTimer);
 		}
@@ -2463,67 +2518,80 @@
 	</section>
 </main>
 
-<SaveToNotebookDialog
-	open={saveOpen}
-	title={saveTitle}
-	content={saveContent}
-	onClose={() => {
-		saveOpen = false;
-	}}
-	onSaved={(notebookName) => {
-		saveToast = `已加入笔记本「${notebookName}」`;
-		window.setTimeout(() => {
-			saveToast = '';
-		}, 3200);
-	}}
-/>
+<!--
+	下面这几个弹窗平时关着：打开时才加载（设置面板一项就有几十 KB），
+	不压在答疑页首屏里。关上即卸载，下次打开重新挂载、重新读一遍设置。
+-->
+{#if saveOpen}
+	{#await import('$lib/components/chat/SaveToNotebookDialog.svelte') then { default: SaveToNotebookDialog }}
+		<SaveToNotebookDialog
+			open={saveOpen}
+			title={saveTitle}
+			content={saveContent}
+			onClose={() => {
+				saveOpen = false;
+			}}
+			onSaved={(notebookName) => {
+				saveToast = `已加入笔记本「${notebookName}」`;
+				window.setTimeout(() => {
+					saveToast = '';
+				}, 3200);
+			}}
+		/>
+	{/await}
+{/if}
 
-<SettingsModal
-	open={settingsOpen}
-	initialTab={settingsTab}
-	userRole="admin"
-	onClose={() => {
-		settingsOpen = false;
-	}}
-	onSettingsChange={handleSettingsChange}
-	onImportChats={importChatsFromFile}
-	onExportChats={exportAllChats}
-	onArchiveAllChats={archiveAllChats}
-	onDeleteAllChats={deleteAllChats}
-	onOpenArchived={openArchivedChats}
-	onToast={(message) => {
-		saveToast = message;
-		window.setTimeout(() => {
-			saveToast = '';
-		}, 2800);
-	}}
-/>
+{#if settingsOpen}
+	{#await import('$lib/components/chat/SettingsModal.svelte') then { default: SettingsModal }}
+		<SettingsModal
+			open={settingsOpen}
+			initialTab={settingsTab}
+			userRole="admin"
+			onClose={() => {
+				settingsOpen = false;
+			}}
+			onSettingsChange={handleSettingsChange}
+			onImportChats={importChatsFromFile}
+			onExportChats={exportAllChats}
+			onArchiveAllChats={archiveAllChats}
+			onDeleteAllChats={deleteAllChats}
+			onOpenArchived={openArchivedChats}
+			chats={chatRows}
+			onUnarchiveChat={unarchiveChat}
+			onDeleteChat={deleteChatById}
+			onOpenChat={openArchivedChat}
+			onToast={(message) => {
+				saveToast = message;
+				window.setTimeout(() => {
+					saveToast = '';
+				}, 2800);
+			}}
+		/>
+	{/await}
+{/if}
 
-<ArchivedChatsModal
-	bind:show={archivedOpen}
-	chats={[
-		...chats.map((chat) => ({
-			id: chat.id,
-			title: chat.title,
-			updatedAt: chat.updatedAt,
-			archived: !!chat.archived
-		}))
-	]}
-	onUpdate={() => {
-		persistChats();
-	}}
-	onDelete={(id) => {
-		chats = chats.filter((chat) => chat.id !== id);
-		persistChats();
-	}}
-/>
+{#if archivedOpen}
+	{#await import('$lib/components/layout/ArchivedChatsModal.svelte') then { default: ArchivedChatsModal }}
+		<ArchivedChatsModal
+			bind:show={archivedOpen}
+			chats={archivedChats}
+			onUnarchive={unarchiveChat}
+			onOpenChat={openArchivedChat}
+			onDelete={deleteChatById}
+		/>
+	{/await}
+{/if}
 
-<ShortcutsModal
-	open={shortcutsOpen}
-	onClose={() => {
-		shortcutsOpen = false;
-	}}
-/>
+{#if shortcutsOpen}
+	{#await import('$lib/components/chat/ShortcutsModal.svelte') then { default: ShortcutsModal }}
+		<ShortcutsModal
+			open={shortcutsOpen}
+			onClose={() => {
+				shortcutsOpen = false;
+			}}
+		/>
+	{/await}
+{/if}
 
 {#if changelogOpen}
 	<div class="fixed inset-0 z-[80] flex items-center justify-center bg-black/60 p-4">

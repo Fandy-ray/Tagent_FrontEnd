@@ -113,3 +113,73 @@ def test_gate_is_thread_safe_under_contention():
         t.join()
     assert max(peak) <= 2
     assert len(busy_count) >= 1  # 超出名额的请求确实被 429 拒绝
+
+
+# ====================== 闸门满了先排队 ======================
+def test_a_full_gate_queues_briefly_instead_of_failing_at_once():
+    gate = LLMGate(max_concurrent=1, wait_seconds=2, max_waiting=4)
+    results = []
+
+    def holder():
+        with gate.acquire():
+            import time
+            time.sleep(0.2)
+
+    def waiter():
+        try:
+            with gate.acquire():
+                results.append("ok")
+        except ExamBusyError:
+            results.append("busy")
+
+    first = threading.Thread(target=holder)
+    first.start()
+    import time
+    time.sleep(0.05)
+    waiters = [threading.Thread(target=waiter) for _ in range(3)]
+    for t in waiters:
+        t.start()
+    for t in [first, *waiters]:
+        t.join(5)
+    assert results == ["ok", "ok", "ok"]
+
+
+def test_the_queue_has_a_length_limit():
+    gate = LLMGate(max_concurrent=1, wait_seconds=1, max_waiting=1)
+    started = threading.Event()
+    outcomes = []
+
+    def holder():
+        with gate.acquire():
+            started.set()
+            import time
+            time.sleep(0.5)
+
+    def queued():
+        try:
+            with gate.acquire():
+                outcomes.append("ok")
+        except ExamBusyError:
+            outcomes.append("busy")
+
+    threading.Thread(target=holder).start()
+    started.wait(2)
+    in_queue = threading.Thread(target=queued)
+    in_queue.start()
+    import time
+    time.sleep(0.05)
+    with pytest.raises(ExamBusyError):  # 队里已经有一个人，第二个直接 429，不占线程干等
+        with gate.acquire():
+            pass
+    in_queue.join(3)
+    assert outcomes == ["ok"]
+
+
+def test_waiting_too_long_gives_up_with_a_clear_message():
+    gate = LLMGate(max_concurrent=1, wait_seconds=0.1, max_waiting=2)
+    with gate.acquire():
+        with pytest.raises(ExamBusyError, match="排了"):
+            with gate.acquire():
+                pass
+    with gate.acquire():  # 名额照常归还
+        pass

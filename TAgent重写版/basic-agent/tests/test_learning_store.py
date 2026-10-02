@@ -277,3 +277,64 @@ def test_a_corrupt_file_does_not_stop_the_service(tmp_path):
     path = tmp_path / "tagent.sqlite3"
     path.write_bytes(b"this is not a database" * 100)
     assert build_learning_store(AgentConfig(learning_db_path=path)) is None
+
+
+# ====================== 并发打开 / 并发备份 ======================
+def test_two_processes_opening_a_fresh_db_do_not_both_create_tables(tmp_path):
+    """先到的建表期间，后到的读到的是旧版本号；它拿到写锁后必须复查，而不是再建一遍表。"""
+    path = tmp_path / "tagent.sqlite3"
+    first = sqlite3.connect(path, isolation_level=None, check_same_thread=False)
+    first.execute("PRAGMA journal_mode=WAL")
+    first.execute("BEGIN IMMEDIATE")
+    for statement in (s.strip() for s in MIGRATIONS[0].split(";")):
+        if statement:
+            first.execute(statement)
+    first.execute(f"PRAGMA user_version={len(MIGRATIONS)}")
+
+    def finish_later():
+        time.sleep(0.3)
+        first.execute("COMMIT")
+
+    threading.Thread(target=finish_later).start()
+    second = LearningStore(path)  # 读到 0 → 等写锁 → 复查发现已是最新
+
+    assert second.schema_version == len(MIGRATIONS)
+    second.record_chat(student_id=None, mode="qa", model="m", question="q", answer="a")
+    second.close()
+    first.close()
+
+
+def test_concurrent_backups_queue_up_and_all_produce_valid_files(store):
+    for i in range(30):
+        store.record_chat(student_id=None, mode="qa", model="m", question=f"q{i}", answer="a")
+    results, errors = [], []
+
+    def run():
+        try:
+            results.append(store.backup())
+        except Exception as exc:  # noqa: BLE001
+            errors.append(exc)
+
+    threads = [threading.Thread(target=run) for _ in range(4)]
+    for thread in threads:
+        thread.start()
+    for thread in threads:
+        thread.join(30)
+
+    assert errors == [] and len(results) == 4
+    for target in set(results):
+        copy = sqlite3.connect(target)
+        assert copy.execute("SELECT COUNT(*) FROM chat_turns").fetchone()[0] == 30
+        copy.close()
+    assert list(store.backup_dir.glob("*.partial")) == []
+
+
+def test_a_failed_backup_leaves_no_temporary_file(store, monkeypatch):
+    class Broken:
+        def backup(self, _dest):
+            raise sqlite3.OperationalError("disk I/O error")
+
+    monkeypatch.setattr(store, "_conn", lambda: Broken())
+    with pytest.raises(sqlite3.OperationalError):
+        store.backup()
+    assert list(store.backup_dir.iterdir()) == []

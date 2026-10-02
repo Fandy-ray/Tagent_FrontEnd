@@ -41,7 +41,7 @@ def create_app(config: dict | None = None, *, registry=None, services=None) -> F
         if origin in {"http://127.0.0.1:5173", "http://localhost:5173"}:
             response.headers["Access-Control-Allow-Origin"] = origin
             response.headers["Access-Control-Allow-Headers"] = (
-                "Content-Type, X-Tagent-Client-Id, X-Tagent-Client-Name"
+                "Content-Type, X-Tagent-Client-Id, X-Tagent-Client-Name, X-Tagent-No-Record"
             )
             response.headers["Access-Control-Allow-Methods"] = "GET, POST, OPTIONS"
         return response

@@ -292,10 +292,14 @@ uv run python main.py          # 读上一级的 .env.runtime
 # 前端（另开一个终端）
 cd tagentnote
 npm install
-npm run dev
+npm run build && npm run preview -- --port 5173 --strictPort   # 演示 / 日常用：生产包
+# npm run dev                                                   # 改前端代码时用：热更新，但打开慢约 10 倍
 ```
 
-前端必须跑 `npm run dev`，**不能用 `npm run build`**：`/agent-api` 代理只存在于 Vite dev server，生产构建里没有它，所有后端请求都会 404。
+演示请用生产包（`build` + `preview`），一键启动脚本默认也是这样：开发服务器把几百个源文件逐个现编现发，
+答疑页首次打开实测 159 个请求、2.5MB、1.3 秒，生产包是 35 个请求、142KB、0.12 秒；开发服务器第一次遇到新依赖
+还会整页刷新一次。`/agent-api` 代理两种模式都有——`vite preview` 默认沿用 `vite.config.ts` 里 `server.proxy` 那份。
+只有直接把 `build` 出来的文件扔给别的静态服务器（nginx 等）时才没有这个代理，那就要在那边自己配。
 
 后端端口必须是 **5001**——`tagentnote/vite.config.ts` 的代理写死了 `http://127.0.0.1:5001`。改一边就得改另一边。
 

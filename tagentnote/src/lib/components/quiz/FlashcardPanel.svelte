@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { onDestroy, onMount } from 'svelte';
+	import { loadKatex } from '$lib/data/math';
 
 	import { generateFlashDeck } from '$lib/apis/agent';
 	import FlashCard from '$lib/components/quiz/FlashCard.svelte';
@@ -134,6 +135,8 @@
 			elapsed += 1;
 		}, 1000);
 
+		// 等模型出题的这几秒顺手把 KaTeX 下好（$lib/data/math 的 loadKatex），题目出来时公式不先闪一下原文
+		void loadKatex();
 		void generateFlashDeck(modelId, topic, notebookIds, signal)
 			.then((deck) => {
 				clearTimeout(ceiling);

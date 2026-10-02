@@ -250,7 +250,7 @@
 								id="jwt-token-input"
 								value={mockToken}
 								readonly={true}
-								ariaLabel="JWT Token"
+								aria-label="JWT Token"
 							/>
 
 							<button
@@ -304,7 +304,7 @@
 									id="api-key-input"
 									bind:value={apiKey}
 									readonly={true}
-									ariaLabel="API Key"
+									aria-label="API Key"
 								/>
 
 								<button

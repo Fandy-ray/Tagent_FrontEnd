@@ -13,8 +13,10 @@
 				const metaThemeColorTag = document.querySelector('meta[name="theme-color"]');
 				const prefersDarkTheme = window.matchMedia('(prefers-color-scheme: dark)').matches;
 
+				// 默认暗色：和设置里的默认值（$lib/data/userSettings 的 theme: 'dark'）保持一致，
+				// 免得第一次打开时先是「系统」那套蓝灰配色、进了答疑页又跳成暗色
 				if (!localStorage.theme) {
-					localStorage.theme = 'system';
+					localStorage.theme = 'dark';
 				}
 
 				const storedTheme = localStorage.theme;
@@ -46,21 +48,8 @@
 					html.classList.add('dark');
 					metaThemeColorTag.setAttribute('content', '#171717');
 				}
-
-				// Listen for system theme changes
-				window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', function(e) {
-					if (localStorage.theme === 'system') {
-						if (e.matches) {
-							html.classList.add('dark');
-							html.classList.remove('light', 'system');
-							metaThemeColorTag.setAttribute('content', '#171717');
-						} else {
-							html.classList.add('light', 'system');
-							html.classList.remove('dark');
-							metaThemeColorTag.setAttribute('content', '#AEB8C4');
-						}
-					}
-				});
+				// 「系统」是一套固定的蓝灰配色（见 app.css 的 html.system），不跟随操作系统切换，
+				// 所以这里不监听 prefers-color-scheme：监听了反而会把这套配色换成暗色/浅色的类
 			})();
 		</script>
 

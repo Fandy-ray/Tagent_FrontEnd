@@ -61,11 +61,17 @@ opennotebook/surreal_data/              数据库文件
 `http://127.0.0.1:5001`；而 macOS 的「隔空播放接收器」常年占着 5000。
 改端口要两边一起改，否则前端所有请求 502。
 
-## 为什么前端跑的是 dev server
+## 为什么前端跑的是 dev server（以及为什么该换）
 
-`/agent-api → 127.0.0.1:5001` 这条反向代理**只存在于 Vite dev server**。
-`npm run build` 出来的静态产物没有它，前端所有后端请求都会 404。所以三套部署
-方案跑的都是 `vite dev`。
+这三套服务定义写的时候以为 `/agent-api → 127.0.0.1:5001` 这条反向代理只存在于 Vite dev server，
+所以跑的都是 `vite dev`。其实 `vite preview` 默认沿用同一份代理（2026-10-02 实测：健康检查和
+流式回答都能经它到 5001）。一键启动脚本已经改成「先 `vite build`、再 `vite preview`」——
+答疑页首次打开从 159 个请求、2.5MB、1.3 秒降到 35 个请求、142KB、0.12 秒。
+
+这里的 launchd / systemd / 计划任务还是 `vite dev`：改成生产包需要在服务启动前先构建一次
+（systemd 用 `ExecStartPre`，launchd 和 Windows 计划任务要包一层脚本），而且要在三个系统上
+各自实测，留到下一轮。真要装成常驻服务又在意打开速度，可以先手动 `npm run build`，再把服务里的
+`dev` 换成 `preview`。
 
 要上真正的生产静态托管，得自己在 Nginx / Caddy 里补一条 `/agent-api` 的反代规则
 指向 5001，那是另一套部署，不在本目录范围内。

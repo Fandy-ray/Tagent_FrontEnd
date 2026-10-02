@@ -37,15 +37,33 @@ export function clientId(): string | null {
 	}
 }
 
-/** 发给 basic-agent 的身份头。昵称要 URL 编码：HTTP 头里放不了中文。 */
+// 临时对话期间不让后端留记录（界面答应过「消息不会被保存」）。答疑页进出临时对话时设置，离开答疑页时清掉
+let recordingPaused = false;
+
+export function setRecordingPaused(paused: boolean) {
+	recordingPaused = paused;
+}
+
+/**
+ * 发给 basic-agent 的身份头。昵称要 URL 编码：HTTP 头里放不了中文。
+ *
+ * 绝不抛异常：这只是附带的身份信息，存坏了的设置（昵称不是字符串之类）最多让这次请求不带昵称，
+ * 不能让所有请求都在发出去之前就失败。
+ */
 export function learnerHeaders(): Record<string, string> {
-	const id = clientId();
-	if (!id) return {};
-	const headers: Record<string, string> = { 'X-Tagent-Client-Id': id };
-	const name = loadUserSettings().displayName.trim().slice(0, MAX_NAME_CHARS);
-	// 没改过的默认名（「Tagent」）不算昵称，免得全班都叫这个
-	if (name && name !== defaultUserSettings().displayName) {
-		headers['X-Tagent-Client-Name'] = encodeURIComponent(name);
+	const headers: Record<string, string> = recordingPaused ? { 'X-Tagent-No-Record': '1' } : {};
+	try {
+		const id = clientId();
+		if (!id) return headers;
+		headers['X-Tagent-Client-Id'] = id;
+		const raw = loadUserSettings().displayName;
+		const name = typeof raw === 'string' ? raw.trim().slice(0, MAX_NAME_CHARS) : '';
+		// 没改过的默认名（「Tagent」）不算昵称，免得全班都叫这个
+		if (name && name !== defaultUserSettings().displayName) {
+			headers['X-Tagent-Client-Name'] = encodeURIComponent(name);
+		}
+	} catch {
+		// 见上：身份信息不全也照常发请求
 	}
 	return headers;
 }

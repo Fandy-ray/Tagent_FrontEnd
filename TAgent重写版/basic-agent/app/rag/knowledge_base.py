@@ -8,9 +8,12 @@
 
 from __future__ import annotations
 
+import hashlib
 import logging
+import os
 import random
 import re
+import shutil
 import threading
 from pathlib import Path
 from typing import Any
@@ -30,6 +33,9 @@ from app.util.markdown_sanitizer import clean_reference_for_display, truncate_ma
 
 log = logging.getLogger(__name__)
 EMBEDDING_MODEL = "shibing624/text2vec-base-chinese"
+# 切块参数或缓存格式一变就要改这个值：缓存按「教材内容 + 嵌入模型 + 这个值」认，
+# 改了才会重建，不然会拿旧切法的索引配新切法的片段
+INDEX_CACHE_FORMAT = "faiss-v1-md-headers-800-50"
 
 
 def _load_default_embeddings():
@@ -62,8 +68,11 @@ class KnowledgeBase:
         knowledge_file: str | Path | None = None,
         embeddings=None,
         vectorstore=None,
+        index_cache_dir: str | Path | None = None,
     ):
         self.text_db_dir = Path(text_db_dir or DEFAULT_TEXT_DB_DIR)
+        # 向量索引的磁盘缓存目录；None = 不缓存（单测注入假嵌入时就是这样）
+        self.index_cache_dir = Path(index_cache_dir) if index_cache_dir else None
         self.knowledge_file = Path(knowledge_file or DEFAULT_KNOWLEDGE_FILE)
         self.embeddings = embeddings
         self.vectorstore = vectorstore
@@ -106,10 +115,62 @@ class KnowledgeBase:
             if self.vectorstore is None:
                 if self.embeddings is None:
                     self.embeddings = _load_default_embeddings()
-                from langchain_community.vectorstores import FAISS
-
-                self.vectorstore = FAISS.from_documents(self._knowledge_chunks, self.embeddings)
+                self.vectorstore = self._load_or_build_index()
             return self._knowledge_chunks
+
+    # ---------------------------------------------------------------- 索引缓存
+    #
+    # 以前每次启动都把整本教材重新嵌入一遍建 FAISS 索引：本机实测预热 23 秒，其中 20 秒在这一步
+    # （2026-10-02）。教材不常变，建好的索引存到应用数据目录里，下次启动直接读回来。
+    # 放应用数据目录而不是项目目录，理由同学习记录库：项目在 iCloud 同步的桌面上。
+
+    def _index_cache_path(self) -> Path | None:
+        if self.index_cache_dir is None:
+            return None
+        digest = hashlib.sha256()
+        digest.update(INDEX_CACHE_FORMAT.encode())
+        digest.update(EMBEDDING_MODEL.encode())
+        digest.update(self.knowledge_file.read_bytes())
+        return self.index_cache_dir / digest.hexdigest()[:16]
+
+    def _load_or_build_index(self):
+        from langchain_community.vectorstores import FAISS
+
+        cache = self._index_cache_path()
+        if cache is not None and (cache / "index.faiss").exists():
+            try:
+                # 反序列化只读我们自己写进应用数据目录的文件；能改那里的人本来就能以本用户身份跑代码
+                store = FAISS.load_local(str(cache), self.embeddings, allow_dangerous_deserialization=True)
+                log.info("向量索引走缓存：%s", cache)
+                return store
+            except Exception as exc:  # noqa: BLE001 —— 缓存坏了就重建，不能因此起不来
+                log.warning("向量索引缓存读不了，重建：%s", exc)
+
+        store = FAISS.from_documents(self._knowledge_chunks, self.embeddings)
+        if cache is not None:
+            self._save_index_cache(store, cache)
+        return store
+
+    @staticmethod
+    def _save_index_cache(store, cache: Path) -> None:
+        """先写临时目录再改名：进程写到一半被杀，留下的也不会是一份读得进来的半截索引。"""
+        tmp = cache.with_name(f".{cache.name}.{os.getpid()}.{threading.get_ident()}.tmp")
+        try:
+            cache.parent.mkdir(parents=True, exist_ok=True)
+            store.save_local(str(tmp))
+            if cache.exists():
+                shutil.rmtree(cache, ignore_errors=True)
+            os.replace(tmp, cache)
+            # 教材换过之后旧的那份就没用了，别越攒越多
+            for old in cache.parent.iterdir():
+                if old != cache and not old.name.startswith("."):
+                    shutil.rmtree(old, ignore_errors=True)
+            log.info("向量索引已缓存：%s", cache)
+        except Exception as exc:  # noqa: BLE001 —— 存不下缓存只是下次还慢，不影响这次
+            log.warning("向量索引缓存没存上：%s", exc)
+        finally:
+            if tmp.exists():
+                shutil.rmtree(tmp, ignore_errors=True)
     def chunks(self, notebook_ids: list[str] | None = None) -> list[Document]:
         if self._knowledge_chunks is not None:
             return self._knowledge_chunks

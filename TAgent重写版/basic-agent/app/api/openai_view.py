@@ -18,7 +18,7 @@ from flask import Response, jsonify, stream_with_context
 
 from app.api.deps import get_chat_service
 from app.api.learner import current_learner, note_chat
-from app.service.chat_service import STREAM_FAILED_NOTE
+from app.service.chat_service import FINISH_INTERRUPTED, STREAM_FAILED_NOTE
 from app.api.validators import (
     chat_mode,
     chat_retrieval_query,
@@ -148,7 +148,8 @@ def chat_completion_response(data, provider):
             created,
             provider.served_model_id,
             None,
-            finish_reason,
+            # 线上只发 OpenAI 认识的值；中断已经用正文末尾的说明告诉学生了
+            "stop" if finish_reason == FINISH_INTERRUPTED else finish_reason,
         )
         yield f"data: {json.dumps(final_chunk, ensure_ascii=False)}\n\n"
         yield "data: [DONE]\n\n"

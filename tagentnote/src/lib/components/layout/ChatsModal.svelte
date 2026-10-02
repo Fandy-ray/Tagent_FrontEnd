@@ -22,6 +22,8 @@
 		onUnshare?: (id: string) => void;
 		onDelete?: (id: string) => void;
 		onUpdate?: () => void;
+		/** 点一行：打开这段对话（不传就只是列表） */
+		onOpen?: (id: string) => void;
 	};
 
 	let {
@@ -34,7 +36,8 @@
 		onUnarchive,
 		onUnshare,
 		onDelete = () => {},
-		onUpdate = () => {}
+		onUpdate = () => {},
+		onOpen
 	}: Props = $props();
 
 	let query = $state('');
@@ -222,11 +225,14 @@
 								onclick={() => {
 									if (shareUrl && chat.shareId) {
 										void copyShareLink(chat.shareId);
+									} else {
+										onOpen?.(chat.id);
 									}
 								}}
 								onkeydown={(event) => {
 									if (event.key === 'Enter' || event.key === ' ') {
 										event.preventDefault();
+										onOpen?.(chat.id);
 									}
 								}}
 							>

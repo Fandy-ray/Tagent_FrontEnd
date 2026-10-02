@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { renderMathToHtml } from '$lib/data/math';
+	import { katexLoaded, loadKatex, needsKatex, renderMathToHtml } from '$lib/data/math';
 
 	type Props = {
 		value: string;
@@ -8,6 +8,20 @@
 	};
 
 	let { value, class: className = '' }: Props = $props();
+
+	// KaTeX 按需加载：这段有公式才去拿，拿到之后重画一次（之前先按原文显示）
+	let ready = $state(katexLoaded());
+	$effect(() => {
+		if (!ready && needsKatex(value)) {
+			void loadKatex().then((ok) => {
+				if (ok) ready = true;
+			});
+		}
+	});
+	const html = $derived.by(() => {
+		void ready;
+		return renderMathToHtml(value);
+	});
 </script>
 
 <!--
@@ -17,4 +31,4 @@
 	绝不能把原始题面直接 {@html}。
 -->
 <!-- eslint-disable-next-line svelte/no-at-html-tags -->
-<span class={className}>{@html renderMathToHtml(value)}</span>
+<span class={className}>{@html html}</span>

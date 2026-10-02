@@ -12,7 +12,7 @@ from __future__ import annotations
 import logging
 from dataclasses import dataclass
 
-from app.config import AgentConfig
+from app.config import LLM_GATE_MAX_WAITING, LLM_GATE_WAIT_SECONDS, AgentConfig
 from app.repository.provider_repository import load_model_registry
 
 
@@ -97,7 +97,8 @@ def build_services(
     # 延迟 import：这几个模块会拉起 langchain/langgraph，
     # 只想构造 app 做单测时不该付这个代价。
     from app.infra.model_client_factory import ModelClientFactory
-    from app.repository.exam_cache import LLMGate
+    from app.repository.exam_cache import ExamCache, LLMGate
+    from app.repository.exam_persistence import ExamPersistence
     from app.service.chat_service import ChatService
     from app.service.essay_service import EssayService
     from app.service.exam_service import ExamService
@@ -107,12 +108,19 @@ def build_services(
     client_factory = ModelClientFactory()
     # 闸门**必须**由出卷判卷与论文批改共用：它计的是"这台机器同时压着多少次
     # 上游调用"，各建一份就等于把容量悄悄翻倍，限流也就名存实亡了。
-    llm_gate = LLMGate(max_concurrent=settings.exam_max_concurrent_llm)
+    llm_gate = LLMGate(
+        max_concurrent=settings.exam_max_concurrent_llm,
+        wait_seconds=LLM_GATE_WAIT_SECONDS,
+        max_waiting=LLM_GATE_MAX_WAITING,
+    )
+    store = build_learning_store(settings) if learning_store else None
+    # 私有卷也落一份进学习记录库：重启后学生还能交卷（库没开就只在内存，和以前一样）
+    exam_cache = ExamCache(persistence=ExamPersistence(store) if store is not None else None)
 
     services = Services(
         chat=ChatService(knowledge_base, client_factory),
         quiz=QuizService(knowledge_base, client_factory),
-        exam=ExamService(knowledge_base, client_factory, llm_gate=llm_gate),
+        exam=ExamService(knowledge_base, client_factory, llm_gate=llm_gate, exam_cache=exam_cache),
         essay=EssayService(
             knowledge_base=knowledge_base,
             client_factory=client_factory,
@@ -120,7 +128,7 @@ def build_services(
         ),
         knowledge_base=knowledge_base,
         client_factory=client_factory,
-        store=build_learning_store(settings) if learning_store else None,
+        store=store,
     )
     if warm_up:
         services.warm_up()
@@ -134,6 +142,7 @@ def build_knowledge_base(settings: AgentConfig):
     local = KnowledgeBase(
         text_db_dir=settings.text_db_dir,
         knowledge_file=settings.knowledge_file,
+        index_cache_dir=settings.vector_cache_dir,
     )
     if settings.knowledge_source == "local":
         return local

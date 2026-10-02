@@ -1,4 +1,5 @@
 import json
+import pytest
 import os
 from unittest.mock import patch
 
@@ -300,3 +301,112 @@ def test_config_stays_local_without_notebook_url():
     with patch.dict(os.environ, env, clear=False):
         settings = AgentConfig.from_env()
     assert settings.knowledge_source == "local"
+
+
+# ====================== 出错的来源先歇一阵 ======================
+class CountingSource(FakeSource):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.calls = 0
+
+    def retrieve(self, query, notebook_ids=None):
+        self.calls += 1
+        return super().retrieve(query, notebook_ids)
+
+
+def run_now(task):
+    task()
+
+
+def test_a_failing_source_is_not_retried_on_every_question_then_comes_back():
+    from app.rag.composite_kb import SOURCE_RETRY_AFTER_SECONDS
+
+    now = [1000.0]
+    notebook = CountingSource("notebook", "笔记", fail=True)
+    composite = CompositeKnowledgeBase(FakeSource("local", "教材"), notebook, clock=lambda: now[0], run_probe=run_now)
+
+    for _ in range(5):
+        composite.retrieve("到达率")
+    assert notebook.calls == 1  # 第一次失败之后歇着
+
+    notebook.fail = False
+    now[0] += SOURCE_RETRY_AFTER_SECONDS + 1
+    context, _ = composite.retrieve("到达率")
+    assert notebook.calls == 2 and "notebook:" in context  # 歇够了探一次活，通了就接回来
+
+
+def test_a_source_that_failed_warm_up_rests_too():
+    now = [0.0]
+    notebook = CountingSource("notebook", "笔记", fail=True)
+    composite = CompositeKnowledgeBase(FakeSource("local", "教材"), notebook, clock=lambda: now[0], run_probe=run_now)
+    composite.warm_up()
+    composite.retrieve("仿真")
+    assert notebook.calls == 0
+
+
+def test_questions_never_wait_on_the_recovery_probe():
+    """歇够之后由后台探活；探的这段时间里学生的问题照样跳过它，不替探活等超时。"""
+    from app.rag.composite_kb import SOURCE_RETRY_AFTER_SECONDS
+
+    now = [0.0]
+    started = []
+    notebook = CountingSource("notebook", "笔记", fail=True)
+    composite = CompositeKnowledgeBase(
+        FakeSource("local", "教材"), notebook, clock=lambda: now[0], run_probe=started.append
+    )
+    composite.retrieve("到达率")
+    now[0] += SOURCE_RETRY_AFTER_SECONDS + 1
+    for _ in range(3):
+        context, _ = composite.retrieve("到达率")
+        assert "notebook:" not in context
+    assert notebook.calls == 1 and len(started) == 1  # 只起了一次探活，问题一次都没去碰它
+
+
+def test_a_source_that_stays_down_rests_longer_each_time():
+    from app.rag.composite_kb import SOURCE_RETRY_AFTER_SECONDS, SOURCE_RETRY_MAX_SECONDS
+
+    now = [0.0]
+    notebook = CountingSource("notebook", "笔记", fail=True)
+    composite = CompositeKnowledgeBase(FakeSource("local", "教材"), notebook, clock=lambda: now[0], run_probe=run_now)
+    composite.retrieve("到达率")
+    rests = []
+    for _ in range(6):
+        rests.append(composite._resting_until[id(notebook)] - now[0])
+        now[0] = composite._resting_until[id(notebook)] + 0.1
+        composite.retrieve("到达率")  # 歇够了 → 探活失败 → 歇得更久
+    assert rests[:4] == pytest.approx([SOURCE_RETRY_AFTER_SECONDS * 2 ** i for i in range(4)])
+    assert max(rests) <= SOURCE_RETRY_MAX_SECONDS
+
+
+# ====================== 连不上的时候别多等 ======================
+def test_a_search_that_cannot_connect_is_not_retried_as_text_search():
+    import httpx
+
+    calls = []
+
+    class DeadClient:
+        def request(self, method, path, **kwargs):
+            calls.append(path)
+            raise httpx.ReadTimeout("timed out")
+
+    kb = OpenNotebookKnowledgeBase(base_url="http://notebook", client=DeadClient())
+    with pytest.raises(Exception):
+        kb.retrieve("到达率")
+    assert calls == ["/api/search"]  # 以前会再问一遍文本检索，卡住时就是两倍的超时
+
+
+def test_ping_gives_up_after_the_first_connection_failure():
+    import httpx
+
+    calls = []
+
+    class DeadClient:
+        def request(self, method, path, **kwargs):
+            calls.append((path, kwargs.get("timeout")))
+            raise httpx.ConnectTimeout("no route")
+
+    kb = OpenNotebookKnowledgeBase(base_url="http://notebook", client=DeadClient())
+    with pytest.raises(Exception):
+        kb.warm_up()
+    assert len(calls) == 1  # 不把四条健康检查路径的超时挨个等一遍
+    assert calls[0][1] is not None  # 健康检查用自己的短超时

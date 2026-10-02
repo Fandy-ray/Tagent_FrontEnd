@@ -5,6 +5,9 @@
 没带、或带得不像样，一律当匿名处理，不报错：认不出人只是少一条归属，不该让请求失败。
 它只是「同一台设备」的标记，不是身份认证——别拿它做权限判断。
 
+**不记**：前端在「临时对话」里会带 X-Tagent-No-Record: 1——界面答应过学生「消息不会被保存」，
+这类请求一条都不往库里写。
+
 **记**：尽力而为。库没开、被占用、磁盘满，都只记一行日志然后照常返回——
 答疑和批改是主业，记录是副业，副业出错不能连累主业。
 """
@@ -28,6 +31,7 @@ log = logging.getLogger(__name__)
 
 CLIENT_ID_HEADER = "X-Tagent-Client-Id"
 CLIENT_NAME_HEADER = "X-Tagent-Client-Name"
+NO_RECORD_HEADER = "X-Tagent-No-Record"
 MAX_NAME_CHARS = 40
 
 _CLIENT_ID = re.compile(r"[A-Za-z0-9_-]{8,64}")
@@ -37,23 +41,23 @@ _CLIENT_ID = re.compile(r"[A-Za-z0-9_-]{8,64}")
 class Learner:
     id: str | None
     name: str = ""
-
-
-ANONYMOUS = Learner(None)
+    # False = 这次请求不留记录（临时对话）
+    record: bool = True
 
 
 def current_learner() -> Learner:
     """从请求头里认人。必须在请求上下文里调（流式回答要在生成器开跑之前先取好）。"""
+    record = request.headers.get(NO_RECORD_HEADER, "").strip() != "1"
     client_id = request.headers.get(CLIENT_ID_HEADER, "").strip()
     if not _CLIENT_ID.fullmatch(client_id):
-        return ANONYMOUS
+        return Learner(None, record=record)
     try:
         name = unquote(request.headers.get(CLIENT_NAME_HEADER, ""), errors="strict")
     except UnicodeDecodeError:
         name = ""
     # 昵称只是展示用：去掉控制字符、压掉首尾空白、截到合理长度
     name = "".join(ch for ch in name if ch.isprintable()).strip()[:MAX_NAME_CHARS]
-    return Learner(client_id, name)
+    return Learner(client_id, name, record)
 
 
 def _best_effort(write):
@@ -64,6 +68,8 @@ def _best_effort(write):
 
     @wraps(write)
     def wrapper(learner: Learner, *args, **kwargs) -> None:
+        if not learner.record:
+            return
         try:
             store = get_learning_store()
             if store is None:

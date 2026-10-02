@@ -8,9 +8,29 @@
  * 安全：题面来自模型，而模型读的是笔记本里的任意内容，所以**非公式部分一律转义**，
  * 公式部分交给 KaTeX（`trust: false`，不认 \\href/\\url 这类会注入链接的宏）。
  * 调用方用 {@html} 渲染本函数的返回值是安全的；直接 {@html} 原始题面则不是。
+ *
+ * KaTeX 有两百多 KB，按需加载（loadKatex）：测评首页、没有公式的卷子都用不着它，
+ * 以前静态打进测评页，页面一打开就要先下它。加载完成之前，公式先按原文（$…$）转义显示。
  */
 
-import katex from 'katex';
+type Katex = typeof import('katex').default;
+
+let katex: Katex | null = null;
+let loading: Promise<boolean> | null = null;
+
+/** 加载 KaTeX 及其样式。失败（断网等）返回 false、下次再试，公式先按原文显示 */
+export const loadKatex = (): Promise<boolean> =>
+	(loading ??= Promise.all([import('katex'), import('katex/dist/katex.min.css')])
+		.then(([mod]) => {
+			katex = mod.default;
+			return true;
+		})
+		.catch(() => {
+			loading = null;
+			return false;
+		}));
+
+export const katexLoaded = () => katex !== null;
 
 // $$...$$ 允许跨行；$...$ 不允许，否则「$5 和 $8」这种会被吃成一段公式
 const MATH_PATTERN = /\$\$([\s\S]+?)\$\$|\$([^$\n]+?)\$/g;
@@ -26,6 +46,9 @@ const ESCAPES: Record<string, string> = {
 const escapeHtml = (value: string) => value.replace(/[&<>"']/g, (ch) => ESCAPES[ch]);
 
 const renderOne = (tex: string, displayMode: boolean) => {
+	if (!katex) {
+		return escapeHtml(displayMode ? `$$${tex}$$` : `$${tex}$`);
+	}
 	try {
 		return katex.renderToString(tex.trim(), {
 			displayMode,
@@ -59,6 +82,9 @@ const BARE_LATEX = /^[^\u4e00-\u9fa5]*\\[a-zA-Z]+[^\u4e00-\u9fa5]*$/;
 
 const looksLikeBareLatex = (text: string) =>
 	text.length > 0 && text.length <= 120 && !text.includes('$') && BARE_LATEX.test(text);
+
+/** 这段文字要不要 KaTeX（有 $…$，或整条就是一个裸 LaTeX 式子） */
+export const needsKatex = (raw: string) => hasMath(raw) || looksLikeBareLatex((raw ?? '').trim());
 
 export const renderMathToHtml = (raw: string): string => {
 	const text = raw ?? '';

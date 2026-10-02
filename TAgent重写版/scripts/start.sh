@@ -5,7 +5,7 @@
 #
 #     OpenNotebook 8502 页面 / 5055 接口   笔记本（Docker Compose）
 #     basic-agent  127.0.0.1:5001          出题 / 判卷 / 检索
-#     tagentnote   127.0.0.1:5173          前端（Vite dev）
+#     tagentnote   127.0.0.1:5173          前端（先构建，再用 Vite preview 提供生产包）
 #
 # OpenNotebook 走 ../opennotebook/docker-compose.yml，需要 Docker 引擎在跑
 # （Docker Desktop / OrbStack / colima 都行）。起不来时会说明原因并继续启动
@@ -21,6 +21,7 @@
 #   ./scripts/start.sh --with-tts          连 aliyun-tts-bridge 一起起（需 DashScope Key）
 #   ./scripts/start.sh --agent-timeout 600 等 basic-agent 就绪的超时，默认 300
 #   ./scripts/start.sh --no-open           启动完成后不自动打开浏览器
+#   ./scripts/start.sh --dev               前端改用开发服务器（改代码时用；页面打开慢约 10 倍）
 #   ./scripts/start.sh --prepare           只装依赖、生成密钥，不启动任何服务
 #                                          （deploy/ 下的服务安装脚本用它做前置）
 #   ./scripts/start.sh --pypi-mirror <URL> 装 Python 依赖失败时改用哪个镜像重试
@@ -43,6 +44,8 @@ SKIP_INSTALL=0
 SKIP_NOTEBOOK=0
 WITH_TTS=0
 OPEN_BROWSER=1
+# 前端默认构建后用 vite preview 提供生产包；--dev 改回开发服务器
+FRONTEND_DEV=0
 # 只做前置准备（装依赖、写 .env.runtime），不拉起服务。deploy/ 下的
 # systemd / launchd / 计划任务安装脚本靠它复用这条已经跑熟的准备流程。
 PREPARE_ONLY=0
@@ -51,7 +54,7 @@ PYPI_MIRROR='https://mirrors.aliyun.com/pypi/simple/'
 AGENT_TIMEOUT=300
 NOTEBOOK_TIMEOUT=180
 
-usage() { sed -n '2,25p' "$0"; }
+usage() { sed -n '2,26p' "$0"; }
 
 while [ $# -gt 0 ]; do
     case "$1" in
@@ -60,6 +63,7 @@ while [ $# -gt 0 ]; do
         -SkipNotebook|-skipnotebook|--skip-notebook)      SKIP_NOTEBOOK=1 ;;
         -WithTts|-withtts|--with-tts)                     WITH_TTS=1 ;;
         --no-open)                                        OPEN_BROWSER=0 ;;
+        -Dev|-dev|--dev)                                  FRONTEND_DEV=1 ;;
         -Prepare|--prepare)                               PREPARE_ONLY=1 ;;
         --pypi-mirror)                                    shift; PYPI_MIRROR="${1:-}" ;;
         -AgentTimeout|--agent-timeout)                    shift; AGENT_TIMEOUT="${1:-300}" ;;
@@ -234,8 +238,10 @@ if ! have uv; then
        python3 -m pip install --user uv'
 fi
 
-# 前端必须跑 npm run dev（不是 build）：/agent-api 代理只存在于 Vite dev server，
-# 生产构建里没有这个代理，前端会直接打 5173 自己，所有后端请求 404。
+# 前端默认先 vite build，再用 vite preview 提供生产包：开发服务器把几百个源文件逐个现编现发，
+# 实测答疑页首次打开 159 个请求、2.5MB、1.3 秒，生产包是 35 个请求、142KB、0.12 秒（2026-10-02）；
+# 开发服务器第一次遇到新依赖还会「优化依赖后整页刷新」，演示时点到一半页面自己刷掉。
+# /agent-api 代理两种模式都有：vite preview 的 proxy 默认沿用 vite.config.ts 里 server.proxy 那份。
 have node || die '未找到 Node.js。前端需要它，请安装 Node.js 22 LTS（22.13 及以上）：https://nodejs.org/dist/latest-v22.x/'
 have npm  || die '未找到 npm。请随 Node.js 22 LTS 一并安装。'
 NODE_VER="$(node -v | sed 's/^v//')"
@@ -642,7 +648,19 @@ disown %+ 2>/dev/null || disown 2>/dev/null || true
 cd "$ROOT" || true
 write_pid_file "$AGENT_PID" "$RUN_DIR/agent.pid"
 
-warn "首次启动需加载嵌入模型并构建向量索引，最长等待 $AGENT_TIMEOUT 秒..."
+# 前端构建和 basic-agent 加载互不相干：趁等后端的这几秒在后台先构建（实测省 4~5 秒）。
+# 每次都重新构建：源码改过而包是旧的，比多等几秒难查得多。
+FRONT_MODE='preview'
+FRONT_BUILD_PID=''
+FRONT_BUILD_LOG="$LOG_DIR/tagentnote.build.log"
+if [ "$FRONTEND_DEV" = "1" ]; then
+    FRONT_MODE='dev'
+else
+    ( cd "$FRONTEND_DIR" && node "$VITE_BIN" build >"$FRONT_BUILD_LOG" 2>&1 ) &
+    FRONT_BUILD_PID=$!
+fi
+
+warn "首次启动需加载嵌入模型并构建向量索引，最长等待 $AGENT_TIMEOUT 秒（之后会用缓存，几秒就好）..."
 wait_health "http://127.0.0.1:$AGENT_PORT/health" "$AGENT_TIMEOUT" "$AGENT_PID"
 case $? in
     0) ok "已就绪 (PID $AGENT_PID)" ;;
@@ -682,13 +700,27 @@ fi
 
 # ------------------------------------------------- 7. 启动前端
 if [ "$LAN" = "1" ]; then VITE_HOST='0.0.0.0'; else VITE_HOST='127.0.0.1'; fi
-step "启动 tagentnote ($VITE_HOST:$FRONTEND_PORT)"
 FRONT_OUT="$LOG_DIR/tagentnote.out.log"
 FRONT_ERR="$LOG_DIR/tagentnote.err.log"
+cd "$FRONTEND_DIR" || die "无法进入 ${FRONTEND_DIR}。"
+
+# 构建是在启动 basic-agent 时就放到后台开始的，这里等它收尾。
+# 构建失败不致命：退回开发服务器，慢一些但能用，并把原因留在日志里。
+if [ -n "$FRONT_BUILD_PID" ]; then
+    step '构建前端（生产包）'
+    if wait "$FRONT_BUILD_PID"; then
+        ok '构建完成'
+    else
+        show_log_tail "$FRONT_BUILD_LOG"
+        warn "构建失败，改用开发服务器启动（页面打开会慢一些）。构建日志：$FRONT_BUILD_LOG"
+        FRONT_MODE='dev'
+    fi
+fi
+
+step "启动 tagentnote ($VITE_HOST:$FRONTEND_PORT，$FRONT_MODE)"
 # 直接用 node 跑 vite，不经 npm：npm 会再派生一个 node 子进程，
 # PID 文件记到的是 npm 那一层，stop 时杀不掉真正监听端口的进程。
-cd "$FRONTEND_DIR" || die "无法进入 ${FRONTEND_DIR}。"
-nohup node "$VITE_BIN" dev --port "$FRONTEND_PORT" --strictPort --host "$VITE_HOST" \
+nohup node "$VITE_BIN" "$FRONT_MODE" --port "$FRONTEND_PORT" --strictPort --host "$VITE_HOST" \
     >"$FRONT_OUT" 2>"$FRONT_ERR" &
 FRONT_PID=$!
 disown %+ 2>/dev/null || disown 2>/dev/null || true

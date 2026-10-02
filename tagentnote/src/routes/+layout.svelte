@@ -2,13 +2,13 @@
 	import { onMount } from 'svelte';
 
 	import '../app.css';
-	// 出题 prompt 要求公式用 $...$ / $$...$$ 包裹，渲染走 $lib/data/math.ts
-	import 'katex/dist/katex.min.css';
 	import { initI18n, setI18nContext } from '$lib/i18n';
-	import i18n from '$lib/i18n';
+	import { loadUserSettings } from '$lib/data/userSettings';
 
-	// 初始化 i18n 并设置 context（在组件初始化时同步执行）
-	initI18n();
+	// 初始化 i18n 并设置 context（在组件初始化时同步执行）。
+	// 默认语言取设置里的（默认简体中文），不按浏览器语言猜：页面上大量文字本来就是写死的中文，
+	// 英文系统的电脑上按浏览器猜成英文，就会一半中文一半英文。学生在设置里改了语言照样生效。
+	initI18n(loadUserSettings().language || 'zh-CN');
 	setI18nContext();
 
 	let { children } = $props();

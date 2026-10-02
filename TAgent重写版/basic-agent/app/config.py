@@ -136,6 +136,9 @@ class AgentConfig:
     exam_max_concurrent_llm: int = 2
     llm_max_orphan_tasks: int = 2
 
+    # 向量索引的磁盘缓存目录。None = 不缓存（TAGENT_VECTOR_CACHE=0，或单测）
+    vector_cache_dir: Path | None = None
+
     # 学习记录库（SQLite）。None = 用 default_data_dir() 下的默认文件。
     learning_store_enabled: bool = True
     learning_db_path: Path | None = None
@@ -175,6 +178,11 @@ class AgentConfig:
             ),
             exam_max_concurrent_llm=int(os.getenv("EXAM_MAX_CONCURRENT_LLM", "2")),
             llm_max_orphan_tasks=int(os.getenv("LLM_MAX_ORPHAN_TASKS", "2")),
+            vector_cache_dir=(
+                None
+                if os.getenv("TAGENT_VECTOR_CACHE", "1") == "0"
+                else default_data_dir() / "vector-cache"
+            ),
             learning_store_enabled=os.getenv("LEARNING_STORE", "1") != "0",
             learning_db_path=Path(db_path).expanduser() if (db_path := _env("TAGENT_DB_PATH")) else None,
             learning_backup_keep=max(1, int(os.getenv("LEARNING_BACKUP_KEEP", "7"))),
@@ -306,6 +314,16 @@ ESSAY_TOPIC_MIN_ATTEMPT_TIMEOUT = 20
 # 夹一下即可，不值得为它判不合格再重试一轮
 ESSAY_TOPIC_MIN_SUGGESTED_CHARS = 500
 ESSAY_TOPIC_MAX_SUGGESTED_CHARS = 2000
+
+
+# ====================== LLM 闸门的排队 ======================
+#
+# 闸门满了先排队，排不上才 429（见 app/repository/exam_cache.py 的 LLMGate）。
+# 等多久必须短于「前端超时 − 后端预算」的余量：整卷 540−480=60、闪卡 240−200=40、
+# 论文批改 260−220=40 秒，取 30 秒，排到之后还够一次完整的预算。
+# 队长上限：排队的人各占一个 waitress 线程干等（共 32 个），给流式答疑留足。
+LLM_GATE_WAIT_SECONDS = 30.0
+LLM_GATE_MAX_WAITING = 8
 
 
 # ====================== 请求合并 / 上游连接 ======================

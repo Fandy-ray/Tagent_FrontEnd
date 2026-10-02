@@ -21,6 +21,18 @@ class OpenNotebookError(RuntimeError):
     """调用 OpenNotebook 失败。"""
 
 
+class OpenNotebookUnreachable(OpenNotebookError):
+    """根本没连上 / 没等到回应（连接被拒、超时、断开）—— 不是它回了一个错误。
+
+    分开是因为处理不同：它回了 400（比如没配嵌入模型），换文本检索再问一次有意义；
+    连不上或卡住时再问一次只是再白等一个超时（实测卡住时一个问题要等 32 秒，就是这么来的）。
+    """
+
+
+# 健康检查只想知道「在不在」，不必等满检索用的 15 秒
+PING_TIMEOUT = httpx.Timeout(5.0, connect=3.0)
+
+
 class OpenNotebookKnowledgeBase:
     def __init__(
         self,
@@ -56,12 +68,16 @@ class OpenNotebookKnowledgeBase:
         last_error: Exception | None = None
         for path in ("/api/notebooks", "/api/config", "/health", "/api/health"):
             try:
-                response = self._request("GET", path)
+                response = self._request("GET", path, timeout=PING_TIMEOUT)
                 if response.status_code >= 400:
                     continue
                 content_type = (response.headers.get("content-type") or "").lower()
                 if "json" in content_type or response.text[:1] in "{[":
                     return True
+            except OpenNotebookUnreachable as exc:
+                # 连不上就是连不上，换个路径也一样：别把四条路径的超时挨个等一遍
+                # （卡住的 OpenNotebook 会让 basic-agent 启动多等一分钟）
+                raise OpenNotebookError(f"OpenNotebook 不可达：{exc}") from exc
             except Exception as exc:
                 last_error = exc
         if last_error:
@@ -128,7 +144,8 @@ class OpenNotebookKnowledgeBase:
             self._client = httpx.Client(
                 base_url=self.base_url,
                 headers=headers,
-                timeout=self.timeout,
+                # 握手单独限时：地址不通时几秒就知道，不用等满整段读超时
+                timeout=httpx.Timeout(self.timeout, connect=min(3.0, self.timeout)),
             )
         return self._client
 
@@ -136,7 +153,7 @@ class OpenNotebookKnowledgeBase:
         try:
             response = self._client_or_create().request(method, path, **kwargs)
         except httpx.HTTPError as exc:
-            raise OpenNotebookError(f"调用 OpenNotebook {path} 失败：{exc}") from exc
+            raise OpenNotebookUnreachable(f"调用 OpenNotebook {path} 失败：{exc}") from exc
         return response
 
     def _json(self, method: str, path: str, **kwargs) -> Any:
@@ -194,6 +211,8 @@ class OpenNotebookKnowledgeBase:
         }
         try:
             return self._json("POST", "/api/search", json=body)
+        except OpenNotebookUnreachable:
+            raise  # 没连上就别再问一遍文本检索（见 OpenNotebookUnreachable）
         except OpenNotebookError:
             body["type"] = "text"
             return self._json("POST", "/api/search", json=body)

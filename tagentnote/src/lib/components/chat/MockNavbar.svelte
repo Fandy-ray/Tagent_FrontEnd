@@ -107,8 +107,14 @@
 	let collectionMenuEl = $state<HTMLDivElement | null>(null);
 	let collectionMenuStyle = $state('');
 
-	const notebookOptions = $derived([
-		{ id: '__all__', name: $i18n.t('All Notebooks'), description: $i18n.t('Search all notebooks and local textbooks'), noteCount: undefined },
+	// 「全部笔记本」的 id 必须是 ''：qa 页凭 collectionId 真假决定要不要限定笔记本，
+	// 换成任何非空值（比如 '__all__'）都会被当成笔记本编号发给后端，检索就什么都找不到了
+	const notebookOptions = $derived<NotebookOption[]>([
+		{
+			id: '',
+			name: $i18n.t('All Notebooks'),
+			description: $i18n.t('Search all notebooks and local textbooks')
+		},
 		...notebooks
 	]);
 

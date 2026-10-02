@@ -37,6 +37,14 @@ export type QaChat = {
 };
 
 const STORAGE_KEY = 'tagentnote.qa.chats.v1';
+/**
+ * 流式回答进行中的「草稿」：只有正在吐字的那一条消息（几 KB）。
+ *
+ * 生成中每秒都要落一次盘，好让浏览器崩溃、被杀进程时已经吐出的部分不丢；但整个会话库
+ * （几十段对话、带全文的批改卡）每秒序列化一遍太重，会卡住正在刷字的页面。所以生成中只写这一条，
+ * 下次读取会话时并回去；任何一次完整保存都已经包含最新内容，顺手把草稿清掉。
+ */
+const DRAFT_KEY = 'tagentnote.qa.streaming-draft.v1';
 const MAX_CHATS = 40;
 
 type StoredBundle = {
@@ -82,7 +90,8 @@ const snapshotChat = (chat: QaChat): QaChat => ({
 									notes?.map((note) => ({ ...note })) ?? []
 								])
 							),
-							attachedFiles: chat.paperTask.context.attachedFiles?.map((file) => ({ ...file })) ?? []
+							attachedFiles:
+								chat.paperTask.context.attachedFiles?.map((file) => ({ ...file })) ?? []
 						}
 					: undefined
 			}
@@ -114,6 +123,7 @@ export function loadQaChats(): StoredBundle {
 				? parsed.activeId
 				: null;
 
+		applyStreamingDraft(chats);
 		return { chats, activeId };
 	} catch {
 		return { chats: [], activeId: null };
@@ -132,7 +142,52 @@ export function saveQaChats(chats: QaChat[], activeId: string | null) {
 
 	try {
 		localStorage.setItem(STORAGE_KEY, JSON.stringify(bundle));
+		// 完整保存里已经是最新内容了，草稿作废
+		localStorage.removeItem(DRAFT_KEY);
 	} catch {
 		// Quota or private mode. Keep going with in-memory chats.
+	}
+}
+
+type StreamingDraft = { chatId: string; message: QaMessage };
+
+/** 生成中定时存的那一条（存下来就是「没有完成」的状态：snapshotMessage 会把 streaming 记成 interrupted） */
+export function saveStreamingDraft(chatId: string, message: QaMessage) {
+	if (!browser) {
+		return;
+	}
+	try {
+		const draft: StreamingDraft = { chatId, message: snapshotMessage(message) };
+		localStorage.setItem(DRAFT_KEY, JSON.stringify(draft));
+	} catch {
+		// 同上
+	}
+}
+
+/** 上次生成到一半页面就没了（崩溃、被杀）：把草稿并回它所在的对话 */
+function applyStreamingDraft(chats: QaChat[]) {
+	let draft: StreamingDraft | null = null;
+	try {
+		const raw = localStorage.getItem(DRAFT_KEY);
+		draft = raw ? (JSON.parse(raw) as StreamingDraft) : null;
+	} catch {
+		draft = null;
+	}
+	if (
+		!draft?.message ||
+		typeof draft.message.id !== 'string' ||
+		typeof draft.message.content !== 'string'
+	) {
+		return;
+	}
+	const chat = chats.find((item) => item.id === draft.chatId);
+	if (!chat) {
+		return;
+	}
+	const index = chat.messages.findIndex((message) => message.id === draft.message.id);
+	if (index === -1) {
+		chat.messages.push(snapshotMessage(draft.message));
+	} else if (draft.message.content.length > chat.messages[index].content.length) {
+		chat.messages[index] = snapshotMessage(draft.message);
 	}
 }
