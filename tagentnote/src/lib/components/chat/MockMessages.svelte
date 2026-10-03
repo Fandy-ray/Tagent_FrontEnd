@@ -185,13 +185,16 @@
 
 	// 拖选的文字优先；没有拖选时，批改卷子里点中的那一句也算：画线的句子点一下会高亮
 	// （AnnotatedText 的 mark:focus），学生看来就是「选中了这句」，可它不是文字选区，getSelection 读出来是空的。
-	const selectedText = () => {
+	// 点中的句子只认按钮所在的这条消息：解释完那句仍高亮着，换到别的回答下面点按钮不该又拿它。
+	const selectedText = (button: Element) => {
 		const text = window.getSelection()?.toString()?.trim();
 		if (text) {
 			return text;
 		}
 		const focused = document.activeElement;
-		return focused instanceof HTMLElement && focused.matches('mark[data-note]')
+		return focused instanceof HTMLElement &&
+			focused.matches('mark[data-note]') &&
+			button.closest('article')?.contains(focused)
 			? (focused.textContent?.trim() ?? '')
 			: '';
 	};
@@ -200,11 +203,22 @@
 	// 按钮上的 mousedown 也拦掉，选区和点中那句的高亮都留在原处，看得见解释的是哪句。
 	let pressedSelection = '';
 
-	const runQuickAction = (action: { prompt: string; input: boolean; label: string }) => {
-		const selected = pressedSelection || selectedText();
+	const hasPaperReview = $derived(messages.some((m) => m.paperCard?.kind === 'review'));
+
+	const runQuickAction = (
+		action: { prompt: string; input: boolean; label: string },
+		event: MouseEvent & { currentTarget: HTMLButtonElement }
+	) => {
+		// 键盘触发的 click 没有按下这一步（detail 为 0），记下的可能是上回右键、按住拖走留下的
+		const selected =
+			(event.detail > 0 ? pressedSelection : '') || selectedText(event.currentTarget);
 		pressedSelection = '';
 		if (!selected && action.prompt.includes('{{SELECTED_CONTENT}}')) {
-			onToast('先选中回答里的一段文字，或点一下批改里画线的句子');
+			onToast(
+				hasPaperReview
+					? '先选中回答里的一段文字，或点一下批改里画线的句子'
+					: '先选中回答里的一段文字'
+			);
 			return;
 		}
 		let prompt = action.prompt.replaceAll('{{SELECTED_CONTENT}}', selected);
@@ -388,9 +402,10 @@
 										<button
 											type="button"
 											class="rounded-full border border-white/10 px-2.5 py-0.5 text-[11px] text-gray-400 transition hover:bg-white/[0.06] hover:text-white"
-											onpointerdown={() => (pressedSelection = selectedText())}
+											onpointerdown={(event) =>
+												(pressedSelection = selectedText(event.currentTarget))}
 											onmousedown={(event) => event.preventDefault()}
-											onclick={() => runQuickAction(action)}
+											onclick={(event) => runQuickAction(action, event)}
 										>
 											{action.label}
 										</button>
