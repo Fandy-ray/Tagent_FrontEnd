@@ -592,6 +592,30 @@ if ((-not $env:HF_ENDPOINT) -and (-not $env:HTTPS_PROXY) -and (-not $env:ALL_PRO
 }
 Write-Ok "basic-agent 监听 127.0.0.1:$AgentPort"
 
+# ------------------------------------------------- 4b. 参考文献
+# 《系统仿真学报》等论文：出题、答疑、批改检索时和教材一起用。仓库是公开的、版权在期刊，
+# 仓库里只有篇目清单（basic-agent\references\manifest.json），全文在这一步从期刊官网下到本机。
+# 必须在 basic-agent 起来之前：它启动时建索引，晚到的论文要等下次启动才用得上。
+# 已经下过的直接跳过；下载失败只提示、照常启动，下次启动再补。.env.runtime 里 TAGENT_REFERENCES=0 可关掉。
+# 不走 Invoke-Native：它把输出丢掉了，这里要让人看见下了几篇。
+if ($env:TAGENT_REFERENCES -ne '0') {
+    Write-Step '参考文献（系统仿真学报）'
+    $previous = $ErrorActionPreference
+    $ErrorActionPreference = 'Continue'
+    Push-Location $AgentDir
+    try {
+        & $AgentPy (Join-Path 'tools' 'fetch_references.py')
+        if ($LASTEXITCODE -ne 0) {
+            Write-Warn2 '参考文献没准备好，这次先只用教材，下次启动再补。'
+        }
+    } catch {
+        Write-Warn2 '参考文献没准备好，这次先只用教材，下次启动再补。'
+    } finally {
+        Pop-Location
+        $ErrorActionPreference = $previous
+    }
+}
+
 # ------------------------------------------------- 5. 前端依赖与 .env
 Write-Step '准备前端'
 $frontEnv = Join-Path $FrontendDir '.env'
@@ -677,6 +701,12 @@ Write-Step '检查知识来源'
 try {
     $knowledge = Invoke-RestMethod -Uri "http://127.0.0.1:$AgentPort/knowledge" -TimeoutSec 60
     Write-Ok "source = $($knowledge.source)"
+    # 本地知识库（教材 + 参考文献）：只用本地时在顶层，composite 时在 sources 里
+    $localKb = @($knowledge.knowledge_base) + @($knowledge.knowledge_base.sources) |
+        Where-Object { $_ -and $_.kind -eq 'local' } | Select-Object -First 1
+    if ($localKb -and $null -ne $localKb.references) {
+        Write-Ok "本地知识库：教材 book1.md + 参考文献 $($localKb.references) 篇"
+    }
     if ($knowledge.source -eq 'local') {
         Write-Warn2 '当前只用本地教材 book1.md。想接笔记本，请确认 OpenNotebook 已启动且 OPEN_NOTEBOOK_API_URL 指向 5055。'
     } elseif ($knowledge.notebook_reachable -eq $true) {

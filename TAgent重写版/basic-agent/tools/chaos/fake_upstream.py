@@ -1,10 +1,11 @@
 """可控延迟 / 可控故障的 OpenAI 兼容假上游，只给压测用。
 
-GET  /control?delay=1.5&token_delay=0.03&mode=ok|error|hang|drop&reset=1   调行为、清计数
+GET  /control?delay=1.5&token_delay=0.03&mode=ok|error|hang|drop&answer=plain|markdown&reset=1   调行为、清计数
 GET  /stats                                                                调用计数与最大并发
 POST /v1/chat/completions                                                  按 prompt 认出请求类型，回合法 JSON
 """
 import json
+import os
 import re
 import socket
 import sys
@@ -17,10 +18,19 @@ from urllib.parse import parse_qs, urlparse
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))  # basic-agent/
 from app.schema.essay import RUBRIC_POINTS  # noqa: E402
 
-STATE = {"delay": 1.0, "token_delay": 0.03, "mode": "ok"}
+STATE = {"delay": 1.0, "token_delay": 0.03, "mode": "ok", "answer": "plain"}
 STATS = {"calls": 0, "active": 0, "max_active": 0, "completed": 0}
 LOCK = threading.Lock()
 ANSWER = "到达率 λ 指单位时间内到达系统的平均顾客数，是排队模型最基本的输入参数之一。" * 3
+# answer=markdown：带公式、中文引号旁的加粗、表格、代码的回答，压前端的流式渲染
+MARKDOWN_ANSWER = (
+    "这本质上是一个**“分时段到达率 + 多方案窗口数对比”的仿真实验**。\n\n"
+    "## 1. 到达率\n\n第 \\(i\\) 个时段的到达率：\n\n\\[\n\\lambda_i = \\frac{N_i}{T_i}\n\\]\n\n"
+    "| 时段 | 到达率 \\(\\lambda_i\\) |\n|---|---|\n| 8:00–10:00 | 60 |\n| 10:00–12:00 | 40 |\n\n"
+    "服务强度 $\\rho = \\lambda/(c\\mu)$ 必须小于 1，参考文献 \\[1\\]。\n\n"
+    "```python\nwait = x**2  # 代码里的 ** 不是加粗\n```\n\n"
+    "$$\nW_q = \\frac{L_q}{\\lambda}\n$$\n"
+)
 
 
 def answer_for(prompt: str):
@@ -66,6 +76,8 @@ class Handler(BaseHTTPRequestHandler):
                     STATE[key] = float(query[key][0])
             if "mode" in query:
                 STATE["mode"] = query["mode"][0]
+            if "answer" in query:
+                STATE["answer"] = query["answer"][0]
             if "reset" in query:
                 with LOCK:
                     STATS.update(calls=0, max_active=0, completed=0)
@@ -124,7 +136,8 @@ class Handler(BaseHTTPRequestHandler):
             self.wfile.flush()
 
         frame({"role": "assistant", "content": ""})
-        for index, char in enumerate(ANSWER):
+        answer = MARKDOWN_ANSWER if STATE["answer"] == "markdown" else ANSWER
+        for index, char in enumerate(answer):
             if drop and index == 20:
                 self.connection.shutdown(socket.SHUT_RDWR)
                 return
@@ -139,4 +152,4 @@ class Handler(BaseHTTPRequestHandler):
 
 if __name__ == "__main__":
     ThreadingHTTPServer.daemon_threads = True
-    ThreadingHTTPServer(("127.0.0.1", 9100), Handler).serve_forever()
+    ThreadingHTTPServer(("127.0.0.1", int(os.getenv("FAKE_UPSTREAM_PORT", "9100"))), Handler).serve_forever()

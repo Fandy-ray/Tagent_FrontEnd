@@ -46,7 +46,7 @@ os.environ.setdefault("TAGENT_DB_PATH", str(Path(tempfile.mkdtemp(prefix="chaos-
 settings = AgentConfig.from_env()
 registry = ModelProviderRegistry(Path(tempfile.mkdtemp(prefix="chaos-")) / "providers.json")
 registry.create_provider({
-    "name": "DeepSeek（假上游）", "served_model_id": "deepseek", "base_url": "http://127.0.0.1:9100/v1",
+    "name": "DeepSeek（假上游）", "served_model_id": "deepseek", "base_url": os.getenv("CHAOS_UPSTREAM", "http://127.0.0.1:9100") + "/v1",
     "upstream_model": "fake-model", "auth_mode": "none", "api_key": "", "enabled": True,
 })
 kb, factory = FakeKB(), ModelClientFactory()

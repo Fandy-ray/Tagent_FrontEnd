@@ -13,7 +13,7 @@ import time
 import urllib.request
 from urllib.parse import quote
 
-from tools.chaos.stress import BASE, PAPER, TOPIC, control, stats, wait_idle
+from tools.chaos.stress import BASE, PAPER, PORT, TOPIC, control, stats, wait_idle
 
 DB = sys.argv[1] if len(sys.argv) > 1 else ""
 
@@ -53,7 +53,7 @@ def abandon_stream(headers, after):
     body = json.dumps({"model": "deepseek", "stream": True, "mode": "qa",
                        "messages": [{"role": "user", "content": "刷新测试"}]}).encode()
     extra = "".join(f"{k}: {v}\r\n" for k, v in headers.items())
-    sock = socket.create_connection(("127.0.0.1", 5001))
+    sock = socket.create_connection(("127.0.0.1", PORT))
     sock.sendall((f"POST /v1/chat/completions HTTP/1.1\r\nHost: x\r\nContent-Type: application/json\r\n{extra}"
                   f"Content-Length: {len(body)}\r\nConnection: close\r\n\r\n").encode() + body)
     time.sleep(after)

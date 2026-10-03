@@ -37,15 +37,20 @@ OpenNotebook 跑在 Docker 里（`opennotebook/docker-compose.yml`）。<https:/
 
 首次运行会自动装 Python 与 Node 依赖、生成本机密钥，需要几分钟。脚本是**幂等**的，重复执行会跳过已完成的步骤。
 
-它会依次完成：检查环境与端口 → **起 OpenNotebook 容器并等接口就绪** → `uv sync` → 准备 `.env.runtime` → 准备前端依赖与 `.env` → 起 basic-agent → **自动校验知识来源** → 起前端。
+它会依次完成：检查环境与端口 → **起 OpenNotebook 容器并等接口就绪** → `uv sync` → 准备 `.env.runtime` → **下载参考文献（只有第一次要下）** → 准备前端依赖与 `.env` → 起 basic-agent → **自动校验知识来源** → 起前端。
 
-看到这一段就说明笔记本接通了：
+看到这一段就说明检索（RAG）的几路来源都接上了：
 
 ```text
 ==> 检查知识来源
     source = composite
+    本地知识库：教材 book1.md + 参考文献 14 篇
     notebook_reachable = true（http://localhost:5055）
 ```
+
+**参考文献**：出题、答疑、论文批改检索时，除了教材还会用到《系统仿真学报》上和课程最相关的 14 篇论文。
+论文版权在期刊、仓库又是公开的，所以仓库里只有篇目清单，全文由启动脚本第一次运行时从期刊官网下到本机
+（约 23MB、半分钟左右，之后跳过；网络不通时十秒内放弃，照常启动）。加论文、换论文见 [`TAgent重写版/basic-agent/references/README.md`](TAgent重写版/basic-agent/references/README.md)。
 
 停止：双击 `stop.bat` / `stop.command`。
 
@@ -344,7 +349,8 @@ npm run build
 | 前端顶栏是「选择模型」 | 还没登记模型，见上面第 3 步 |
 | 页面请求全 502 | basic-agent 没起来，或端口不是 5001 |
 | 答疑能答但笔记本内容检索不到 | `notebook_reachable` 是 false。8502 是页面，接口在 5055 |
-| 笔记本明明起着，`notebook_reachable` 还是 false | 多半有个旧的 basic-agent 残留进程在占着 5001。`stop.bat` 后确认 5001 已释放再重启 |
+| 笔记本明明起着，`notebook_reachable` 还是 false | 多半有个旧的 basic-agent 残留进程在占着 5001。`stop.bat` 后确认 5001 已释放再重启。另：开着 Clash 等系统代理的 Mac 上，旧版本会把 `localhost:5055` 也送进代理（代理回 502），现在本机和局域网地址一律直连 |
+| 「参考文献」那一步提示没下好 | 期刊官网要直连（走代理会 403）。不影响启动，下次启动会自动补；也可以在 `basic-agent` 目录跑 `uv run python tools/fetch_references.py` |
 | `/admin/model-providers` 返回 503 | `AGENT_ADMIN_TOKEN` 是空的。跑一次 `start.bat` 会自动补 |
 | 提示端口被占 | 先 `stop.bat`；脚本不会去结束不认识的进程 |
 | Docker 引擎不可用 | Docker Desktop 没启动，或 WSL2 组件没装（见上面第 1 步）|

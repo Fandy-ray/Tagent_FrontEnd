@@ -23,6 +23,8 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 DEFAULT_MODEL_PROVIDERS_PATH = BASE_DIR / "config" / "model_providers.json"
 DEFAULT_TEXT_DB_DIR = BASE_DIR / "text_db"
 DEFAULT_KNOWLEDGE_FILE = BASE_DIR / "book1.md"
+# 参考文献（《系统仿真学报》等论文）：全文不入库，由 tools/fetch_references.py 下载到这里
+DEFAULT_REFERENCES_DIR = BASE_DIR / "references"
 
 LEARNING_DB_FILENAME = "tagent.sqlite3"
 
@@ -125,6 +127,8 @@ class AgentConfig:
     model_providers_path: Path = DEFAULT_MODEL_PROVIDERS_PATH
     text_db_dir: Path = DEFAULT_TEXT_DB_DIR
     knowledge_file: Path = DEFAULT_KNOWLEDGE_FILE
+    # 参考文献目录。None = 不用（TAGENT_REFERENCES=0，或单测）
+    references_dir: Path | None = None
 
     # local = 只读 book1.md；notebook = 只读 OpenNotebook；
     # composite = 两边一起检索。没配 OPEN_NOTEBOOK_URL 时一律 local。
@@ -171,6 +175,11 @@ class AgentConfig:
             ),
             text_db_dir=DEFAULT_TEXT_DB_DIR,
             knowledge_file=DEFAULT_KNOWLEDGE_FILE,
+            references_dir=(
+                None
+                if os.getenv("TAGENT_REFERENCES", "1") == "0"
+                else Path(os.getenv("TAGENT_REFERENCES_DIR") or DEFAULT_REFERENCES_DIR)
+            ),
             knowledge_source=knowledge_source,
             notebook_url=notebook_url,
             notebook_token=_env(

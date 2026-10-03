@@ -143,6 +143,7 @@ def build_knowledge_base(settings: AgentConfig):
         text_db_dir=settings.text_db_dir,
         knowledge_file=settings.knowledge_file,
         index_cache_dir=settings.vector_cache_dir,
+        references_dir=settings.references_dir,
     )
     if settings.knowledge_source == "local":
         return local

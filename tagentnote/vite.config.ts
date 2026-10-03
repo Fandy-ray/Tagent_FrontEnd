@@ -8,7 +8,8 @@ export default defineConfig({
 		proxy: {
 			// OpenNoteBook 的 5055 由 $lib/apis/opennotebook.ts 直连，不走代理。
 			'/agent-api': {
-				target: 'http://127.0.0.1:5001',
+				// 默认连本机 5001；压测或连别的后端时用 AGENT_API_TARGET 指过去（正式的 basic-agent 照样占着 5001）
+				target: process.env.AGENT_API_TARGET || 'http://127.0.0.1:5001',
 				changeOrigin: true,
 				rewrite: (path) => path.replace(/^\/agent-api/, '')
 			}

@@ -1645,6 +1645,19 @@
 			if (!userSettings.enableMessageQueue) {
 				return;
 			}
+			// 连点同一个按钮（「解释」、追问建议……）：正在答的就是这一句、或队列里已经有这一句，
+			// 就不再排一遍。实测「解释」连点 8 下排了 7 条一样的，上游被调 8 次。
+			const answering = [...messages].reverse().find((message) => message.role === 'user');
+			if (
+				(answering?.requestContent ?? answering?.content ?? '').trim() === trimmedContent ||
+				messageQueue.some((item) => item.requestContent === trimmedContent)
+			) {
+				saveToast = '这一条已经在回答或排队了';
+				window.setTimeout(() => {
+					saveToast = '';
+				}, 1800);
+				return;
+			}
 			messageQueue = [
 				...messageQueue,
 				{ requestContent: trimmedContent, displayContent: trimmedDisplayContent }

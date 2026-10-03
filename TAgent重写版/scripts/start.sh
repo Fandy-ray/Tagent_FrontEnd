@@ -575,6 +575,17 @@ if [ -z "${HF_ENDPOINT:-}" ] \
 fi
 ok "basic-agent 监听 127.0.0.1:$AGENT_PORT"
 
+# ------------------------------------------------- 4b. 参考文献
+# 《系统仿真学报》等论文：出题、答疑、批改检索时和教材一起用。仓库是公开的、版权在期刊，
+# 仓库里只有篇目清单（basic-agent/references/manifest.json），全文在这一步从期刊官网下到本机。
+# 必须在 basic-agent 起来之前：它启动时建索引，晚到的论文要等下次启动才用得上。
+# 已经下过的直接跳过；下载失败只提示、照常启动，下次启动再补。.env.runtime 里 TAGENT_REFERENCES=0 可关掉。
+if [ "${TAGENT_REFERENCES:-1}" != "0" ]; then
+    step '参考文献（系统仿真学报）'
+    ( cd "$AGENT_DIR" && "$AGENT_PY" tools/fetch_references.py ) \
+        || warn '参考文献没准备好，这次先只用教材，下次启动再补。'
+fi
+
 # ------------------------------------------------- 5. 前端依赖与 .env
 step '准备前端'
 FRONT_ENV="$FRONTEND_DIR/.env"
@@ -687,6 +698,8 @@ KNOWLEDGE="$(curl -fsS -m 60 "http://127.0.0.1:$AGENT_PORT/knowledge" 2>/dev/nul
 if [ -n "$KNOWLEDGE" ]; then
     SOURCE="$(printf '%s' "$KNOWLEDGE" | sed -n 's/.*"source"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p')"
     ok "source = ${SOURCE:-?}"
+    REFS="$(printf '%s' "$KNOWLEDGE" | sed -n 's/.*"references"[[:space:]]*:[[:space:]]*\([0-9][0-9]*\).*/\1/p')"
+    [ -n "$REFS" ] && ok "本地知识库：教材 book1.md + 参考文献 ${REFS} 篇"
     if [ "$SOURCE" = 'local' ]; then
         warn '当前只用本地教材 book1.md。想接笔记本，请确认 OpenNotebook 已启动且 OPEN_NOTEBOOK_API_URL 指向 5055。'
     elif printf '%s' "$KNOWLEDGE" | grep -q '"notebook_reachable"[[:space:]]*:[[:space:]]*true'; then

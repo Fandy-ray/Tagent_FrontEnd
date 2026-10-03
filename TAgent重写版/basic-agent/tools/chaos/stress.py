@@ -12,14 +12,19 @@ chaos_server 占着 5001 时前端（npm run dev）也能直接连上，可以�
 结果与结论记在 TAgent重写版/文档/极端场景压测与稳定性升级.md。
 """
 import json
+import os
 import socket
 import sys
 import threading
 import time
 import urllib.error
 import urllib.request
+from urllib.parse import urlsplit
 
-BASE, UP = "http://127.0.0.1:5001", "http://127.0.0.1:9100"
+# 正式的 basic-agent 占着 5001 时，把压测栈起在别的端口：CHAOS_PORT=5101 起 chaos_server，这里 CHAOS_BASE 指过去
+BASE = os.getenv("CHAOS_BASE", "http://127.0.0.1:5001")
+UP = os.getenv("CHAOS_UPSTREAM", "http://127.0.0.1:9100")
+PORT = urlsplit(BASE).port or 80
 PAPER = (
     "排队论研究随机到达与随机服务的系统，是系统仿真课程的核心内容之一。它用到达率和服务率刻画拥挤程度。\n"
     "以银行网点为例，顾客的到达可以近似看成泊松过程，柜员的服务时间可以近似看成指数分布。于是可以用 M/M/c 模型来描述。\n"
@@ -55,8 +60,8 @@ def post(path, payload, timeout=120):
 def abandon(path, payload, after):
     """模拟刷新 / 关页：发完请求，过 after 秒直接断开连接，不读响应。"""
     body = json.dumps(payload).encode()
-    sock = socket.create_connection(("127.0.0.1", 5001))
-    head = (f"POST {path} HTTP/1.1\r\nHost: 127.0.0.1:5001\r\nContent-Type: application/json\r\n"
+    sock = socket.create_connection(("127.0.0.1", PORT))
+    head = (f"POST {path} HTTP/1.1\r\nHost: 127.0.0.1:{PORT}\r\nContent-Type: application/json\r\n"
             f"Content-Length: {len(body)}\r\nConnection: close\r\n\r\n").encode()
     sock.sendall(head + body)
     time.sleep(after)
@@ -141,7 +146,7 @@ def s4_refresh_stream():
     control(token_delay=0.05, mode="ok", reset=1)
     body = json.dumps({"model": "deepseek", "stream": True, "mode": "qa",
                        "messages": [{"role": "user", "content": "到达率是什么？"}]}).encode()
-    sock = socket.create_connection(("127.0.0.1", 5001))
+    sock = socket.create_connection(("127.0.0.1", PORT))
     sock.sendall((f"POST /v1/chat/completions HTTP/1.1\r\nHost: x\r\nContent-Type: application/json\r\n"
                   f"Content-Length: {len(body)}\r\n\r\n").encode() + body)
     sock.recv(2048)

@@ -7,3 +7,5 @@ import os
 os.environ["LEARNING_STORE"] = "0"
 # 同理，向量索引缓存也不往真实的应用数据目录里写（要测它的用例自己给临时目录）
 os.environ["TAGENT_VECTOR_CACHE"] = "0"
+# 参考文献也一样：单测不读本机下载的论文（要测它的用例自己建临时目录）
+os.environ["TAGENT_REFERENCES"] = "0"

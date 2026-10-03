@@ -6,9 +6,11 @@
 
 from __future__ import annotations
 
+import ipaddress
 import random
 import threading
 from typing import Any
+from urllib.parse import urlsplit
 
 import httpx
 from langchain_core.documents import Document
@@ -31,6 +33,23 @@ class OpenNotebookUnreachable(OpenNotebookError):
 
 # 健康检查只想知道「在不在」，不必等满检索用的 15 秒
 PING_TIMEOUT = httpx.Timeout(5.0, connect=3.0)
+
+
+def _is_local_address(url: str) -> bool:
+    """本机或局域网地址：这种地址绝不能交给代理。
+
+    httpx 默认读系统代理：环境变量里没设代理时，macOS 上会去读「系统设置 → 网络 → 代理」。
+    开着 Clash 之类的电脑，连 http://localhost:5055 也被送进代理，代理回 502——
+    OpenNotebook 明明开着，健康检查却一直失败，笔记本检索整个用不上（2026-10-03 实测）。
+    """
+    host = (urlsplit(url).hostname or "").strip("[]").lower()
+    if host in {"localhost", ""} or host.endswith(".local") or host.endswith(".localhost"):
+        return True
+    try:
+        address = ipaddress.ip_address(host)
+    except ValueError:
+        return False
+    return address.is_loopback or address.is_private or address.is_link_local
 
 
 class OpenNotebookKnowledgeBase:
@@ -144,6 +163,8 @@ class OpenNotebookKnowledgeBase:
             self._client = httpx.Client(
                 base_url=self.base_url,
                 headers=headers,
+                # 本机 / 局域网的 OpenNotebook 直连，不走系统代理（见 _is_local_address）
+                trust_env=not _is_local_address(self.base_url),
                 # 握手单独限时：地址不通时几秒就知道，不用等满整段读超时
                 timeout=httpx.Timeout(self.timeout, connect=min(3.0, self.timeout)),
             )

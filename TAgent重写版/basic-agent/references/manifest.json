@@ -1,0 +1,103 @@
+{
+  "_说明": "参考文献篇目清单。只列篇目和官网地址，全文由 tools/fetch_references.py 下载到本机（不入库）。加一篇就照格式加一项，key 用英文和连字符，也是本机文件名。",
+  "papers": [
+    {
+      "key": "callcenter",
+      "title": "考虑等待提示机制的呼叫中心联合排班方法",
+      "citation": "系统仿真学报, 2022, 34(7): 1651-1661",
+      "page": "https://www.china-simulation.com/CN/10.16182/j.issn1004731x.joss.21-0273",
+      "pdf": "https://www.china-simulation.com/CN/article/downloadArticleFile.do?attachType=PDF&id=2958"
+    },
+    {
+      "key": "warehouse-robots",
+      "title": "多重约束下智慧仓储机器人配置仿真优化研究",
+      "citation": "系统仿真学报, 2020, 32(10): 2066-2072",
+      "page": "https://www.china-simulation.com/CN/10.16182/j.issn1004731x.joss.20-FZ0302",
+      "pdf": "https://www.china-simulation.com/CN/article/downloadArticleFile.do?attachType=PDF&id=2409"
+    },
+    {
+      "key": "metro-stairs",
+      "title": "地铁楼梯宽度的排队系统仿真优化",
+      "citation": "系统仿真学报, 2016, 28(1): 129-138",
+      "page": "https://www.china-simulation.com/CN/abstract/abstract1585.shtml",
+      "pdf": "https://www.china-simulation.com/CN/article/downloadArticleFile.do?attachType=PDF&id=1585"
+    },
+    {
+      "key": "vacation-queue",
+      "title": "基于休假排队模型的小区开放效果仿真",
+      "citation": "系统仿真学报, 2018, 30(7): 2533-2539",
+      "page": "https://www.china-simulation.com/CN/10.16182/j.issn1004731x.joss.201807013",
+      "pdf": "https://www.china-simulation.com/CN/article/downloadArticleFile.do?attachType=PDF&id=452"
+    },
+    {
+      "key": "des-validation",
+      "title": "一种离散事件仿真模型验证方法",
+      "citation": "系统仿真学报, 2017, 29(9): 1984-1990",
+      "page": "https://www.china-simulation.com/CN/10.16182/j.issn1004731x.joss.201709015",
+      "pdf": "https://www.china-simulation.com/CN/article/downloadArticleFile.do?attachType=PDF&id=1238"
+    },
+    {
+      "key": "cargo-terminal",
+      "title": "基于Plant Simulation的件杂货码头作业仿真研究",
+      "citation": "系统仿真学报, 2018, 30(5): 1980-1987",
+      "page": "https://www.china-simulation.com/CN/10.16182/j.issn1004731x.joss.201805046",
+      "pdf": "https://www.china-simulation.com/CN/article/downloadArticleFile.do?attachType=PDF&id=244"
+    },
+    {
+      "key": "workshop-fsm",
+      "title": "基于有限状态机的车间逻辑建模与仿真研究",
+      "citation": "系统仿真学报, 2023, 35(4): 853-861",
+      "page": "https://www.china-simulation.com/CN/abstract/abstract3126.shtml",
+      "pdf": "https://www.china-simulation.com/CN/article/downloadArticleFile.do?attachType=PDF&id=3126"
+    },
+    {
+      "key": "maintenance-scheduling",
+      "title": "分布式车间生产维修联合调度仿真优化方法",
+      "citation": "系统仿真学报, 2022, 34(4): 688-699",
+      "page": "https://www.china-simulation.com/CN/10.16182/j.issn1004731x.joss.21-1288",
+      "pdf": "https://www.china-simulation.com/CN/article/downloadArticleFile.do?attachType=PDF&id=2884"
+    },
+    {
+      "key": "supply-chain",
+      "title": "一种面向需求不确定性供应链的进化多目标仿真优化方法",
+      "citation": "系统仿真学报, 2021, 33(12): 2761-2770",
+      "page": "https://www.china-simulation.com/CN/10.16182/j.issn1004731x.joss.21-0837",
+      "pdf": "https://www.china-simulation.com/CN/article/downloadArticleFile.do?attachType=PDF&id=2774"
+    },
+    {
+      "key": "covid-resources",
+      "title": "COVID-19期间上海市应急医疗资源配置建模与仿真",
+      "citation": "系统仿真学报, 2022, 34(1): 93-103",
+      "page": "https://www.china-simulation.com/CN/10.16182/j.issn1004731x.joss.21-0320",
+      "pdf": "https://www.china-simulation.com/CN/article/downloadArticleFile.do?attachType=PDF&id=2810"
+    },
+    {
+      "key": "airport-evacuation",
+      "title": "基于社会力模型的机场人员疏散建模研究",
+      "citation": "系统仿真学报, 2018, 30(10): 3648-3656",
+      "page": "https://www.china-simulation.com/CN/10.16182/j.issn1004731x.joss.201810007",
+      "pdf": "https://www.china-simulation.com/CN/article/downloadArticleFile.do?attachType=PDF&id=395"
+    },
+    {
+      "key": "metro-agents",
+      "title": "基于多智能体的虚拟化地铁站乘客行为仿真",
+      "citation": "系统仿真学报, 2020, 32(12): 2341-2352",
+      "page": "https://www.china-simulation.com/CN/10.16182/j.issn1004731x.joss.20-FZ0431",
+      "pdf": "https://www.china-simulation.com/CN/article/downloadArticleFile.do?attachType=PDF&id=2439"
+    },
+    {
+      "key": "uturn-intersection",
+      "title": "信号交叉口进口道掉头设置条件研究",
+      "citation": "系统仿真学报, 2018, 30(11): 4429-4436",
+      "page": "https://www.china-simulation.com/CN/10.16182/j.issn1004731x.joss.201811045",
+      "pdf": "https://www.china-simulation.com/CN/article/downloadArticleFile.do?attachType=PDF&id=331"
+    },
+    {
+      "key": "domain-simulation",
+      "title": "从系统仿真到领域仿真的拓展",
+      "citation": "系统仿真学报, 2020, 32(9): 1637-1644",
+      "page": "https://www.china-simulation.com/CN/10.16182/j.issn1004731x.joss.20-0541",
+      "pdf": "https://www.china-simulation.com/CN/article/downloadArticleFile.do?attachType=PDF&id=2361"
+    }
+  ]
+}

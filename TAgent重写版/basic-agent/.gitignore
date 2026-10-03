@@ -8,6 +8,11 @@ pages/
 static/pages/
 text_db/
 config/model_providers.json*
+
+# 参考文献全文：期刊版权，只留在本机（仓库是公开的）；仓库里只有篇目清单和说明
+references/*
+!references/README.md
+!references/manifest.json
 .venv312/
 
 # Byte-compiled / optimized / DLL files

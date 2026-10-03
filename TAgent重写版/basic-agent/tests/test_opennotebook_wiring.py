@@ -410,3 +410,35 @@ def test_ping_gives_up_after_the_first_connection_failure():
         kb.warm_up()
     assert len(calls) == 1  # 不把四条健康检查路径的超时挨个等一遍
     assert calls[0][1] is not None  # 健康检查用自己的短超时
+
+
+# ====================== 本机的 OpenNotebook 不走系统代理 ======================
+
+
+def test_local_addresses_are_recognised():
+    from app.rag.opennotebook_kb import _is_local_address
+
+    for url in ("http://localhost:5055", "http://127.0.0.1:5055", "http://[::1]:5055",
+                "http://192.168.1.20:5055", "http://10.0.0.8", "http://notebook.local"):
+        assert _is_local_address(url), url
+    for url in ("https://notebook.example.com", "http://8.8.8.8:5055"):
+        assert not _is_local_address(url), url
+
+
+def test_a_local_opennotebook_is_reached_directly_not_through_the_system_proxy(monkeypatch):
+    """开着 Clash 的 Mac 上，httpx 会读系统代理，把 localhost:5055 也送进代理，回 502。"""
+    import httpx
+
+    from app.rag import opennotebook_kb
+
+    seen = []
+    real_client = httpx.Client
+
+    def client(**kwargs):
+        seen.append(kwargs.get("trust_env", True))
+        return real_client(**kwargs)
+
+    monkeypatch.setattr(opennotebook_kb.httpx, "Client", client)
+    opennotebook_kb.OpenNotebookKnowledgeBase(base_url="http://localhost:5055")._client_or_create()
+    opennotebook_kb.OpenNotebookKnowledgeBase(base_url="https://notebook.example.com")._client_or_create()
+    assert seen == [False, True]
