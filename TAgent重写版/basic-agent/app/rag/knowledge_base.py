@@ -28,7 +28,7 @@ from app.config import (
     EXAM_CONTEXT_SEPARATOR,
     EXAM_SAMPLE_K,
 )
-from app.rag.references import REFERENCE_CHUNK_FORMAT, reference_documents, reference_files
+from app.rag.references import REFERENCE_CHUNK_FORMAT, reference_documents, reference_files, retrieval_windows
 from app.util.markdown_sanitizer import clean_reference_for_display, truncate_markdown_fragment
 
 
@@ -102,18 +102,14 @@ class KnowledgeBase:
     def search(self, query: str, *, k: int = 3, notebook_ids: list[str] | None = None) -> list[Document]:
         """相似度检索。判卷时给解答题补充知识片段用。"""
         self.ensure_index()
-        return self.vectorstore.similarity_search(query, k=k)
+        return _distinct(self.vectorstore.similarity_search(query, k=k * _FETCH_FACTOR), k)
 
     def quiz_documents(self, *, max_documents: int = 2) -> list[Document]:
         return select_quiz_documents(self.chunks(), max_documents=max_documents)
 
     def retrieve(self, query: str, notebook_ids: list[str] | None = None):
         self.ensure_index()
-        retriever = self.vectorstore.as_retriever(
-            search_type="similarity",
-            search_kwargs={"k": 4},
-        )
-        documents = retriever.invoke(query)
+        documents = _distinct(self.vectorstore.similarity_search(query, k=4 * _FETCH_FACTOR), 4)
         context = "\n\n---\n\n".join(document.page_content for document in documents)
         return context, documents
     def ensure_index(self) -> list[Document]:
@@ -171,11 +167,19 @@ class KnowledgeBase:
             except Exception as exc:  # noqa: BLE001 —— 缓存坏了就重建，不能因此起不来
                 log.warning("向量索引缓存读不了，重建：%s", exc)
 
-        texts = [chunk.page_content for chunk in self._knowledge_chunks]
+        # 教材一块一条；论文一块拆成几个检索窗口，向量按窗口算，存的仍是整块（见 references.WINDOW_SIZE）
+        entries = [
+            (window, chunk)
+            for chunk in self._knowledge_chunks
+            for window in (
+                retrieval_windows(chunk) if chunk.metadata.get("source") == "reference" else [chunk.page_content]
+            )
+        ]
+        vectors = self._embed_reusing_memo([window for window, _ in entries])
         store = FAISS.from_embeddings(
-            list(zip(texts, self._embed_reusing_memo(texts))),
+            [(chunk.page_content, vector) for (_, chunk), vector in zip(entries, vectors)],
             self.embeddings,
-            metadatas=[chunk.metadata for chunk in self._knowledge_chunks],
+            metadatas=[{k: v for k, v in chunk.metadata.items() if k != "body"} for _, chunk in entries],
         )
         if cache is not None:
             self._save_index_cache(store, cache)
@@ -292,9 +296,11 @@ class KnowledgeBase:
         """Select diverse knowledge chunks and cap the prompt context size."""
         chunks = self.ensure_index()
         if topic:
+            # 候选池仍是 20（压测定的）。多挑一倍备用：MMR 是一个个按顺序挑的，前 EXAM_SAMPLE_K 个和以前一样；
+            # 论文的几个检索窗口指向同一块，下面按内容去重时少了，才往后补
             documents = self.vectorstore.max_marginal_relevance_search(
                 topic,
-                k=EXAM_SAMPLE_K,
+                k=EXAM_SAMPLE_K * 2,
                 fetch_k=20,
             )
         else:
@@ -341,6 +347,24 @@ class KnowledgeBase:
             if len(parts) >= EXAM_SAMPLE_K:
                 break
         return EXAM_CONTEXT_SEPARATOR.join(parts)
+
+
+# 论文一块有好几个检索窗口：先多取几倍，再按「同一块只算一次」去重
+_FETCH_FACTOR = 4
+
+
+def _distinct(documents: list[Document], k: int) -> list[Document]:
+    seen: set[str] = set()
+    picked: list[Document] = []
+    for document in documents:
+        key = document.metadata.get("parent") or document.page_content
+        if key in seen:
+            continue
+        seen.add(key)
+        picked.append(document)
+        if len(picked) >= k:
+            break
+    return picked
 
 
 def display_document(document: Document) -> str:

@@ -31,7 +31,15 @@ TEXT_SUFFIXES = (".md", ".txt")
 # 抽出来不到这么多字，多半是扫描版（整页是图片），不当论文用
 MIN_TEXT_CHARS = 300
 # 论文切块的写法一变就改这个值：它会进向量索引的缓存键（见 KnowledgeBase._index_cache_path）
-REFERENCE_CHUNK_FORMAT = "refs-800-50-label-at-end"
+REFERENCE_CHUNK_FORMAT = "refs-800-50-windows-200-30-label-at-end"
+# 检索用的小窗口：嵌入模型只读每段的前 128 个字左右，800 字一块的话后面大半块检索时根本看不到。
+# 每块再切成 200 字的小窗口去匹配，命中了返回它所在的那整块 800 字（回答、批改要的上下文不变）。
+# 112 道按论文正文出的题：800 字一块第一条找对 81 道，200 字窗口 93 道（前三条 99 → 106）。
+WINDOW_SIZE = 200
+WINDOW_OVERLAP = 30
+# 抽文字的规则一变就加一：.md 里记着版本，旧版本的下次启动时从本机的 PDF / 网页重新抽，不用重新下载
+EXTRACT_VERSION = 2
+_EXTRACT_MARK = re.compile(r"^<!--\s*抽取\s*v(\d+)")
 
 _CJK = r"\u4e00-\u9fff"
 _CJK_CHAR = re.compile(f"[{_CJK}]")
@@ -49,10 +57,24 @@ _META_LINE = re.compile(
 _PARAGRAPH_START = re.compile(r"^(摘\s*要|关键词)\s*[:：]|^(引言|前言|结论|结束语|结语|总结)$")
 # 正文里的引用标记：[5]、[7-8]、[2,13]
 _CITE_MARK = re.compile(r"\[\d+(?:\s*[-–,，]\s*\d+)*\]")
+# PDF 里引用标记常常单独占一行（上标），会和段尾的短行凑成「碎片」，先去掉
+_CITE_ONLY = re.compile(r"^\[\d+(?:\s*[-–,，]\s*\d+)*\]$")
 # PDF 里加粗的字常被抽成两遍：「摘要摘要：：」「1 引言引言」
 _DOUBLED = re.compile(f"([{_CJK}]{{2,40}})\\1")
-# 节标题：「1 引言」「2.1 模型建立」「0 引言」
-_SECTION_HEADING = re.compile(r"^\d+(?:\.\d+)*\s+\S")
+# 节标题：「1 引言」「2.1 模型建立」「0 引言」。编号后面得是中文：表格里「1 09:00—12:00」这种行不算
+_SECTION_HEADING = re.compile(f"^\\d+(?:\\.\\d+)*\\s*[{_CJK}]")
+# 表题 / 图题：「表 1  订单基本数据」「图 4  数据拟合结果」，下一行多半是英文题「Tab. 1 …」「Fig. 4 …」
+_TABLE_CAPTION = re.compile(r"^表\s*(\d+)[\s\u3000]+(\S.*)$")
+_FIGURE_CAPTION = re.compile(r"^图\s*(\d+)[\s\u3000]+(\S.*)$")
+_EN_TABLE = re.compile(r"^(Tab\.?|Table)\s*\d+", re.IGNORECASE)
+_EN_FIGURE = re.compile(r"^(Fig\.?|Figure)\s*\d+", re.IGNORECASE)
+# 被换行折断的正文也会以「表 3 所示」开头，这种不是表题
+_NOT_A_TITLE = re.compile(r"^(所示|中|的|和|与|及|为|是|列|给出|可知|可以|表明|说明|[，。、；：])")
+# 整行公式末尾的式号「(18)」
+_EQUATION_NUMBER = re.compile(r"\(\s*\d{1,3}\s*\)\s*$")
+_SENTENCE_END = "。！？；："
+# 表题、图题换成的占位行（单独成段，不和正文接在一起）
+_PLACEHOLDER = "（原文"
 
 
 @dataclass(frozen=True)
@@ -62,6 +84,8 @@ class Reference:
     citation: str
     page: str
     pdf: str
+    # 官网的网页版全文（有的话优先用它：表格、公式都完整）；2022 年以前的文章没有
+    html: str = ""
 
 
 def load_manifest(directory: Path) -> list[Reference]:
@@ -79,6 +103,7 @@ def load_manifest(directory: Path) -> list[Reference]:
                 citation=str(item.get("citation", "")).strip(),
                 page=str(item.get("page", "")).strip(),
                 pdf=str(item["pdf"]).strip(),
+                html=str(item.get("html", "")).strip(),
             )
         )
     return papers
@@ -114,18 +139,22 @@ def clean_paper_text(pages: list[str]) -> str:
             if line in repeated:
                 continue
             line = _DOUBLED.sub(r"\1", line).replace("：：", "：")
-            if _RUNNING_HEADER.match(line) or _META_LINE.match(line):
+            if _RUNNING_HEADER.match(line) or _META_LINE.match(line) or _CITE_ONLY.match(line):
                 continue
             candidates.append(line)
 
     # 这本刊也登英文正文的论文（只有摘要是中文）：那种不能把英文行当噪声扔掉
     chinese_paper = sum(bool(_CJK_CHAR.search(line)) for line in candidates) >= len(candidates) * 0.4
+    candidates = _drop_tables_and_formulas(candidates)
     kept = [
         line
         for line in candidates
         # 中文论文里纯英文的长行：英文摘要、英文图题、英文参考文献，检索用不上
         if not chinese_paper or _CJK_CHAR.search(line) or len(re.findall(r"[A-Za-z]", line)) < 20
     ]
+    if chinese_paper:
+        # 没有中文、几乎全是数字和符号的行：表格里的一行数据（「Δps /% 1.39 2.01 3.67」），拆开了没法读
+        kept = [line for line in kept if not _numeric_row(line)]
 
     # 参考文献列表在文末，从最后一个「参考文献」标题处截断（只认后半篇里的，免得正文提到就截）
     for index in range(len(kept) - 1, len(kept) // 2 - 1, -1):
@@ -136,6 +165,12 @@ def clean_paper_text(pages: list[str]) -> str:
     paragraphs: list[str] = []
     current = ""
     for line in kept:
+        if line.startswith(_PLACEHOLDER):
+            if current:
+                paragraphs.append(current)
+            paragraphs.append(line)
+            current = ""
+            continue
         if (_SECTION_HEADING.match(line) and len(line) <= 40) or _PARAGRAPH_START.match(line):
             if current:
                 paragraphs.append(current)
@@ -154,6 +189,133 @@ def clean_paper_text(pages: list[str]) -> str:
 
     body = "\n\n".join(_tidy(paragraph) for paragraph in paragraphs if paragraph.strip())
     return body.strip()
+
+
+def _cjk_count(text: str) -> int:
+    return len(_CJK_CHAR.findall(text))
+
+
+def _is_prose(line: str) -> bool:
+    """像正文的一行：中文够多，而且要么够长（双栏排版一行 18～25 个字），要么以句末标点收尾。"""
+    return _cjk_count(line) >= 8 and (len(line) >= 15 or line[-1] in _SENTENCE_END)
+
+
+def _is_fragment(line: str, previous: str = "") -> bool:
+    """碎片：行间公式被拆成的短行（「Δps」「=」「ì」「(1)」）、表格里一格一行的内容。
+
+    段落最后一截正文也很短（「心值取最小值」「，因此」），不能当碎片：以中文标点开头的、
+    紧跟在一行正文后面且带中文的，都算正文的收尾。
+    """
+    if len(line) > 14 or _cjk_count(line) > 6 or line[-1] in _SENTENCE_END:
+        return False
+    if line[0] in _CJK_PUNCT:
+        return False
+    return not (_cjk_count(line) >= 2 and _is_prose(previous))
+
+
+def _numeric_row(line: str) -> bool:
+    if _CJK_CHAR.search(line) or len(line) < 6:
+        return False
+    return len(re.findall(r"[\d.%+\-−±×/=]", line)) >= len(line) * 0.4
+
+
+def _caption(line: str, next_line: str, pattern: re.Pattern, english: re.Pattern) -> tuple[str, str] | None:
+    match = pattern.match(line)
+    if not match:
+        return None
+    title = match.group(2).strip()
+    if _NOT_A_TITLE.match(title):
+        return None
+    # 有英文题跟着最可靠；没有的话，表题得短、不带句中标点
+    if not english.match(next_line) and (len(line) > 30 or re.search(r"[，。；]", title)):
+        return None
+    # 表题和首行单元格偶尔抽在同一行：只取开头那段像标题的文字
+    short = re.match(f"[{_CJK}A-Za-z0-9（）()、/·\\-]+(?:\\s[{_CJK}A-Za-z0-9（）()、/·\\-]+)*", title)
+    return match.group(1), (short.group(0) if short else title)[:30].strip()
+
+
+def _table_placeholder(number: str, title: str, body: list[str]) -> str:
+    """表格换成一行：表题 + 表里出现过的中文项目名称（「重拨概率、服务率……」）。
+
+    数字拆开以后对不上行列，留着会误导；项目名称不会，而且问到表里的东西时靠它们才查得到
+    （只留表题时，按表格内容出的题有三道找不到那篇了，2026-10-03 实测）。
+    """
+    names: list[str] = []
+    for cell in body:
+        for word in re.findall(f"[{_CJK}][{_CJK}A-Za-z0-9/（）()·]*[{_CJK}）)]", cell):
+            # 单元格被拆行时会留下半个括号：「出口引导)」
+            if word.count("(") + word.count("（") < word.count(")") + word.count("）"):
+                word = word.rstrip(")）")
+            if len(word) >= 2 and word not in names and word not in title:
+                names.append(word)
+    listed = f"，涉及：{'、'.join(names[:30])}" if names else ""
+    return f"{_PLACEHOLDER}表 {number}：{title}{listed}，数据见原文）"
+
+
+def _drop_tables_and_formulas(lines: list[str]) -> list[str]:
+    """表格整块换成一行占位，图题单独成段，成串的公式碎片去掉。
+
+    PDF 里表格的行列关系、公式的上下标都抽不出来，留着只会让检索和回答带上一串看不懂的数字。
+    表格只留「原文表 N：表题」，告诉读的人这里有张表、讲的是什么。
+    """
+    marked: list[str] = []
+    index = 0
+    while index < len(lines):
+        line = lines[index]
+        following = lines[index + 1] if index + 1 < len(lines) else ""
+        table = _caption(line, following, _TABLE_CAPTION, _EN_TABLE)
+        figure = None if table else _caption(line, following, _FIGURE_CAPTION, _EN_FIGURE)
+        if not (table or figure):
+            marked.append(line)
+            index += 1
+            continue
+        number, title = table or figure
+        index += 1
+        if index < len(lines) and (_EN_TABLE if table else _EN_FIGURE).match(lines[index]):
+            index += 1  # 英文表题 / 图题
+        if not table:
+            marked.append(f"{_PLACEHOLDER}图 {number}：{title}）")
+            continue
+        if table:
+            # 表体：一直到下一段正文、下一个表题图题或节标题为止（最多 120 行，认错了也不至于吞掉整篇）
+            start = index
+            while index < len(lines) and index - start < 120:
+                cell = lines[index]
+                nxt = lines[index + 1] if index + 1 < len(lines) else ""
+                if (
+                    # 表格行也可能中文多、又长；正文行要么带中文标点，要么不像空格隔开的一排格子
+                    (_is_prose(cell) and (re.search(r"[，。；：]", cell) or len(cell.split()) <= 3))
+                    or _caption(cell, nxt, _TABLE_CAPTION, _EN_TABLE)
+                    or _caption(cell, nxt, _FIGURE_CAPTION, _EN_FIGURE)
+                    # 节标题是「编号 + 一段中文」；「1 无引导 正常情况 正常」这种多格的是表格行
+                    or (_SECTION_HEADING.match(cell) and len(cell) <= 25 and cell.count(" ") <= 1)
+                ):
+                    break
+                index += 1
+            marked.append(_table_placeholder(number, title, lines[start:index]))
+
+    # 连续 3 行以上的碎片：行间公式被拆成的一串短行，或没认出表题的表格。单独一两行多半是正文里折行的变量名，留着
+    result: list[str] = []
+    run: list[str] = []
+
+    def flush() -> None:
+        if len(run) < 3:
+            result.extend(run)
+        run.clear()
+
+    previous = ""
+    for line in marked:
+        if not line.startswith(_PLACEHOLDER) and _is_fragment(line, previous) and not _SECTION_HEADING.match(line):
+            run.append(line)
+            previous = line
+            continue
+        flush()
+        previous = line
+        if _EQUATION_NUMBER.search(line) and _cjk_count(line) <= len(line) * 0.2:
+            continue  # 带式号的整行公式：「im ), i ∈ 1,2,⋯,n (18)」
+        result.append(line)
+    flush()
+    return result
 
 
 def _join(left: str, right: str) -> str:
@@ -177,9 +339,24 @@ def _tidy(paragraph: str) -> str:
     return re.sub(r"([。！？；])(?=\S)", "\\1\n", text).strip()
 
 
-def reference_markdown(reference: Reference, body: str) -> str:
+def reference_markdown(reference: Reference, body: str, *, origin: str = "pdf") -> str:
     source = f"{reference.citation}。{reference.page}" if reference.page else reference.citation
-    return f"# {reference.title}\n\n> 来源：{source}\n\n{body.strip()}\n"
+    mark = f"<!-- 抽取 v{EXTRACT_VERSION}（{origin}） -->"
+    return f"# {reference.title}\n\n> 来源：{source}\n\n{mark}\n\n{body.strip()}\n"
+
+
+def has_extract_mark(text: str) -> bool:
+    """是本脚本抽的（带版本标记），不是自己手写的。"""
+    return any(_EXTRACT_MARK.match(line.strip()) for line in text.splitlines()[:8])
+
+
+def extract_version(text: str) -> int:
+    """.md 是哪一版规则抽的；没记版本（第一版，或自己写的）算 0。"""
+    for line in text.splitlines()[:8]:
+        match = _EXTRACT_MARK.match(line.strip())
+        if match:
+            return int(match.group(1))
+    return 0
 
 
 def parse_reference_markdown(text: str, fallback_title: str) -> tuple[str, str, str]:
@@ -194,6 +371,7 @@ def parse_reference_markdown(text: str, fallback_title: str) -> tuple[str, str, 
     if lines and lines[0].startswith(">"):
         citation = re.sub(r"^>\s*(来源[:：])?\s*", "", lines[0]).strip()
         lines = lines[1:]
+    lines = [line for line in lines if not _EXTRACT_MARK.match(line.strip())]
     return title, citation, "\n".join(lines).strip()
 
 
@@ -239,14 +417,35 @@ def reference_documents(directory: Path | None) -> list[Document]:
             log.warning("参考文献正文太短，跳过：%s", path.name)
             continue
         label = f"——摘自《{title}》" + (f"（{citation.split('。')[0]}）" if citation else "")
-        for chunk in splitter.split_text(body):
+        for index, chunk in enumerate(splitter.split_text(body)):
             documents.append(
                 Document(
                     page_content=f"{chunk}\n{label}",
-                    metadata={"h1": "参考文献", "h2": title, "source": "reference", "file": path.name},
+                    metadata={
+                        "h1": "参考文献",
+                        "h2": title,
+                        "source": "reference",
+                        "file": path.name,
+                        # 同一块切出的几个检索窗口都指回这里，检索结果按它去重
+                        "parent": f"{path.name}#{index}",
+                        "body": chunk,
+                    },
                 )
             )
     return documents
+
+
+def retrieval_windows(document: Document) -> list[str]:
+    """一块论文切成几个 200 字的检索窗口（只拿正文切，不带末尾的出处标签）。"""
+    from langchain_text_splitters import RecursiveCharacterTextSplitter
+
+    splitter = RecursiveCharacterTextSplitter(
+        chunk_size=WINDOW_SIZE,
+        chunk_overlap=WINDOW_OVERLAP,
+        separators=["\n\n", "\n", "。", "，", " ", ""],
+    )
+    body = document.metadata.get("body") or document.page_content
+    return splitter.split_text(body) or [body]
 
 
 def write_text_atomically(path: Path, text: str) -> None:

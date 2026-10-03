@@ -166,7 +166,8 @@ class RAGConcurrencyTest(unittest.TestCase):
 
         context = self.knowledge_base.sample_exam_context("queueing theory")
 
-        self.assertEqual(vectorstore.calls, [("queueing theory", config.EXAM_SAMPLE_K, 20)])
+        # 候选池 20 不变；k 多取一倍备用（论文窗口去重后往后补），前 EXAM_SAMPLE_K 个与以前相同
+        self.assertEqual(vectorstore.calls, [("queueing theory", config.EXAM_SAMPLE_K * 2, 20)])
         for index in range(3):
             self.assertIn(f"topic-result-{index}", context)
         self.assertNotIn("fallback", context)

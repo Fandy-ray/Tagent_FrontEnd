@@ -1,12 +1,13 @@
 {
-  "_说明": "参考文献篇目清单。只列篇目和官网地址，全文由 tools/fetch_references.py 下载到本机（不入库）。加一篇就照格式加一项，key 用英文和连字符，也是本机文件名。",
+  "_说明": "参考文献篇目清单。只列篇目和官网地址，全文由 tools/fetch_references.py 下载到本机（不入库）。加一篇就照格式加一项，key 用英文和连字符，也是本机文件名；官网有「RichHTML」网页版全文的，把地址填进 html，会优先用它（表格、公式完整）。",
   "papers": [
     {
       "key": "callcenter",
       "title": "考虑等待提示机制的呼叫中心联合排班方法",
       "citation": "系统仿真学报, 2022, 34(7): 1651-1661",
       "page": "https://www.china-simulation.com/CN/10.16182/j.issn1004731x.joss.21-0273",
-      "pdf": "https://www.china-simulation.com/CN/article/downloadArticleFile.do?attachType=PDF&id=2958"
+      "pdf": "https://www.china-simulation.com/CN/article/downloadArticleFile.do?attachType=PDF&id=2958",
+      "html": "https://www.china-simulation.com/article/2022/1004-731X/1004-731X-2022-34-7-1651.shtml"
     },
     {
       "key": "warehouse-robots",
@@ -48,14 +49,16 @@
       "title": "基于有限状态机的车间逻辑建模与仿真研究",
       "citation": "系统仿真学报, 2023, 35(4): 853-861",
       "page": "https://www.china-simulation.com/CN/abstract/abstract3126.shtml",
-      "pdf": "https://www.china-simulation.com/CN/article/downloadArticleFile.do?attachType=PDF&id=3126"
+      "pdf": "https://www.china-simulation.com/CN/article/downloadArticleFile.do?attachType=PDF&id=3126",
+      "html": "https://www.china-simulation.com/article/2023/1004-731X/1004-731X-2023-35-4-853.shtml"
     },
     {
       "key": "maintenance-scheduling",
       "title": "分布式车间生产维修联合调度仿真优化方法",
       "citation": "系统仿真学报, 2022, 34(4): 688-699",
       "page": "https://www.china-simulation.com/CN/10.16182/j.issn1004731x.joss.21-1288",
-      "pdf": "https://www.china-simulation.com/CN/article/downloadArticleFile.do?attachType=PDF&id=2884"
+      "pdf": "https://www.china-simulation.com/CN/article/downloadArticleFile.do?attachType=PDF&id=2884",
+      "html": "https://www.china-simulation.com/article/2022/1004-731X/1004-731X-2022-34-4-688.shtml"
     },
     {
       "key": "supply-chain",
