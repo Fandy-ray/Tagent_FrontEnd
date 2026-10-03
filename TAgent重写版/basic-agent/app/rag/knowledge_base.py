@@ -102,16 +102,26 @@ class KnowledgeBase:
     def search(self, query: str, *, k: int = 3, notebook_ids: list[str] | None = None) -> list[Document]:
         """相似度检索。判卷时给解答题补充知识片段用。"""
         self.ensure_index()
-        return _distinct(self.vectorstore.similarity_search(query, k=k * _FETCH_FACTOR), k)
+        return self._distinct_search(query, k)
 
     def quiz_documents(self, *, max_documents: int = 2) -> list[Document]:
         return select_quiz_documents(self.chunks(), max_documents=max_documents)
 
     def retrieve(self, query: str, notebook_ids: list[str] | None = None):
         self.ensure_index()
-        documents = _distinct(self.vectorstore.similarity_search(query, k=4 * _FETCH_FACTOR), 4)
+        documents = self._distinct_search(query, 4)
         context = "\n\n---\n\n".join(document.page_content for document in documents)
         return context, documents
+    def _distinct_search(self, query: str, k: int) -> list[Document]:
+        """取 k 块不重复的。一块论文最多切出十来个检索窗口，靠前的窗口挤在两三块上时多取几轮，免得少给。"""
+        fetch = k * _FETCH_FACTOR
+        while True:
+            documents = self.vectorstore.similarity_search(query, k=fetch)
+            picked = _distinct(documents, k)
+            if len(picked) >= k or len(documents) < fetch:
+                return picked
+            fetch *= 2
+
     def ensure_index(self) -> list[Document]:
         if self._knowledge_chunks is not None and self.vectorstore is not None and self._query_ready:
             return self._knowledge_chunks

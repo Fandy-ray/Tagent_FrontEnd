@@ -38,7 +38,7 @@ REFERENCE_CHUNK_FORMAT = "refs-800-50-windows-200-30-label-at-end"
 WINDOW_SIZE = 200
 WINDOW_OVERLAP = 30
 # 抽文字的规则一变就加一：.md 里记着版本，旧版本的下次启动时从本机的 PDF / 网页重新抽，不用重新下载
-EXTRACT_VERSION = 2
+EXTRACT_VERSION = 3
 _EXTRACT_MARK = re.compile(r"^<!--\s*抽取\s*v(\d+)")
 
 _CJK = r"\u4e00-\u9fff"

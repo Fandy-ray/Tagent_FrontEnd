@@ -178,6 +178,29 @@ def _caption_text(block: str, css_class: str) -> str:
     return re.sub(r"^([表图])\s*(\d+)\s*", r"\1 \2：", caption)
 
 
+# 一个表格块 / 图块到哪为止：下一段正文、下一个标题、下一张表或图开始之前
+_BLOCK_BOUNDARY = re.compile(
+    r'<div class="zw-zsbg figure_table|<div class="content-zw-img"|<div class="paragraph"|class="content-zw-1"|<h[2-5]\b'
+)
+
+
+def _replace_blocks(body: str, renderers: dict) -> str:
+    starts = re.compile("|".join(f"({pattern})" for pattern in renderers))
+    render_for = list(renderers.values())
+    out: list[str] = []
+    position = 0
+    for match in starts.finditer(body):
+        if match.start() < position:
+            continue
+        boundary = _BLOCK_BOUNDARY.search(body, match.end())
+        end = boundary.start() if boundary else len(body)
+        out.append(body[position : match.start()])
+        out.append(render_for[match.lastindex - 1](body[match.start() : end]))
+        position = end
+    out.append(body[position:])
+    return "".join(out)
+
+
 def _abstract(page: str) -> str:
     """摘要和关键词在正文前面另一块里（class="zhaiyao-cn"），检索时最有用，单独取出来。"""
     match = re.search(r'<div class="zhaiyao-cn-content">(.*?)</div>', page, re.S)
@@ -212,37 +235,36 @@ def html_to_text(page: str) -> str:
     )
     body = re.sub(r"<math\b.*?</math>", lambda m: f"\\({_formula(m.group(0))}\\)", body, flags=re.S)
 
-    # 表格：表题 + Markdown 表格
-    def table(match: re.Match) -> str:
-        block = match.group(0)
+    # 表格：表题 + Markdown 表格；图：只留图题。每块只看到下一段正文 / 标题 / 表 / 图之前为止——
+    # 用一条 .*? 跨着找的话，表格是图片（没有 <table>）、图没有图注时，会一路吞到下一张表或图，
+    # 把中间的正文整段删掉，表题还会配上下一张表的数据（造页面实测过）。
+    def table(block: str) -> str:
         caption = _caption_text(block, "content-zw-biao-title-cn") or "表"
-        grid = "".join(_markdown_table(t) for t in re.findall(r"<table\b.*?</table>", block, re.S))
-        return f"\n\n{caption}\n\n{grid}\n\n" if grid else f"\n\n（原文{caption}，数据见原文）\n\n"
+        grids = re.findall(r"<table\b.*?</table>", block, re.S)
+        if not grids:
+            return f"\n\n（原文{caption}，数据见原文）\n\n"  # 表格是图片
+        grid = "".join(_markdown_table(t) for t in grids)
+        # 表下面的注（「注：表中数据为所选机器的机器号」）留着，按钮不要
+        tail = re.sub(r'<p class="(?:tishi|biaotishi1)">.*?</p>', "", block[block.rfind("</table>") :], flags=re.S)
+        note = _text(tail)
+        return f"\n\n{caption}\n\n{grid}\n\n" + (f"{note}\n\n" if note else "")
 
-    body = re.sub(
-        r'<div class="zw-zsbg figure_table[^"]*">.*?</table>\s*(?:</div>\s*)*',
-        table,
-        body,
-        flags=re.S,
-    )
-
-    # 图：只留图题
-    def figure(match: re.Match) -> str:
-        caption = _caption_text(match.group(0), "content-zw-img-shuoming-title-cn")
+    def figure(block: str) -> str:
+        caption = _caption_text(block, "content-zw-img-shuoming-title-cn")
         return f"\n\n（原文{caption}）\n\n" if caption else "\n\n"
 
-    body = re.sub(
-        r'<div class="content-zw-img"[^>]*>.*?<div class="content-zw-img-shuoming">.*?</div>\s*</div>',
-        figure,
+    # 表和图一遍处理完：边界要在原始网页上找，先把表换成文字的话，图就看不见表的边界、会把表吞掉
+    body = _replace_blocks(
         body,
-        flags=re.S,
+        {r'<div class="zw-zsbg figure_table': table, r'<div class="content-zw-img"': figure},
     )
 
     # 引用上标「[1-3]」、隐藏的锚点标题
     body = re.sub(r"<sup>\s*\[.*?\]\s*</sup>", "", body, flags=re.S)
     body = re.sub(r'<h3 style="position: absolute;[^"]*"[^>]*>.*?</h3>', "", body, flags=re.S)
     # 节标题、段落各自成段
-    body = re.sub(r"<h[23][^>]*>(.*?)</h[23]>", lambda m: f"\n\n{_text(m.group(1))}\n\n", body, flags=re.S)
+    # 节标题各级都有：h2 一级、h3 二级、h4 三级（「3.1.3 变异算子」）
+    body = re.sub(r"<h([2-5])[^>]*>(.*?)</h\1>", lambda m: f"\n\n{_text(m.group(2))}\n\n", body, flags=re.S)
     body = re.sub(r"</p>|<br\s*/?>", "\n\n", body)
 
     # 表格、图下面的操作按钮（「新窗口打开 | 下载CSV」，分在几个 <a> 里，中间夹着竖线）

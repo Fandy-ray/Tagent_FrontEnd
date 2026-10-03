@@ -658,3 +658,34 @@ def test_sampling_sees_each_chunk_once_not_each_window(tmp_path):
     parents = [d.metadata["parent"] for d in chunks if d.metadata.get("source") == "reference"]
     assert len(parents) == len(set(parents))
     assert len(kb.vectorstore.index_to_docstore_id) > len(chunks)  # 索引里是窗口，比块多
+
+
+def test_image_tables_and_captionless_figures_do_not_swallow_the_text_after_them():
+    """表格是图片（没有 <table>）、图没有图注时，不能一路吞到下一张表或图，把中间的正文删掉。"""
+    page = """<div id="art_content">
+<div class="zw-zsbg figure_table outline_anchor"><div class="shitibiao"><p class="content-zw-biao-title-cn"><strong>表1</strong> <span>图片表格</span></p></div><img src="t1.jpg"></div>
+<div class="paragraph"><div class="content-zw-1"><p>这一段正文夹在两张表中间。</p></div></div>
+<div class="content-zw-img" id="F1"><div class="content-zw-img-img figure"><img src="x.jpg"></div></div>
+<div class="paragraph"><div class="content-zw-1"><p>这一段正文跟在没有图注的图后面。</p></div></div>
+<div class="content-zw-img" id="F2"><div class="content-zw-img-shuoming"><p class="content-zw-img-shuoming-title-cn"><b>图2 <strong>紧挨着表格的图</strong></b></p></div></div>
+<div class="zw-zsbg figure_table outline_anchor"><div class="shitibiao"><p class="content-zw-biao-title-cn"><strong>表2</strong> <span>真表格</span></p></div><table><tr><th>甲</th><th>乙</th></tr><tr><td>1</td><td>2</td></tr></table><p>注：表中数据为机器号</p><p class="biaotishi1"><a>新窗口打开</a>| <a>下载CSV</a></p></div>
+<h4 class="title-biaoti-1 outline_anchor" level="3"> 3.1.3 变异算子 </h4>
+<div class="paragraph"><div class="content-zw-1"><p>变异算子对新解进行变异。</p></div></div>
+</div>"""
+    text = html_to_text(page)
+    assert "这一段正文夹在两张表中间。" in text and "这一段正文跟在没有图注的图后面。" in text
+    assert "（原文表 1：图片表格，数据见原文）" in text  # 图片表格只留表题
+    assert "（原文图 2：紧挨着表格的图）" in text
+    assert "表 2：真表格\n\n| 甲 | 乙 |" in text  # 紧跟在图后面的表没被图吞掉
+    assert "注：表中数据为机器号" in text and "下载CSV" not in text
+    assert "\n\n3.1.3 变异算子\n\n变异算子对新解进行变异。" in text  # 三级标题（h4）单独成段
+
+
+def test_search_still_returns_k_chunks_when_one_chunk_has_many_windows(tmp_path):
+    """一块论文的窗口全挤在最前面时，也要凑够 k 块，不能只给一块。"""
+    kb = make_kb(tmp_path, TopicEmbeddings())
+    add_paper(tmp_path, key="a", body=BODY * 4)  # 好几块、每块好几个窗口，向量全一样
+    add_paper(tmp_path, key="b", body=BODY.replace("排队论", "库存论"))
+    kb.ensure_index()
+    hits = kb.search("排队论", k=3)
+    assert len(hits) == 3 and len({d.metadata.get("parent") or d.page_content for d in hits}) == 3
