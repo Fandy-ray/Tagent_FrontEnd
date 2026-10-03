@@ -45,23 +45,47 @@ const ESCAPES: Record<string, string> = {
 
 const escapeHtml = (value: string) => value.replace(/[&<>"']/g, (ch) => ESCAPES[ch]);
 
-const renderOne = (tex: string, displayMode: boolean) => {
+// 流式回答每来一段就整篇重画一次，同一个公式会被反复渲染：记住结果，满了就清空重来
+const rendered = new Map<string, string>();
+const RENDER_CACHE_LIMIT = 500;
+
+/**
+ * 渲染一个公式。KaTeX 还没加载好（或渲染失败）时，按 source（公式连同定界符的原文）转义显示，
+ * 不吞内容；source 缺省时按 $…$ / $$…$$ 补上定界符。
+ */
+export const renderTex = (tex: string, displayMode: boolean, source?: string) => {
+	const fallback = () => escapeHtml(source ?? (displayMode ? `$$${tex}$$` : `$${tex}$`));
+
 	if (!katex) {
-		return escapeHtml(displayMode ? `$$${tex}$$` : `$${tex}$`);
+		return fallback();
 	}
+
+	const key = `${displayMode ? 'D' : 'I'}${tex}`;
+	const hit = rendered.get(key);
+	if (hit !== undefined) {
+		return hit;
+	}
+
 	try {
-		return katex.renderToString(tex.trim(), {
+		const html = katex.renderToString(tex.trim(), {
 			displayMode,
 			throwOnError: false, // 语法错的公式显示成红色原文，不要整段炸掉
 			trust: false,
 			strict: 'ignore',
 			output: 'html'
 		});
+		if (rendered.size >= RENDER_CACHE_LIMIT) {
+			rendered.clear();
+		}
+		rendered.set(key, html);
+		return html;
 	} catch {
 		// renderToString 理论上不会抛（throwOnError=false），兜底保证不吞内容
-		return escapeHtml(displayMode ? `$$${tex}$$` : `$${tex}$`);
+		return fallback();
 	}
 };
+
+const renderOne = (tex: string, displayMode: boolean) => renderTex(tex, displayMode);
 
 /** 文本里是否含公式。没有就不必走 {@html}。 */
 export const hasMath = (value: string) => {

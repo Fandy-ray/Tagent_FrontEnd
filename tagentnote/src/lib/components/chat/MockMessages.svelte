@@ -183,11 +183,36 @@
 		}
 	};
 
+	// 拖选的文字优先；没有拖选时，批改卷子里点中的那一句也算：画线的句子点一下会高亮
+	// （AnnotatedText 的 mark:focus），学生看来就是「选中了这句」，可它不是文字选区，getSelection 读出来是空的。
+	const selectedText = () => {
+		const text = window.getSelection()?.toString()?.trim();
+		if (text) {
+			return text;
+		}
+		const focused = document.activeElement;
+		return focused instanceof HTMLElement && focused.matches('mark[data-note]')
+			? (focused.textContent?.trim() ?? '')
+			: '';
+	};
+
+	// 按下按钮那一刻先记下来：点击会挪走焦点（Chrome 给按钮、Safari 清空），点中的那句到 click 时就不算了。
+	// 按钮上的 mousedown 也拦掉，选区和点中那句的高亮都留在原处，看得见解释的是哪句。
+	let pressedSelection = '';
+
 	const runQuickAction = (action: { prompt: string; input: boolean; label: string }) => {
-		const selected = window.getSelection()?.toString()?.trim() || '';
-		let prompt = action.prompt.replaceAll('{{SELECTED_CONTENT}}', selected || '（未选中文本）');
+		const selected = pressedSelection || selectedText();
+		pressedSelection = '';
+		if (!selected && action.prompt.includes('{{SELECTED_CONTENT}}')) {
+			onToast('先选中回答里的一段文字，或点一下批改里画线的句子');
+			return;
+		}
+		let prompt = action.prompt.replaceAll('{{SELECTED_CONTENT}}', selected);
 		if (action.input) {
-			const extra = window.prompt(`补充输入（${action.label}）`, '') ?? '';
+			const extra = window.prompt(`补充输入（${action.label}）`, '');
+			if (extra === null) {
+				return; // 点了取消：什么都不发
+			}
 			prompt = prompt.replaceAll('{{INPUT_CONTENT}}', extra);
 		} else {
 			prompt = prompt.replaceAll('{{INPUT_CONTENT}}', '');
@@ -363,6 +388,8 @@
 										<button
 											type="button"
 											class="rounded-full border border-white/10 px-2.5 py-0.5 text-[11px] text-gray-400 transition hover:bg-white/[0.06] hover:text-white"
+											onpointerdown={() => (pressedSelection = selectedText())}
+											onmousedown={(event) => event.preventDefault()}
 											onclick={() => runQuickAction(action)}
 										>
 											{action.label}

@@ -1,9 +1,9 @@
 <script lang="ts">
 	import { browser } from '$app/environment';
 	import DOMPurify from 'dompurify';
-	import { marked } from 'marked';
 
-	marked.use({ gfm: true, breaks: true });
+	import { hasFormula, renderMarkdown } from '$lib/data/markdown';
+	import { katexLoaded, loadKatex } from '$lib/data/math';
 
 	type Props = {
 		content?: string;
@@ -54,18 +54,24 @@
 		});
 	});
 
-	const html = $derived.by(() => {
-		const rendered = marked.parse(content || '', {
-			async: false
-		}) as string;
-
-		if (!browser) {
-			return rendered;
+	// KaTeX 按需加载：回答里有公式才去拿，拿到之后重画一次（之前公式按原文显示）
+	let katexReady = $state(katexLoaded());
+	$effect(() => {
+		if (!katexReady && hasFormula(content)) {
+			void loadKatex().then((ok) => {
+				if (ok) katexReady = true;
+			});
 		}
+	});
 
-		return DOMPurify.sanitize(rendered, {
-			USE_PROFILES: { html: true }
-		});
+	const html = $derived.by(() => {
+		void katexReady;
+		return renderMarkdown(
+			content || '',
+			browser
+				? (rendered) => DOMPurify.sanitize(rendered, { USE_PROFILES: { html: true } })
+				: undefined
+		);
 	});
 </script>
 
@@ -189,6 +195,17 @@
 	.md-body :global(pre code) {
 		background: transparent;
 		padding: 0;
+	}
+
+	/* 行间公式太长时在自己这一块里横向滚动，不把整条消息撑宽 */
+	.md-body :global(.tex-block) {
+		margin: 0.6em 0;
+		overflow-x: auto;
+		overflow-y: hidden;
+	}
+
+	.md-body :global(.tex-block .katex-display) {
+		margin: 0;
 	}
 
 	.md-body :global(table) {

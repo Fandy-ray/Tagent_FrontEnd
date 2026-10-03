@@ -658,6 +658,7 @@ if [ "$FRONTEND_DEV" = "1" ]; then
 else
     ( cd "$FRONTEND_DIR" && node "$VITE_BIN" build >"$FRONT_BUILD_LOG" 2>&1 ) &
     FRONT_BUILD_PID=$!
+    ok '前端生产包已在后台开始构建（和 basic-agent 加载同时进行，结果见后面「构建前端」一步）'
 fi
 
 warn "首次启动需加载嵌入模型并构建向量索引，最长等待 $AGENT_TIMEOUT 秒（之后会用缓存，几秒就好）..."

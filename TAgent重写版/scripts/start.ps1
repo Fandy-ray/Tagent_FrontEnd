@@ -658,6 +658,7 @@ if ($Dev) {
     $buildProc = Start-Process -FilePath 'node' -ArgumentList @($viteBin, 'build') `
         -WorkingDirectory $FrontendDir -WindowStyle Hidden -PassThru `
         -RedirectStandardOutput $buildOut -RedirectStandardError $buildErr
+    Write-Ok '前端生产包已在后台开始构建（和 basic-agent 加载同时进行，结果见后面「构建前端」一步）'
 }
 
 Write-Warn2 "首次启动需加载嵌入模型并构建向量索引，最长等待 $AgentTimeout 秒..."
