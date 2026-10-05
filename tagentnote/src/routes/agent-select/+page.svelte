@@ -263,10 +263,12 @@
 				{/each}
 			</div>
 
-			<div class="mt-6 flex items-center gap-2 text-xs text-gray-600">
-				<span class="size-1.5 rounded-full bg-emerald-400"></span>
-				<span>{modelsError || '答疑与测评将请求 basic-agent，笔记本仍使用 OpenNotebook。'}</span>
-			</div>
+			{#if modelsError}
+				<div class="mt-6 flex items-center gap-2 text-xs text-gray-600">
+					<span class="size-1.5 rounded-full bg-amber-400"></span>
+					<span>{modelsError}</span>
+				</div>
+			{/if}
 		</section>
 	</div>
 </main>

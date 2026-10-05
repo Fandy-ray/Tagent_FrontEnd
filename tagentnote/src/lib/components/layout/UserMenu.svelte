@@ -361,8 +361,6 @@
 		{/if}
 
 		{#if showHelp}
-			<hr class="my-1 border-gray-800/30 p-0" />
-
 			{#if false}
 			{#if userRole === 'admin'}
 				<a
@@ -422,8 +420,6 @@
 					<span class="truncate self-center">{$i18n.t('Keyboard Shortcuts')}</span>
 			</button>
 		{/if}
-
-		<hr class="my-1 border-gray-800/30 p-0" />
 
 		{#if false}
 		<button

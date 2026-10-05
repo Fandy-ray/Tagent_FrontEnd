@@ -34,7 +34,7 @@
 		continueLabel?: string;
 		onEditMessage?: (messageId: string, content: string) => void;
 		onSaveToNotebook?: (messageId: string) => void;
-		onQuickAction?: (prompt: string) => void;
+		onQuickAction?: (prompt: string, displayContent?: string) => void;
 		onFollowUp?: (prompt: string, insertOnly?: boolean) => void;
 		onToast?: (message: string) => void;
 		/** 任务卡上当前的论文题目，题目卡据此显示「已设为本次题目」 */
@@ -222,16 +222,25 @@
 			return;
 		}
 		let prompt = action.prompt.replaceAll('{{SELECTED_CONTENT}}', selected);
+		let extra = '';
 		if (action.input) {
-			const extra = window.prompt(`补充输入（${action.label}）`, '');
-			if (extra === null) {
+			const input = window.prompt(`补充输入（${action.label}）`, '');
+			if (input === null) {
 				return; // 点了取消：什么都不发
 			}
+			extra = input;
 			prompt = prompt.replaceAll('{{INPUT_CONTENT}}', extra);
 		} else {
 			prompt = prompt.replaceAll('{{INPUT_CONTENT}}', '');
 		}
-		onQuickAction(prompt.trim());
+		// 展示用：以选中文字开头的快捷操作，把它渲染成「粗竖条 + 灰字」单独一行，后面换行接其余内容
+		// （「提问」接补充的问题，「解释」接“解释”）。只影响聊天气泡显示，发给模型的仍是 prompt 里干净的内容。
+		const remainder = prompt.slice(selected.length).replace(/^\n+/, '\n');
+		const display =
+			selected && action.prompt.startsWith('{{SELECTED_CONTENT}}')
+				? `▎${selected}${remainder}`.trimEnd()
+				: undefined;
+		onQuickAction(prompt.trim(), display);
 	};
 
 	$effect(() => {
@@ -259,7 +268,15 @@
 								chatBubble ? 'rounded-3xl bg-gray-800' : 'bg-transparent'
 							}`}
 						>
-							<p class="whitespace-pre-wrap">{message.content}</p>
+							{#if message.content.startsWith('▎')}
+								{@const selected = message.content.slice(1)}
+								{@const newline = selected.indexOf('\n')}
+								<p class="whitespace-pre-wrap"><span class="text-gray-400"
+										>▎{newline >= 0 ? selected.slice(0, newline) : selected}</span
+									>{newline >= 0 ? `\n${selected.slice(newline + 1)}` : ''}</p>
+							{:else}
+								<p class="whitespace-pre-wrap">{message.content}</p>
+							{/if}
 						</div>
 
 						<div
@@ -373,11 +390,11 @@
 							</div>
 
 							{#if (message.followUps?.length ?? 0) > 0 && (keepFollowUpPrompts || message.id === lastAssistantId) && !message.streaming}
-								<div class="mt-2 flex flex-wrap gap-1.5">
+								<div class="mt-2 flex flex-wrap gap-1">
 									{#each message.followUps ?? [] as followUp}
 										<button
 											type="button"
-											class="rounded-full border border-white/10 bg-white/[0.03] px-3 py-1 text-left text-[12px] text-gray-300 transition hover:bg-white/[0.07] hover:text-white"
+											class="rounded-full bg-white/[0.06] px-2 py-px text-[8px] text-gray-400 transition hover:text-white"
 											onclick={() => onFollowUp(followUp, insertFollowUpPrompt)}
 										>
 											{followUp}
@@ -392,23 +409,6 @@
 										<span class="rounded-full bg-white/[0.06] px-2 py-0.5 text-[10px] text-gray-400"
 											>#{tag}</span
 										>
-									{/each}
-								</div>
-							{/if}
-
-							{#if showFloatingActionButtons && !message.streaming}
-								<div class="mt-1.5 flex flex-wrap gap-1">
-									{#each actions as action}
-										<button
-											type="button"
-											class="rounded-full border border-white/10 px-2.5 py-0.5 text-[11px] text-gray-400 transition hover:bg-white/[0.06] hover:text-white"
-											onpointerdown={(event) =>
-												(pressedSelection = selectedText(event.currentTarget))}
-											onmousedown={(event) => event.preventDefault()}
-											onclick={(event) => runQuickAction(action, event)}
-										>
-											{action.label}
-										</button>
 									{/each}
 								</div>
 							{/if}
@@ -634,6 +634,55 @@
 										</svg>
 										加入笔记本
 									</button>
+
+									{#if showFloatingActionButtons}
+										<div class="ml-1 flex flex-wrap gap-1">
+											{#each actions as action}
+												<button
+													type="button"
+													class="inline-flex items-center gap-1 rounded-lg px-2 py-1.5 text-xs transition hover:bg-white/[0.06] hover:text-white"
+													onpointerdown={(event) =>
+														(pressedSelection = selectedText(event.currentTarget))}
+													onmousedown={(event) => event.preventDefault()}
+													onclick={(event) => runQuickAction(action, event)}
+												>
+													{#if action.id === 'ask'}
+														<svg
+															class="size-3.5 shrink-0"
+															viewBox="0 0 24 24"
+															fill="none"
+															stroke="currentColor"
+															stroke-width="3.2"
+															stroke-linecap="round"
+															stroke-linejoin="round"
+															aria-hidden="true"
+														>
+															<path
+																d="M9.879 7.519c1.171-1.025 3.071-1.025 4.242 0 1.172 1.025 1.172 2.687 0 3.712-.203.179-.43.326-.67.442-.745.361-1.45.999-1.45 1.827"
+															></path>
+															<path d="M12 21h.01"></path>
+														</svg>
+													{:else if action.id === 'explain'}
+														<svg
+															class="size-3.5 shrink-0"
+															viewBox="0 0 24 24"
+															fill="none"
+															stroke="currentColor"
+															stroke-width="1.8"
+															aria-hidden="true"
+														>
+															<path
+																stroke-linecap="round"
+																stroke-linejoin="round"
+																d="M12 18v-5.25m0 0a6.01 6.01 0 0 0 1.5-.189m-1.5.189a6.01 6.01 0 0 1-1.5-.189m3.75 7.478a12.06 12.06 0 0 1-4.5 0m3.75 2.383a14.406 14.406 0 0 1-3 0M14.25 18v-.192c0-.983.658-1.823 1.508-2.316a7.5 7.5 0 1 0-7.517 0c.85.493 1.509 1.333 1.509 2.316V18"
+															></path>
+														</svg>
+													{/if}
+													{action.label}
+												</button>
+											{/each}
+										</div>
+									{/if}
 								</div>
 							{/if}
 						{/if}

@@ -320,13 +320,13 @@
 						<div class="relative mr-1" bind:this={collectionTriggerEl}>
 							<button
 								type="button"
-								class="mt-1 flex max-w-[180px] items-center gap-1.5 rounded-full border border-white/10 bg-white/[0.04] px-2.5 py-1 text-[11px] text-gray-200 transition hover:bg-white/[0.08]"
+								class="mt-1 flex max-w-[180px] items-center gap-1 rounded-full border border-white/10 bg-white/[0.04] px-2 py-0.5 text-[10px] leading-none text-gray-200 transition hover:bg-white/[0.08]"
 								onclick={toggleCollectionMenu}
 								title={$i18n.t('Current Knowledge Base')}
 								aria-expanded={collectionMenuOpen}
 							>
 								<svg
-									class="size-3.5 shrink-0"
+									class="size-3 shrink-0"
 									viewBox="0 0 24 24"
 									fill="none"
 									stroke="currentColor"

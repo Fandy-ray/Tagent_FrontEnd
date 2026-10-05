@@ -26,6 +26,12 @@
 		onReview?: ((text: string) => void) | null;
 		/** 本机有范例论文时才传：显示「填入范例」，演示批改用 */
 		onFillSample?: (() => void) | null;
+		/** 输入 `#` 时可选的知识库（笔记本）列表 */
+		knowledgeOptions?: { id: string; name: string }[];
+		/** 输入 `@` 时可选的知识库（模型）列表 */
+		modelOptions?: { id: string; name: string }[];
+		onSelectKnowledge?: (id: string, name: string) => void;
+		onSelectModel?: (id: string, name: string) => void;
 	};
 
 	let {
@@ -43,7 +49,11 @@
 		onStop = () => {},
 		onEditLastMessage = () => {},
 		onReview = null,
-		onFillSample = null
+		onFillSample = null,
+		knowledgeOptions = [],
+		modelOptions = [],
+		onSelectKnowledge = () => {},
+		onSelectModel = () => {}
 	}: Props = $props();
 
 	let textareaElement = $state<HTMLTextAreaElement | null>(null);
@@ -100,6 +110,35 @@
 		});
 	};
 
+	// 输入 `#` 或 `@` 触发：# 列出知识库（笔记本）、@ 列出模型。
+	// 只认「句子末尾、前面是行首或空白」的那个 token，避免把正文里的 #/@ 也当触发。
+	const trigger = $derived.by(() => {
+		const m = prompt.match(/(?:^|\s)([#@])([^\s]*)$/);
+		if (!m) return null;
+		return { symbol: m[1] as '#' | '@', query: m[2].toLowerCase() };
+	});
+
+	const triggerItems = $derived.by(() => {
+		if (!trigger) return [] as { id: string; name: string }[];
+		const source = trigger.symbol === '#' ? knowledgeOptions : modelOptions;
+		return source.filter((item) => item.name.toLowerCase().includes(trigger.query));
+	});
+
+	$effect(() => {
+		void triggerItems;
+		commandIndex = 0;
+	});
+
+	const applyTrigger = (item: { id: string; name: string }) => {
+		const t = trigger;
+		if (!t) return;
+		if (t.symbol === '#') onSelectKnowledge(item.id, item.name);
+		else onSelectModel(item.id, item.name);
+		// 把输入框里的 `#frag` / `@frag` 这一段去掉
+		prompt = prompt.replace(/[#@][^\s]*$/, '');
+		queueMicrotask(() => textareaElement?.focus());
+	};
+
 	// 字数按后端的算法（去空白后的码点数），和交稿时的长度闸是同一个数
 	const reviewChars = $derived(onReview ? countCharacters(prompt) : 0);
 	const reviewReady = $derived(reviewChars >= ESSAY_MIN_CHARS && reviewChars <= ESSAY_MAX_CHARS);
@@ -128,6 +167,30 @@
 			event.preventDefault();
 			onStop();
 			return;
+		}
+
+		if (triggerItems.length > 0) {
+			if (event.key === 'ArrowDown') {
+				event.preventDefault();
+				commandIndex = Math.min(commandIndex + 1, triggerItems.length - 1);
+				return;
+			}
+			if (event.key === 'ArrowUp') {
+				event.preventDefault();
+				commandIndex = Math.max(commandIndex - 1, 0);
+				return;
+			}
+			if (event.key === 'Enter' || event.key === 'Tab') {
+				event.preventDefault();
+				const item = triggerItems[commandIndex];
+				if (item) applyTrigger(item);
+				return;
+			}
+			if (event.key === 'Escape') {
+				event.preventDefault();
+				prompt = prompt.replace(/[#@][^\s]*$/, '');
+				return;
+			}
 		}
 
 		if (slashCommands.length > 0) {
@@ -249,6 +312,30 @@
 							{#if item.content}
 								<div class="line-clamp-1 text-xs text-gray-500">{item.content}</div>
 							{/if}
+						</button>
+					{/each}
+				</div>
+			{/if}
+			{#if triggerItems.length > 0}
+				<div
+					class="absolute bottom-full left-0 z-20 mb-2 max-h-56 w-full max-w-md overflow-y-auto rounded-xl border border-gray-800 bg-gray-850 py-1 shadow-lg"
+				>
+					<div class="px-3 py-1 text-xs text-gray-500">
+						{trigger?.symbol === '#' ? '引用知识库' : '选择模型'}
+					</div>
+					{#each triggerItems as item, idx (item.id)}
+						<button
+							type="button"
+							class="flex w-full items-center gap-2 px-3 py-1.5 text-left text-sm text-white transition {idx ===
+							commandIndex
+								? 'bg-gray-800'
+								: 'hover:bg-gray-800/70'}"
+							onclick={() => applyTrigger(item)}
+							onmousemove={() => {
+								commandIndex = idx;
+							}}
+						>
+							<span class="font-medium">{item.name}</span>
 						</button>
 					{/each}
 				</div>
