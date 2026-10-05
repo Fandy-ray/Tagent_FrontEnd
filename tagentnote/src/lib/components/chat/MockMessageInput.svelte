@@ -288,58 +288,58 @@
 			</div>
 		{/if}
 
+		{#if slashCommands.length > 0}
+			<div
+				class="absolute bottom-full left-0 z-20 mb-2 max-h-56 w-full max-w-md overflow-y-auto rounded-xl border border-gray-800 bg-gray-850 py-1 shadow-lg"
+			>
+				<div class="px-3 py-1 text-xs text-gray-500">提示词</div>
+				{#each slashCommands as item, idx (item.id)}
+					<button
+						type="button"
+						class="flex w-full flex-col px-3 py-1.5 text-left transition {idx === commandIndex
+							? 'bg-gray-800'
+							: 'hover:bg-gray-800/70'}"
+						onclick={() => applySlashPrompt(item)}
+						onmousemove={() => {
+							commandIndex = idx;
+						}}
+					>
+						<div class="flex items-center gap-2 text-sm text-white">
+							<span class="font-medium">{item.title}</span>
+							<span class="text-xs text-gray-500">/{item.command.replace(/^\/+/, '')}</span>
+						</div>
+						{#if item.content}
+							<div class="line-clamp-1 text-xs text-gray-500">{item.content}</div>
+						{/if}
+					</button>
+				{/each}
+			</div>
+		{/if}
+		{#if triggerItems.length > 0}
+			<div
+				class="absolute bottom-full left-0 z-20 mb-2 max-h-56 w-full max-w-md overflow-y-auto rounded-xl border border-gray-800 bg-gray-850 py-1 shadow-lg"
+			>
+				<div class="px-3 py-1 text-xs text-gray-500">
+					{trigger?.symbol === '#' ? '引用知识库' : '选择模型'}
+				</div>
+				{#each triggerItems as item, idx (item.id)}
+					<button
+						type="button"
+						class="flex w-full items-center gap-2 px-3 py-1.5 text-left text-sm text-white transition {idx ===
+						commandIndex
+							? 'bg-gray-800'
+							: 'hover:bg-gray-800/70'}"
+						onclick={() => applyTrigger(item)}
+						onmousemove={() => {
+							commandIndex = idx;
+						}}
+					>
+						<span class="font-medium">{item.name}</span>
+					</button>
+				{/each}
+			</div>
+		{/if}
 		<div class="relative max-h-[18rem] min-h-[3rem] overflow-y-auto">
-			{#if slashCommands.length > 0}
-				<div
-					class="absolute bottom-full left-0 z-20 mb-2 max-h-56 w-full max-w-md overflow-y-auto rounded-xl border border-gray-800 bg-gray-850 py-1 shadow-lg"
-				>
-					<div class="px-3 py-1 text-xs text-gray-500">提示词</div>
-					{#each slashCommands as item, idx (item.id)}
-						<button
-							type="button"
-							class="flex w-full flex-col px-3 py-1.5 text-left transition {idx === commandIndex
-								? 'bg-gray-800'
-								: 'hover:bg-gray-800/70'}"
-							onclick={() => applySlashPrompt(item)}
-							onmousemove={() => {
-								commandIndex = idx;
-							}}
-						>
-							<div class="flex items-center gap-2 text-sm text-white">
-								<span class="font-medium">{item.title}</span>
-								<span class="text-xs text-gray-500">/{item.command.replace(/^\/+/, '')}</span>
-							</div>
-							{#if item.content}
-								<div class="line-clamp-1 text-xs text-gray-500">{item.content}</div>
-							{/if}
-						</button>
-					{/each}
-				</div>
-			{/if}
-			{#if triggerItems.length > 0}
-				<div
-					class="absolute bottom-full left-0 z-20 mb-2 max-h-56 w-full max-w-md overflow-y-auto rounded-xl border border-gray-800 bg-gray-850 py-1 shadow-lg"
-				>
-					<div class="px-3 py-1 text-xs text-gray-500">
-						{trigger?.symbol === '#' ? '引用知识库' : '选择模型'}
-					</div>
-					{#each triggerItems as item, idx (item.id)}
-						<button
-							type="button"
-							class="flex w-full items-center gap-2 px-3 py-1.5 text-left text-sm text-white transition {idx ===
-							commandIndex
-								? 'bg-gray-800'
-								: 'hover:bg-gray-800/70'}"
-							onclick={() => applyTrigger(item)}
-							onmousemove={() => {
-								commandIndex = idx;
-							}}
-						>
-							<span class="font-medium">{item.name}</span>
-						</button>
-					{/each}
-				</div>
-			{/if}
 			{#if autocompleteHint}
 				<div class="pointer-events-none absolute top-3 left-3 right-3 truncate text-sm leading-6 text-gray-600" aria-hidden="true">
 					<span class="invisible">{prompt}</span><span>{autocompleteHint.slice(prompt.length)}</span>
