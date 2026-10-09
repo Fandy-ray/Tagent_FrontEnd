@@ -1358,7 +1358,14 @@
 		const citations = (assistant.citations ?? [])
 			.map((citation) => {
 				const locator = citation.locator ? ` · ${citation.locator}` : '';
-				return `- ${citation.collectionName} · ${citation.title}${locator}`;
+				// 论文附上期刊官网的地址，存进笔记本后还能找到原文
+				const link = /^https?:\/\//i.test(citation.href) ? ` ${citation.href}` : '';
+				// 教材的「笔记本名」和题目都是「课程教材」，别写两遍
+				const head =
+					citation.collectionName === citation.title
+						? citation.title
+						: `${citation.collectionName} · ${citation.title}`;
+				return `- ${head}${locator}${link}`;
 			})
 			.join('\n');
 

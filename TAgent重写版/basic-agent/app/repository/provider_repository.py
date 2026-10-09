@@ -21,6 +21,7 @@ from app.schema.provider import (
     ModelProvider,
     mask_api_key,
     normalize_base_url,
+    normalize_extra_body,
     normalize_temperature,
     parse_timestamp,
 )
@@ -242,6 +243,7 @@ class ModelProviderRegistry:
         upstream_model = str(payload.get("upstream_model") or payload.get("model") or "").strip()
         auth_mode = str(payload.get("auth_mode") or "bearer").strip().lower()
         temperature = normalize_temperature(payload.get("temperature", 0.1))
+        extra_body = normalize_extra_body(payload.get("extra_body"))
         enabled = payload.get("enabled", True)
 
         if not name:
@@ -282,6 +284,7 @@ class ModelProviderRegistry:
             "enabled": enabled,
             "created_at": created_at,
             "updated_at": updated_at,
+            "extra_body": extra_body,
         }
 
     @staticmethod
@@ -310,6 +313,8 @@ class ModelProviderRegistry:
                 "updated_at",
             )
         }
+        # 不是密钥，照常给出去，登记页要能看见、改它
+        public["extra_body"] = provider.get("extra_body") or {}
         if include_secrets:
             public["api_key"] = provider.get("api_key", "")
         else:

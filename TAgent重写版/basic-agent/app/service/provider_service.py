@@ -13,6 +13,7 @@ from app.schema.provider import (
     PROVIDER_ID_PATTERN,
     ModelProvider,
     normalize_base_url,
+    normalize_extra_body,
     normalize_temperature,
 )
 from app.util.timeutil import utc_now
@@ -55,4 +56,5 @@ def parse_ephemeral_provider(payload: Any) -> ModelProvider:
         enabled=True,
         created_at=str(payload.get("created_at") or now),
         updated_at=str(payload.get("updated_at") or now),
+        extra_body=normalize_extra_body(payload.get("extra_body")),
     )

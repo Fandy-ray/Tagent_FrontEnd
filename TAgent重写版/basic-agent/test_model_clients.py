@@ -22,6 +22,7 @@ class FakeOpenAIHandler(BaseHTTPRequestHandler):
                     "authorization": self.headers.get("Authorization"),
                     "model": request_body.get("model"),
                     "stream": request_body.get("stream", False),
+                    "body": request_body,
                 }
             )
 
@@ -128,6 +129,22 @@ class ModelClientFactoryTest(unittest.TestCase):
         ]
         self.assertEqual(chunks, ["token", "-", "upstream-stream"])
         self.assertTrue(FakeOpenAIHandler.records[0]["stream"])
+
+    def test_registered_extra_body_reaches_the_upstream(self):
+        """登记时填的厂商参数（这里是关闭思考）要真的出现在请求体里，普通调用和流式都要。"""
+        current = provider(self.base_url, "quiet", "none")
+        quiet = ModelProvider(**{**current.__dict__, "extra_body": {"thinking": {"type": "disabled"}}})
+        client = self.factory.get(quiet).bind(max_tokens=50)
+        client.invoke([{"role": "user", "content": "hello"}])
+        list(self.factory.get(quiet).stream([{"role": "user", "content": "hello"}]))
+        plain = self.factory.get(provider(self.base_url, "plain", "none"))
+        plain.invoke([{"role": "user", "content": "hello"}])
+
+        bodies = [record["body"] for record in FakeOpenAIHandler.records]
+        self.assertEqual(bodies[0]["thinking"], {"type": "disabled"})
+        self.assertEqual(bodies[0]["max_completion_tokens"], 50)
+        self.assertEqual(bodies[1]["thinking"], {"type": "disabled"})
+        self.assertNotIn("thinking", bodies[2])
 
     def test_cache_uses_served_id_and_updated_at_and_can_be_invalidated(self):
         current = provider(self.base_url, "cached", "bearer")

@@ -184,7 +184,7 @@ function Write-Utf8NoBom($Path, $Text) {
 function Update-EnvFile($Path, [hashtable]$Updates) {
     $lines = @()
     if (Test-Path $Path) {
-        $lines = @(Get-Content $Path)
+        $lines = @(Get-Content $Path -Encoding UTF8)
     }
     $seen = @{}
     $result = @()
@@ -228,7 +228,7 @@ function Get-EnvSecret($Path, $Key) {
 
 function Read-EnvValue($Path, $Key) {
     if (-not (Test-Path $Path)) { return $null }
-    foreach ($line in (Get-Content $Path)) {
+    foreach ($line in (Get-Content $Path -Encoding UTF8)) {
         $trimmed = $line.Trim()
         if ($trimmed -and -not $trimmed.StartsWith('#') -and $trimmed.Contains('=')) {
             $idx = $trimmed.IndexOf('=')
@@ -560,7 +560,9 @@ if ($generated.Count -gt 0) {
 
 # ------------------------------------------------- 4. 载入环境变量
 Write-Step '载入环境变量'
-Get-Content $EnvFile | ForEach-Object {
+# 写入时用的是无 BOM 的 UTF-8（Write-Utf8NoBom）；Windows PowerShell 5.1 的 Get-Content
+# 不指定编码会按系统代码页（中文 Windows 是 GBK）读，值里有中文就会读乱。
+Get-Content $EnvFile -Encoding UTF8 | ForEach-Object {
     $line = $_.Trim()
     if ($line -and -not $line.StartsWith('#') -and $line.Contains('=')) {
         $idx = $line.IndexOf('=')
@@ -665,6 +667,11 @@ if ($Prepare) {
 Write-Step "启动 basic-agent (127.0.0.1:$AgentPort)"
 $agentOut = Join-Path $LogDir 'basic-agent.out.log'
 $agentErr = Join-Path $LogDir 'basic-agent.err.log'
+# 后端的输出被重定向到上面两个日志文件。中文 Windows 上 Python 写重定向的文件默认用 GBK，
+# 按 UTF-8 打开就是乱码（2026-10-06 Windows 测试报告），所以让后端用 UTF-8 写。
+# 放在这里而不是「载入环境变量」那一步：参考文献那一步的 Python 直接输出到这个窗口，
+# 不该跟着改编码。
+$env:PYTHONUTF8 = '1'
 $agentProc = Start-Process -FilePath $AgentPy -ArgumentList 'main.py' `
     -WorkingDirectory $AgentDir -WindowStyle Hidden -PassThru `
     -RedirectStandardOutput $agentOut -RedirectStandardError $agentErr
@@ -682,6 +689,10 @@ if ($Dev) {
     $buildProc = Start-Process -FilePath 'node' -ArgumentList @($viteBin, 'build') `
         -WorkingDirectory $FrontendDir -WindowStyle Hidden -PassThru `
         -RedirectStandardOutput $buildOut -RedirectStandardError $buildErr
+    # 必须马上取一次句柄：Start-Process -PassThru 拿到的进程对象如果没取过 Handle，
+    # 进程结束后 ExitCode 读出来是空的，后面拿空值比 0 会把成功的构建判成失败、
+    # 每次都退回慢得多的开发服务器（2026-10-06 Windows 测试报告）。
+    $null = $buildProc.Handle
     Write-Ok '前端生产包已在后台开始构建（和 basic-agent 加载同时进行，结果见后面「构建前端」一步）'
 }
 

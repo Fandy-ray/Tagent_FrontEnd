@@ -35,6 +35,7 @@ def rag_answer_payload(question: str, result: dict) -> dict:
         "final_answer": result["content"],
         "step_log": result.get("step_log", []),
         "retrieved_context": result.get("retrieved_context", ""),
+        "citations": result.get("citations", []),
     }
 
 

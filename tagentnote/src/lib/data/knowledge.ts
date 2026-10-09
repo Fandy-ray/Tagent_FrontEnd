@@ -3,7 +3,7 @@
 // 这里**不放任何知识内容**：笔记本、来源、笔记一律来自 OpenNotebook
 // （见 $lib/apis/opennotebook.ts），所以每个函数都要求调用方把 collections 传进来。
 
-export type SourceKind = 'file' | 'note' | 'web';
+export type SourceKind = 'file' | 'note' | 'web' | 'paper';
 
 export type KnowledgeFile = {
 	id: string;
@@ -33,12 +33,15 @@ export type Citation = {
 	/** 展示用：章节 + 页码拼好的短串 */
 	locator?: string;
 	snippet?: string;
+	/** 后端随回答返回的出处：回答时确实用到了这份材料，不再按问题的字面相关度筛掉 */
+	grounded?: boolean;
 };
 
 export const KIND_LABEL: Record<SourceKind, string> = {
 	file: '教材',
 	note: '笔记',
-	web: '网页'
+	web: '网页',
+	paper: '论文'
 };
 
 export function findFileInCollections(

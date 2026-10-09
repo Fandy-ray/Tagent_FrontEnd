@@ -49,6 +49,11 @@ def _chunk(
     }
 
 
+def _citations_chunk(chat_id: str, created: int, model: str, citations: list) -> dict:
+    """出处单独一帧：delta 为空，OpenAI 兼容的客户端照常跳过；前端从顶层的 citations 读。"""
+    return {**_chunk(chat_id, created, model, None), "citations": list(citations)}
+
+
 def chat_completion_response(data, provider):
     messages = validate_messages(data.get("messages"))
     notebook_ids = optional_notebook_ids(data)
@@ -89,12 +94,22 @@ def chat_completion_response(data, provider):
                         "finish_reason": "stop",
                     }
                 ],
+                # 不是 OpenAI 的标准字段，客户端不认识会忽略；前端拿它列「参考资料」
+                "citations": result.get("citations", []),
             }
         )
 
     def generate():
+        # 检索一完成 stream_answer 就把出处交过来，这里在第一段文字之前单独发一帧
+        citations: list = []
         iterator = iter(
-            service.stream_answer(messages, provider, notebook_ids=notebook_ids, **options)
+            service.stream_answer(
+                messages,
+                provider,
+                notebook_ids=notebook_ids,
+                on_citations=citations.extend,
+                **options,
+            )
         )
         finish_reason = "stop"
         # 记进学习记录的那份回答。学生中途点了「停止」或刷新（GeneratorExit）、上游出错，
@@ -111,6 +126,10 @@ def chat_completion_response(data, provider):
             )
             yield f"data: {json.dumps(role_chunk, ensure_ascii=False)}\n\n"
             for item in iterator:
+                if citations:
+                    frame = _citations_chunk(chat_id, created, provider.served_model_id, citations)
+                    yield f"data: {json.dumps(frame, ensure_ascii=False)}\n\n"
+                    citations.clear()
                 if isinstance(item, tuple) and len(item) == 2:
                     token, item_finish_reason = item
                 else:

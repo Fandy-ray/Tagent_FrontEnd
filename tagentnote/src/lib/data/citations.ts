@@ -342,6 +342,59 @@ const mergeLocator = (...parts: Locator[]): Locator => {
 	return merged;
 };
 
+/**
+ * 后端随回答返回的出处（basic-agent 的 app/rag/citations.py）。
+ * 教材和论文不在任何笔记本里，单独成条；笔记本来源（kind: notebook）仍按 id 对回前端的笔记本。
+ */
+function backendCitation(record: Record<string, unknown>): Citation | null {
+	const snippet = asString(record.snippet).slice(0, 180) || undefined;
+
+	if (record.kind === 'textbook') {
+		const chapter = typeof record.chapter === 'number' ? `第${record.chapter}章` : undefined;
+		const page = typeof record.page === 'number' ? `第${record.page}页` : undefined;
+		const fileId = asString(record.id) || 'textbook';
+		return {
+			id: fileId,
+			collectionId: 'textbook',
+			collectionName: '课程教材',
+			fileId,
+			title: asString(record.title) || '课程教材',
+			kind: 'file',
+			// 教材不在笔记本里，没有可以打开的页面
+			href: '',
+			chapter,
+			page,
+			locator: formatLocator({ chapter, page }) || undefined,
+			snippet,
+			grounded: true
+		};
+	}
+
+	if (record.kind === 'paper') {
+		const title = asString(record.title);
+		if (!title) {
+			return null;
+		}
+		const href = asString(record.href);
+		const fileId = asString(record.id) || `reference:${title}`;
+		return {
+			id: fileId,
+			collectionId: 'references',
+			collectionName: '参考文献',
+			fileId,
+			title,
+			kind: 'paper',
+			// 期刊官网的文章页；只认网页地址
+			href: /^https?:\/\//i.test(href) ? href : '',
+			locator: asString(record.citation) || undefined,
+			snippet,
+			grounded: true
+		};
+	}
+
+	return null;
+}
+
 export function citationFromUnknown(
 	raw: unknown,
 	index: number,
@@ -368,6 +421,13 @@ export function citationFromUnknown(
 		return null;
 	}
 
+	const fromBackend = backendCitation(record);
+	if (fromBackend) {
+		return fromBackend;
+	}
+	// 后端说回答用到了的笔记本来源
+	const grounded = record.kind === 'notebook' ? { grounded: true } : {};
+
 	const fileId =
 		pickString(record, ['fileId', 'file_id', 'source_id', 'sourceId', 'id', 'parent_id']) || '';
 	const title =
@@ -393,11 +453,14 @@ export function citationFromUnknown(
 		matchFileFromText(`${title}\n${snippet}`, collections, notebook?.id);
 
 	if (found) {
-		return toCitation(found.collection, found.file, 'qa', {
-			...locator,
-			locator: formatLocator(locator) || undefined,
-			snippet: snippet.slice(0, 180) || undefined
-		});
+		return {
+			...toCitation(found.collection, found.file, 'qa', {
+				...locator,
+				locator: formatLocator(locator) || undefined,
+				snippet: snippet.slice(0, 180) || undefined
+			}),
+			...grounded
+		};
 	}
 
 	const collection =
@@ -426,7 +489,8 @@ export function citationFromUnknown(
 		href: sourceHref(owner.id, fileId, 'qa'),
 		...locator,
 		locator: formatLocator(locator) || undefined,
-		snippet: snippet.slice(0, 180) || undefined
+		snippet: snippet.slice(0, 180) || undefined,
+		...grounded
 	};
 }
 
@@ -585,7 +649,9 @@ export function buildQaCitations(input: {
 	return question
 		? merged.filter(
 				(citation) =>
-					isCitationRelevant(citation, question) || citation.fileId.startsWith('source:')
+					citation.grounded ||
+					isCitationRelevant(citation, question) ||
+					citation.fileId.startsWith('source:')
 			)
 		: [];
 }
@@ -599,6 +665,12 @@ export async function enrichCitationsWithPages(
 	const maybeEnglish = contentTerms(question).some((term) => Boolean(ALIASES[term]));
 
 	for (const citation of citations) {
+		// 教材、论文：后端已经给了章页 / 期刊出处，也不在笔记本里，没有原文可取
+		if (citation.grounded && !citation.fileId.startsWith('source:')) {
+			kept.push(citation);
+			continue;
+		}
+
 		const titleRelevant = isCitationRelevant(citation, question);
 
 		if (!titleRelevant && !citation.fileId.startsWith('source:')) {
@@ -612,19 +684,20 @@ export async function enrichCitationsWithPages(
 			continue;
 		}
 
-		if (titleRelevant && citation.chapter && citation.page) {
+		if ((titleRelevant || citation.grounded) && citation.chapter && citation.page) {
 			kept.push(citation);
 			continue;
 		}
 
-		if (!titleRelevant && !maybeEnglish) {
+		// 回答确实用到的笔记本来源一律留下，这里只是去补页码
+		if (!citation.grounded && !titleRelevant && !maybeEnglish) {
 			continue;
 		}
 
 		const text = await getText(citation.fileId);
 		const corpus = `${citation.title} ${citation.snippet ?? ''} ${text}`;
 
-		if (!isRelevantToQuery(corpus, question)) {
+		if (!citation.grounded && !isRelevantToQuery(corpus, question)) {
 			continue;
 		}
 

@@ -19,6 +19,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING
 
+from app.rag.citations import split_reference_source
+
 if TYPE_CHECKING:
     from langchain_core.documents import Document
 
@@ -416,7 +418,8 @@ def reference_documents(directory: Path | None) -> list[Document]:
         if len(body) < MIN_TEXT_CHARS:
             log.warning("参考文献正文太短，跳过：%s", path.name)
             continue
-        label = f"——摘自《{title}》" + (f"（{citation.split('。')[0]}）" if citation else "")
+        source, href = split_reference_source(citation)
+        label = f"——摘自《{title}》" + (f"（{source}）" if source else "")
         for index, chunk in enumerate(splitter.split_text(body)):
             documents.append(
                 Document(
@@ -429,6 +432,9 @@ def reference_documents(directory: Path | None) -> list[Document]:
                         # 同一块切出的几个检索窗口都指回这里，检索结果按它去重
                         "parent": f"{path.name}#{index}",
                         "body": chunk,
+                        # 答疑返回出处时用（app/rag/citations.py）
+                        "citation": source,
+                        "href": href,
                     },
                 )
             )

@@ -36,7 +36,7 @@ export type AgentRagResponse = {
 	model: string;
 };
 
-const agentBase = () => (env.PUBLIC_AGENT_URL?.trim() || '/agent-api').replace(/\/$/, '');
+export const agentBase = () => (env.PUBLIC_AGENT_URL?.trim() || '/agent-api').replace(/\/$/, '');
 
 const errorMessage = (payload: unknown, fallback: string) => {
 	if (!payload || typeof payload !== 'object') {

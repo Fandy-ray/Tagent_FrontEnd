@@ -32,6 +32,20 @@ def make_provider(**overrides) -> ModelProvider:
 
 
 class TestBuildPayload:
+    def test_adds_registered_extra_body_without_overriding_the_caller(self):
+        """登记的厂商参数（例如关闭思考）也要透传过去；调用方自己写了同名字段的，听调用方的。"""
+        provider = make_provider(
+            extra_body={"thinking": {"type": "disabled"}, "top_k": 5}
+        )
+        payload = passthrough_client.build_payload(
+            {"model": "deepseek", "messages": [], "top_k": 9}, provider
+        )
+        assert payload["thinking"] == {"type": "disabled"}
+        assert payload["top_k"] == 9
+        assert "thinking" not in passthrough_client.build_payload(
+            {"model": "deepseek", "messages": []}, make_provider()
+        )
+
     def test_swaps_served_id_for_upstream_model(self):
         """客户端报 served_model_id，上游只认 upstream_model。"""
         payload = passthrough_client.build_payload(

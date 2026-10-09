@@ -6,9 +6,10 @@ repository 与 service 都依赖本模块；本模块不依赖任何其他层。
 
 from __future__ import annotations
 
+import json
 import math
 import re
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Any
 from urllib.parse import urlparse
@@ -39,6 +40,8 @@ class ModelProvider:
     enabled: bool = True
     created_at: str = ""
     updated_at: str = ""
+    # 原样并进每次请求体的厂商参数，见 normalize_extra_body。dict 不可哈希，不参与 hash
+    extra_body: dict = field(default_factory=dict, hash=False)
 
     @property
     def as_openai_config(self) -> OpenAICompatibleConfig:
@@ -77,6 +80,54 @@ def normalize_temperature(value: Any) -> float:
     if not math.isfinite(temperature) or not 0 <= temperature <= 2:
         raise ValueError("temperature must be a finite number between 0 and 2")
     return temperature
+
+# 这些由 TAgent 自己定，不许被附加参数改掉
+EXTRA_BODY_RESERVED = frozenset(
+    {
+        "model",
+        "messages",
+        "stream",
+        "stream_options",
+        "max_tokens",
+        "max_completion_tokens",
+        "temperature",
+        "n",
+        "tools",
+        "tool_choice",
+        "response_format",
+    }
+)
+EXTRA_BODY_MAX_CHARS = 2000
+
+
+def normalize_extra_body(value: Any) -> dict:
+    """登记模型时可选的「附加参数」：原样并进每次请求体。
+
+    主要用来关闭思考。会先思考的模型把思考也算进输出额度，思考长了正文就被挤没
+    （2026-10-07 Windows 测试报告：额度 256 时正文为空）。各家关闭的写法不一样，
+    例如 DeepSeek / 智谱 / 豆包是 {"thinking": {"type": "disabled"}}，
+    通义千问是 {"enable_thinking": false}，所以不做成开关，照厂商文档填。
+    """
+    if value is None or value == "":
+        return {}
+    if isinstance(value, str):  # 表单和命令行传上来的可能是 JSON 文本
+        try:
+            value = json.loads(value)
+        except json.JSONDecodeError as exc:
+            raise ValueError("extra_body must be a JSON object") from exc
+    if not isinstance(value, dict):
+        raise ValueError("extra_body must be a JSON object")
+    reserved = sorted(EXTRA_BODY_RESERVED & set(value))
+    if reserved:
+        raise ValueError(f"extra_body must not set {', '.join(reserved)}")
+    try:
+        text = json.dumps(value, ensure_ascii=False, allow_nan=False)
+    except (TypeError, ValueError) as exc:
+        raise ValueError("extra_body must contain plain JSON values only") from exc
+    if len(text) > EXTRA_BODY_MAX_CHARS:
+        raise ValueError(f"extra_body must be at most {EXTRA_BODY_MAX_CHARS} characters of JSON")
+    return json.loads(text)  # 深拷贝：之后谁改了传进来的对象都影响不到这里
+
 
 def mask_api_key(api_key: str) -> str:
     if not api_key:

@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
+	import { resolve } from '$app/paths';
 	import { onMount } from 'svelte';
 
 	import { getAgentModels } from '$lib/apis/agent';
@@ -266,6 +267,9 @@
 			<div class="mt-6 flex items-center gap-2 text-xs text-gray-600">
 				<span class="size-1.5 rounded-full bg-emerald-400"></span>
 				<span>{modelsError || '答疑与测评将请求 basic-agent，笔记本仍使用 OpenNotebook。'}</span>
+				<a href={resolve('/models')} class="ml-auto text-gray-500 underline-offset-2 transition hover:text-white hover:underline">
+					{models.length === 0 ? '去登记模型' : '登记 / 管理模型'}
+				</a>
 			</div>
 		</section>
 	</div>

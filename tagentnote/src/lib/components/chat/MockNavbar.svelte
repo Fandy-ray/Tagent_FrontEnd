@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { resolve } from '$app/paths';
 	import ChatOverflowMenu from './ChatOverflowMenu.svelte';
 	import UserMenu from '$lib/components/layout/UserMenu.svelte';
 	import { getI18nContext } from '$lib/i18n';
@@ -545,6 +546,12 @@
 				{/if}
 			</button>
 		{/each}
+		<a
+			href={resolve('/models')}
+			class="mt-1 block rounded-lg border-t border-gray-800 px-3 py-2 text-xs text-gray-400 transition hover:bg-gray-800 hover:text-white"
+		>
+			{models.length === 0 ? '去登记模型' : '登记 / 管理模型'}
+		</a>
 	</div>
 {/if}
 

@@ -354,7 +354,7 @@ def _document_from_hit(hit: Any, *, fallback_title: str = "OpenNotebook") -> Doc
             metadata={"h1": fallback_title, "source": "opennotebook"},
         )
     if not isinstance(hit, dict):
-        return Document(page_content=str(hit), metadata={"h1": fallback_title})
+        return Document(page_content=str(hit), metadata={"h1": fallback_title, "source": "opennotebook"})
     text = ""
     for key in ("content", "full_text", "text", "snippet", "body", "page_content", "insight"):
         value = hit.get(key)

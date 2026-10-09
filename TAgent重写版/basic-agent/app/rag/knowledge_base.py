@@ -28,6 +28,7 @@ from app.config import (
     EXAM_CONTEXT_SEPARATOR,
     EXAM_SAMPLE_K,
 )
+from app.rag.citations import annotate_book_locations
 from app.rag.references import REFERENCE_CHUNK_FORMAT, reference_documents, reference_files, retrieval_windows
 from app.util.markdown_sanitizer import clean_reference_for_display, truncate_markdown_fragment
 
@@ -36,7 +37,7 @@ log = logging.getLogger(__name__)
 EMBEDDING_MODEL = "shibing624/text2vec-base-chinese"
 # 切块参数或缓存格式一变就要改这个值：缓存按「教材内容 + 嵌入模型 + 这个值」认，
 # 改了才会重建，不然会拿旧切法的索引配新切法的片段
-INDEX_CACHE_FORMAT = "faiss-v1-md-headers-800-50"
+INDEX_CACHE_FORMAT = "faiss-v1-md-headers-800-50-locations"
 
 
 def _load_default_embeddings():
@@ -301,6 +302,8 @@ class KnowledgeBase:
         chunks = splitter.split_documents(sections)
         if not chunks:
             raise RuntimeError("The local knowledge document produced no searchable chunks.")
+        # 答疑返回出处时要说是第几章第几页（app/rag/citations.py）
+        annotate_book_locations(content, chunks)
         return chunks
     def sample_exam_context(self, topic: str | None = None, notebook_ids: list[str] | None = None) -> str:
         """Select diverse knowledge chunks and cap the prompt context size."""

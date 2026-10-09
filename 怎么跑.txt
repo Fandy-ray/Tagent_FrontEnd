@@ -37,7 +37,11 @@
    用自己的 DeepSeek Key，不要用别人的。管理 token 在 TAgent重写版/.env.runtime
    的 AGENT_ADMIN_TOKEN（启动脚本会自动生成，不用手填）。
 
-   macOS / Linux（在交接包根目录跑）：
+   最省事是网页登记：打开 http://localhost:5173/models ，粘贴管理 token -> 连接
+   -> 登记新模型 -> 点「DeepSeek」-> 填 Key -> 保存 -> 试一下。
+   「试一下」说 token 都用在了思考上，就在「附加参数」点「关闭思考」再保存。
+
+   也可以用命令行，macOS / Linux（在交接包根目录跑）：
 
    TOKEN=$(grep '^AGENT_ADMIN_TOKEN=' TAgent重写版/.env.runtime | cut -d= -f2-)
    curl -X POST http://127.0.0.1:5001/admin/model-providers \

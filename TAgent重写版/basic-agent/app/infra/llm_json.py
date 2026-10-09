@@ -185,6 +185,7 @@ def call_json_llm(
     start = clock() if start_time is None else start_time
     attempt_worst = attempt_timeout + cancel_grace_seconds
     last_err: Optional[Exception] = None
+    truncated = False
 
     for attempt in range(max_attempts):
         remaining = budget_seconds - (clock() - start)
@@ -194,10 +195,13 @@ def call_json_llm(
                 raise UpstreamTimeoutError("服务繁忙，请稍后重试")
             break
 
+        if truncated:
+            # 上一次是被 max_tokens 截断的：同样的额度再来一次只会原样再断，加额度再试
+            llm = _with_more_tokens(llm)
+            truncated = False
+
         try:
-            raw = invoke_with_deadline(
-                llm, prompt_text, attempt_timeout, cancel_grace_seconds
-            ).content
+            message = invoke_with_deadline(llm, prompt_text, attempt_timeout, cancel_grace_seconds)
         except ExamBusyError:
             raise  # 孤儿额度满：立刻 429，不重试
         except (TimeoutError, openai.APITimeoutError) as e:
@@ -213,7 +217,11 @@ def call_json_llm(
             last_err = e
             continue
 
+        raw = message.content
         text = str(raw).strip() if raw else ""
+        truncated = _finish_reason(message) == "length"
+        if truncated:
+            log.warning(f"LLM 输出被 max_tokens 截断（attempt {attempt}，正文 {len(text)} 字）")
         if not text:
             log.warning(f"LLM 返回空内容（attempt {attempt}）")
             last_err = ValueError("LLM 返回空内容")
@@ -237,7 +245,48 @@ def call_json_llm(
     # 上游明确回了错误码，同样不是「输出结构」的问题（压测 S5：上游 500 被报成结构异常）
     if isinstance(last_err, openai.APIStatusError):
         raise UpstreamLLMError(_status_message(last_err)) from last_err
+    if truncated:
+        raise UpstreamLLMError(TRUNCATED_MESSAGE) from last_err
     raise UpstreamLLMError("AI 输出结构异常，请稍后重试") from last_err
+
+
+# 会先思考的模型（DeepSeek 推理模式、Qwen3、GLM 等）把思考也算进 max_tokens：
+# 额度给 256 时思考就用了 258，正文是空的（2026-10-07 Windows 测试报告）。
+# 被截断（finish_reason == "length"）后下一次尝试加这么多额度，再封个顶，
+# 免得一个回答拖满整段超时。
+#
+# 注意：langchain 的 ChatOpenAI 会把 max_tokens 改名成 max_completion_tokens 再发出去，
+# 而 DeepSeek 只认 max_tokens（2026-10-08 实测：max_tokens=8 截在 8 个 token，
+# max_completion_tokens=8 照常写了 96 个）。所以在 DeepSeek 上各处 bind 的额度并不生效，
+# 也就不会被截断；认这个参数的上游（OpenAI 等）才会，这里的加额度重试是为它们准备的。
+TRUNCATION_EXTRA_TOKENS = 4096
+MAX_ESCALATED_TOKENS = 8192
+TRUNCATED_MESSAGE = (
+    "模型的输出被截断了：会先思考的模型可能把篇幅都用在了思考上。"
+    "请稍后重试；经常出现的话，可在模型登记里关闭思考，或换用不思考的模型"
+)
+
+
+def _finish_reason(message) -> str:
+    metadata = getattr(message, "response_metadata", None)
+    if not isinstance(metadata, dict):
+        return ""
+    return str(metadata.get("finish_reason") or "")
+
+
+def _with_more_tokens(llm):
+    """调用方都是 client.bind(max_tokens=N) 传进来的；bind 会合并参数，再 bind 一次就覆盖掉 N。
+
+    没 bind 过额度的（拿不到 N）原样返回：不知道原来给了多少，也就无从加。
+    """
+    current = (getattr(llm, "kwargs", None) or {}).get("max_tokens")
+    if not isinstance(current, int) or not hasattr(llm, "bind"):
+        return llm
+    raised = min(current + TRUNCATION_EXTRA_TOKENS, MAX_ESCALATED_TOKENS)
+    if raised <= current:
+        return llm
+    log.warning(f"上次输出被截断，max_tokens {current} → {raised} 再试")
+    return llm.bind(max_tokens=raised)
 
 
 # 重试也不会变好的上游状态码

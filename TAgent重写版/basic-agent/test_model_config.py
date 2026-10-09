@@ -116,6 +116,53 @@ class RegistryTestCase(unittest.TestCase):
         registry.update_provider("teacher-a", {"name": "renamed", "api_key": ""})
         self.assertEqual(registry.get_enabled_provider("teacher-a").api_key, "secret-teacher-a")
 
+    def test_extra_body_is_validated_saved_and_shown(self):
+        registry = ModelProviderRegistry(self.path)
+        created = registry.create_provider(
+            provider_payload("teacher-a", extra_body='{"thinking": {"type": "disabled"}}')
+        )
+        self.assertEqual(created["extra_body"], {"thinking": {"type": "disabled"}})
+        self.assertEqual(
+            registry.get_enabled_provider("teacher-a").extra_body, {"thinking": {"type": "disabled"}}
+        )
+        # 改别的字段时原样保留；显式给空就清掉
+        registry.update_provider("teacher-a", {"name": "renamed"})
+        self.assertEqual(
+            registry.public_registry()["providers"][0]["extra_body"], {"thinking": {"type": "disabled"}}
+        )
+        registry.update_provider("teacher-a", {"extra_body": None})
+        self.assertEqual(registry.get_enabled_provider("teacher-a").extra_body, {})
+
+        for bad, message in (
+            ("not json", "JSON object"),
+            ([1, 2], "JSON object"),
+            ({"model": "other"}, "must not set model"),
+            ({"max_tokens": 10, "stream": True}, "max_tokens, stream"),
+            ({"note": "x" * 3000}, "at most"),
+        ):
+            with self.assertRaisesRegex(ValueError, message):
+                registry.create_provider(provider_payload("bad", extra_body=bad))
+        with self.assertRaisesRegex(ValueError, "JSON object"):
+            parse_ephemeral_provider(provider_payload("private", extra_body="[]"))
+
+    def test_registry_written_before_extra_body_existed_still_loads(self):
+        self.write_json(
+            {
+                "version": 2,
+                "default_model_id": "teacher-a",
+                "providers": [
+                    {
+                        **provider_payload("teacher-a"),
+                        "created_at": "2026-07-09T00:00:00Z",
+                        "updated_at": "2026-07-09T00:00:00Z",
+                    }
+                ],
+            }
+        )
+        registry = ModelProviderRegistry(self.path)
+        self.assertEqual(registry.get_enabled_provider("teacher-a").extra_body, {})
+        self.assertEqual(registry.public_registry()["providers"][0]["extra_body"], {})
+
     def test_default_always_points_to_an_enabled_provider(self):
         registry = ModelProviderRegistry(self.path)
         registry.create_provider(provider_payload("teacher-a"))

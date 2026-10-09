@@ -25,7 +25,9 @@ class FakeAgentService:
             "step_log": ["retrieved", "answered"],
         }
 
-    def stream_answer(self, messages, provider, notebook_ids=None, *, mode="qa", retrieval_query=None):
+    def stream_answer(
+        self, messages, provider, notebook_ids=None, *, mode="qa", retrieval_query=None, on_citations=None
+    ):
         self.chat_calls.append({"mode": mode, "retrieval_query": retrieval_query})
         for token in ["real", " ", provider.upstream_model]:
             yield token

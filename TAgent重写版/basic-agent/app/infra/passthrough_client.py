@@ -47,6 +47,9 @@ def build_payload(data: dict, provider: ModelProvider) -> dict:
     """客户端报的是 served_model_id（deepseek），上游认的是 upstream_model（deepseek-chat）。"""
     payload = {key: value for key, value in data.items() if key not in TAGENT_ONLY_FIELDS}
     payload["model"] = provider.upstream_model
+    # 登记时填的厂商参数（例如关闭思考）也带上；调用方自己写了同名字段的，听调用方的
+    for key, value in provider.extra_body.items():
+        payload.setdefault(key, value)
     return payload
 
 

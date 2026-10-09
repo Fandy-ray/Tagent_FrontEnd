@@ -30,7 +30,9 @@ class FakeChat:
     def answer(self, messages, provider, notebook_ids=None, *, mode="qa", retrieval_query=None):
         return {"content": "".join(self.tokens)}
 
-    def stream_answer(self, messages, provider, notebook_ids=None, *, mode="qa", retrieval_query=None):
+    def stream_answer(
+        self, messages, provider, notebook_ids=None, *, mode="qa", retrieval_query=None, on_citations=None
+    ):
         for index, token in enumerate(self.tokens):
             if self.fail_after is not None and index == self.fail_after:
                 raise RuntimeError("upstream reset")
@@ -257,7 +259,9 @@ def test_cut_off_upstream_is_recorded_as_interrupted_but_sent_as_stop(store):
     from app.service.chat_service import FINISH_INTERRUPTED
 
     class CutOff(FakeChat):
-        def stream_answer(self, messages, provider, notebook_ids=None, *, mode="qa", retrieval_query=None):
+        def stream_answer(
+            self, messages, provider, notebook_ids=None, *, mode="qa", retrieval_query=None, on_citations=None
+        ):
             yield "排队论", None
             yield "", FINISH_INTERRUPTED
 

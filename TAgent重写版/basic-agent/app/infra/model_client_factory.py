@@ -61,6 +61,8 @@ class ModelClientFactory:
                 timeout=timeout,
                 max_retries=request_retries,
                 http_client=http_client,
+                # 登记时填的厂商参数（例如关闭思考），没填就不发
+                extra_body=provider.extra_body or None,
             )
             self._http_clients[key] = http_client
             self._clients[key] = client

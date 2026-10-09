@@ -386,3 +386,151 @@ def test_upstream_rate_limit_is_named_as_such():
         _call(_Status(429))
     assert "限流" in str(excinfo.value)
 
+
+
+# ---------------- 会先思考的模型：max_tokens 被思考用光 ----------------
+
+
+class BoundLLM:
+    """仿 client.bind(max_tokens=N)：bind 合并参数；记下每次调用时的额度。
+
+    replies 按调用次序给 (content, finish_reason)，或一个要抛出的异常。
+    """
+
+    def __init__(self, replies, max_tokens=900, calls=None):
+        self.replies = replies
+        self.kwargs = {"max_tokens": max_tokens, "stop": ["END"]}
+        self.calls = calls if calls is not None else []
+
+    def bind(self, **kwargs):
+        clone = BoundLLM(self.replies, calls=self.calls)
+        clone.kwargs = {**self.kwargs, **kwargs}
+        return clone
+
+    async def ainvoke(self, prompt):
+        self.calls.append(self.kwargs["max_tokens"])
+        reply = self.replies.pop(0)
+        if isinstance(reply, Exception):
+            raise reply
+        content, reason = reply
+        return types.SimpleNamespace(content=content, response_metadata={"finish_reason": reason})
+
+
+def test_output_cut_off_by_max_tokens_retries_with_a_bigger_budget():
+    # Windows 报告的情形：思考用光额度，正文为空
+    llm = BoundLLM([("", "length"), ('{"value": "ok"}', "stop")])
+    result = call_json_llm(llm, "p", Payload, attempt_timeout=80, budget_seconds=170)
+    assert result.value == "ok"
+    assert llm.calls == [900, 900 + llm_json.TRUNCATION_EXTRA_TOKENS]
+
+
+def test_half_written_json_cut_off_also_gets_a_bigger_budget():
+    llm = BoundLLM([('{"val', "length"), ('{"value": "ok"}', "stop")])
+    assert call_json_llm(llm, "p", Payload, attempt_timeout=80, budget_seconds=170).value == "ok"
+    assert llm.calls[1] > llm.calls[0]
+
+
+def test_ordinary_bad_json_retries_with_the_same_budget():
+    llm = BoundLLM([("not json", "stop"), ('{"value": "ok"}', "stop")])
+    call_json_llm(llm, "p", Payload, attempt_timeout=80, budget_seconds=170)
+    assert llm.calls == [900, 900]
+
+
+def test_still_cut_off_says_so_instead_of_blaming_the_output_structure():
+    llm = BoundLLM([("", "length"), ('{"val', "length")])
+    with pytest.raises(UpstreamLLMError) as exc_info:
+        call_json_llm(llm, "p", Payload, attempt_timeout=80, budget_seconds=170)
+    assert str(exc_info.value) == llm_json.TRUNCATED_MESSAGE
+    assert "关闭思考" in str(exc_info.value)
+
+
+def test_cut_off_then_other_failure_is_not_reported_as_cut_off():
+    llm = BoundLLM([("", "length"), ("not json", "stop")])
+    with pytest.raises(UpstreamLLMError) as exc_info:
+        call_json_llm(llm, "p", Payload, attempt_timeout=80, budget_seconds=170)
+    assert str(exc_info.value) == "AI 输出结构异常，请稍后重试"
+
+
+def test_cut_off_then_a_failed_call_is_not_reported_as_cut_off():
+    llm = BoundLLM([("", "length"), RuntimeError("boom")])
+    with pytest.raises(UpstreamLLMError) as exc_info:
+        call_json_llm(llm, "p", Payload, attempt_timeout=80, budget_seconds=170)
+    assert str(exc_info.value) == "AI 输出结构异常，请稍后重试"
+
+
+def test_cut_off_with_no_budget_left_for_a_retry_still_names_the_cause():
+    clock = FakeClock()
+
+    class Slow(BoundLLM):
+        async def ainvoke(self, prompt):
+            clock.now += 60
+            return await super().ainvoke(prompt)
+
+    llm = Slow([("", "length")])
+    with pytest.raises(UpstreamLLMError) as exc_info:
+        call_json_llm(llm, "p", Payload, attempt_timeout=80, budget_seconds=100, clock=clock)
+    assert str(exc_info.value) == llm_json.TRUNCATED_MESSAGE
+    assert llm.calls == [900]
+
+
+def test_escalation_is_capped_and_keeps_other_bound_arguments():
+    llm = BoundLLM([("", "length"), ('{"value": "ok"}', "stop")], max_tokens=6000)
+    call_json_llm(llm, "p", Payload, attempt_timeout=80, budget_seconds=170)
+    assert llm.calls == [6000, llm_json.MAX_ESCALATED_TOKENS]
+    assert llm_json._with_more_tokens(llm).kwargs["stop"] == ["END"]
+    at_cap = BoundLLM([], max_tokens=llm_json.MAX_ESCALATED_TOKENS)
+    assert llm_json._with_more_tokens(at_cap) is at_cap
+
+
+def test_cut_off_from_an_llm_without_a_known_budget_just_retries():
+    class Unbound:
+        calls = 0
+
+        async def ainvoke(self, prompt):
+            Unbound.calls += 1
+            if Unbound.calls == 1:
+                return types.SimpleNamespace(content="", response_metadata={"finish_reason": "length"})
+            return types.SimpleNamespace(content='{"value": "ok"}')
+
+    assert call_json_llm(Unbound(), "p", Payload, attempt_timeout=80, budget_seconds=170).value == "ok"
+
+
+def test_real_chat_client_reports_the_cut_off_and_sends_the_bigger_budget():
+    """走真的 ChatOpenAI.bind(...)：finish_reason 要能传到 response_metadata，加的额度要真的发到上游。"""
+    from langchain_openai import ChatOpenAI
+
+    sent = []
+
+    def handler(request):
+        body = json.loads(request.content)
+        # langchain 把 max_tokens 改名成 max_completion_tokens 发出去（见 llm_json 里的说明）
+        sent.append(body["max_completion_tokens"])
+        cut = len(sent) == 1
+        return httpx.Response(
+            200,
+            json={
+                "id": "x",
+                "object": "chat.completion",
+                "created": 0,
+                "model": "m",
+                "choices": [
+                    {
+                        "index": 0,
+                        "message": {"role": "assistant", "content": "" if cut else '{"value": "ok"}'},
+                        "finish_reason": "length" if cut else "stop",
+                    }
+                ],
+                "usage": {"prompt_tokens": 1, "completion_tokens": 1, "total_tokens": 2},
+            },
+        )
+
+    client = ChatOpenAI(
+        model="m",
+        api_key="k",
+        base_url="http://upstream.test/v1",
+        max_retries=0,
+        http_async_client=httpx.AsyncClient(transport=httpx.MockTransport(handler)),
+    ).bind(max_tokens=900)
+    result = call_json_llm(client, "p", Payload, attempt_timeout=80, budget_seconds=170)
+    assert result.value == "ok"
+    assert sent == [900, 900 + llm_json.TRUNCATION_EXTRA_TOKENS]

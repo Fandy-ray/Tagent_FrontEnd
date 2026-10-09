@@ -7,11 +7,12 @@ service 层规则：不 import flask，不认识 request/current_app。
 
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, Callable
 
 from app.errors.api_errors import AgentAPIError
 from app.infra.upstream_errors import translate_upstream_error
 from app.prompts.chat_prompts import build_prompt_messages, last_user_message
+from app.rag.citations import citations_from_documents
 from app.rag.graph import build_answer_graph
 from app.schema.provider import ModelProvider
 from app.util.text import content_text
@@ -66,6 +67,7 @@ class ChatService:
             return {
                 "content": result["content"],
                 "retrieved_context": result.get("retrieved_context", ""),
+                "citations": citations_from_documents(result.get("retrieved_documents") or []),
                 "step_log": result.get("step_log", []),
             }
         except AgentAPIError:
@@ -80,10 +82,17 @@ class ChatService:
         *,
         mode: str = "qa",
         retrieval_query: str | None = None,
+        on_citations: Callable[[list[dict[str, Any]]], None] | None = None,
     ):
+        """产出 (文字, 结束原因)。检索完、开始生成之前，用到的材料的出处交给 on_citations。
+
+        出处不混进产出里：别处都按两元组读这个生成器。
+        """
         query = _retrieval_query(messages, retrieval_query)
         try:
-            context, _documents = self.knowledge_base.retrieve(query, notebook_ids=notebook_ids)
+            context, documents = self.knowledge_base.retrieve(query, notebook_ids=notebook_ids)
+            if on_citations is not None:
+                on_citations(citations_from_documents(documents))
             prompt_messages = build_prompt_messages(messages, context, mode=mode)
             finish_reason = None
             for chunk in self.client_factory.get(provider).stream(prompt_messages):

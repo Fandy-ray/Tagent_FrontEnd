@@ -88,7 +88,17 @@ OpenNotebook 跑在 Docker 里（`opennotebook/docker-compose.yml`）。<https:/
 
 管理 token 在 `TAgent重写版/.env.runtime` 的 `AGENT_ADMIN_TOKEN`（启动脚本自动生成）。
 
-macOS / Linux（在交接包根目录跑）：
+**网页登记（推荐）**：打开 <http://localhost:5173/models>（或顶栏模型下拉 →「登记 / 管理模型」），
+粘贴管理 token → 「连接」→「登记新模型」→ 点「DeepSeek」填好常用项 → 填自己的 Key → 「保存」→「试一下」。
+同一页还能改、停用、删除、设默认。token 只留在页面里，不保存，刷新后要重新填。
+
+**会先思考的模型**（DeepSeek 推理模式、通义千问 3、智谱、豆包的思考模式等）把思考也算进输出额度，
+思考长了正文会被挤没（2026-10-07 Windows 测试：额度 256 时正文为空）。「试一下」看到
+「token 都用在了思考上」，就在「附加参数」点对应的「关闭思考」再保存。附加参数会原样带进每次请求，
+各家写法不同：DeepSeek / 智谱 / 豆包是 `{"thinking": {"type": "disabled"}}`，通义千问是 `{"enable_thinking": false}`。
+命令行登记时在 JSON 里加一项 `"extra_body": {...}` 即可。
+
+也可以用命令行，macOS / Linux（在交接包根目录跑）：
 
 ```bash
 TOKEN=$(grep '^AGENT_ADMIN_TOKEN=' TAgent重写版/.env.runtime | cut -d= -f2-)
@@ -183,6 +193,7 @@ API Key 填你的 DashScope Key。如果你本来就要配播客 TTS，这条更
 
 - **答疑** `/qa` — 顶栏切换「课程答疑 / 论文辅助」两种模式，两种模式的会话分开存。
   - **课程答疑**：流式输出，可中途停止与重新生成；右上角选笔记本，**选哪一本就只检索哪一本**，不选则本地教材与全部笔记一起检索；回答可一键「加入笔记本」写回 OpenNotebook。
+    回答下面的「引用」列出这次回答依据的材料：教材写到第几章第几页（书上印的页码），论文写题目和期刊卷期、点开是期刊官网的文章页，笔记本来源点开回到笔记本。
   - **论文辅助**：任务卡按 7 个章节（选题与大纲 → … → 完整性检查）分步写，每节填几项信息、点对应按钮，模型按这一节的要求写成对话回答。
     另有两样和章节无关：**「让助手出题」**按笔记本材料出一道小论文题，一键设为本次题目；
     **「交稿批改」**把输入框里的整篇正文交给后端，三个维度（切题与内容 / 论证与结构 / 语言与规范）打分，
@@ -327,8 +338,10 @@ npm run build && npm run preview -- --port 5173 --strictPort   # 演示 / 日常
 
 ```bash
 cd TAgent重写版/basic-agent
-uv run pytest -q                    # 113 passed
+uv run pytest -q                    # 2026-10-08：532 passed
 ```
+
+要在 `basic-agent` 目录直接跑，别只跑 `tests/`：根目录下还有路由、模型客户端、并发这几组（`pytest tests` 只有四百多条）。
 
 ```bash
 cd tagentnote
@@ -347,6 +360,10 @@ npm run build
 | 现象 | 原因 |
 |---|---|
 | 前端顶栏是「选择模型」 | 还没登记模型，见上面第 3 步 |
+| 出题、批改报「模型的输出被截断了」，或「试一下」说 token 都用在了思考上 | 模型先思考再回答，思考占满了输出额度。在 `/models` 给它加「关闭思考」的附加参数，见第 3 步 |
+| Windows 上每次启动都是开发服务器、页面打开很慢 | 旧版 `start.ps1` 把构建成功误判成失败（没取进程句柄，退出码读成空值），已修。仍然这样就看 `logs\runtime\tagentnote.build*.log` |
+| Windows 上 `logs\runtime\basic-agent.*.log` 里中文是乱码 | 旧版没让 Python 用 UTF-8 写重定向的日志，中文 Windows 默认写成 GBK。现在启动脚本启动后端时设 `PYTHONUTF8=1`；旧日志用 GBK 打开，在 PowerShell 里看新日志用 `Get-Content -Encoding UTF8` |
+| Windows 上 Docker Desktop 起不来，报错里有 1920 | Docker Desktop 自己的问题，不是本项目的（2026-10-06 Windows 测试时遇到，相关公开问题见 [docker/desktop-feedback#460](https://github.com/docker/desktop-feedback/issues/460)）。当时的恢复办法：完全退出 Docker Desktop，把报错里点名的两个通信文件所在的临时目录改名备份、再建同名空目录，重新启动；不需要恢复出厂、清理镜像或删数据。普通重启后可能复发，复发就再做一遍 |
 | 页面请求全 502 | basic-agent 没起来，或端口不是 5001 |
 | 答疑能答但笔记本内容检索不到 | `notebook_reachable` 是 false。8502 是页面，接口在 5055 |
 | 笔记本明明起着，`notebook_reachable` 还是 false | 多半有个旧的 basic-agent 残留进程在占着 5001。`stop.bat` 后确认 5001 已释放再重启。另：开着 Clash 等系统代理的 Mac 上，旧版本会把 `localhost:5055` 也送进代理（代理回 502），现在本机和局域网地址一律直连 |
@@ -381,7 +398,6 @@ API Key 在磁盘上**没有加密**（见上），所以 `model_providers.json`
 
 ## 已知缺口
 
-- 答疑回答没有逐条出处：后端只返回正文，前端只标注「本次检索范围」是哪个笔记本。
 - 会话历史不落盘。
 - API Key 明文落盘，没有加密（见「安全」一节）。
 - `文档/` 与 `docs/` 里部分内容仍描述 open-webui 时期的架构。
