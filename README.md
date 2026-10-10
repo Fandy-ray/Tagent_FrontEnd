@@ -347,7 +347,7 @@ uv run pytest -q                    # 2026-10-10：554 passed
 cd tagentnote
 npm run check                       # 0 errors、0 warnings
 npm run lint                        # 格式（prettier）+ eslint，都要通过
-npm test                            # 整卷存档（含逐句批注）的单测
+npm test                            # 前端单测：整卷存档（含逐句批注）、整本选笔记本时跳过下载失败的来源
 npm run build
 ```
 
