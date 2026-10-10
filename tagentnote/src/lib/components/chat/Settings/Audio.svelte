@@ -1,7 +1,7 @@
 <script lang="ts">
 	import Switch from '$lib/components/common/Switch.svelte';
 	import type { UserSettings } from '$lib/data/userSettings';
-	import { onMount } from 'svelte';
+	import { onMount, untrack } from 'svelte';
 
 	type Props = {
 		settings: UserSettings;
@@ -11,14 +11,14 @@
 
 	let { settings, saveSettings, onSave = () => {} }: Props = $props();
 
-	let speechAutoSend = $state(false);
-	let responseAutoPlayback = $state(false);
-	let STTEngine = $state('');
-	let STTLanguage = $state('');
-	let TTSEngine = $state('');
-	let voice = $state('');
-	let playbackRate = $state(1);
-	let nonLocalVoices = $state(false);
+	let speechAutoSend = $state(untrack(() => settings.speechAutoSend));
+	let responseAutoPlayback = $state(untrack(() => settings.responseAutoPlayback));
+	let STTEngine = $state(untrack(() => settings.sttEngine));
+	let STTLanguage = $state(untrack(() => settings.sttLanguage));
+	let TTSEngine = $state(untrack(() => settings.ttsEngine));
+	let voice = $state(untrack(() => settings.ttsVoice));
+	let playbackRate = $state(untrack(() => settings.ttsPlaybackRate));
+	let nonLocalVoices = $state(untrack(() => settings.nonLocalVoices));
 	let voices = $state<SpeechSynthesisVoice[]>([]);
 
 	const loadVoices = () => {
@@ -31,17 +31,6 @@
 		return () => {
 			window.speechSynthesis?.removeEventListener?.('voiceschanged', loadVoices);
 		};
-	});
-
-	$effect(() => {
-		speechAutoSend = settings.speechAutoSend;
-		responseAutoPlayback = settings.responseAutoPlayback;
-		STTEngine = settings.sttEngine;
-		STTLanguage = settings.sttLanguage;
-		TTSEngine = settings.ttsEngine;
-		voice = settings.ttsVoice;
-		playbackRate = settings.ttsPlaybackRate;
-		nonLocalVoices = settings.nonLocalVoices;
 	});
 </script>
 

@@ -149,7 +149,12 @@ export function findSource(key: string, collections: KnowledgeCollection[]) {
 export function sourceKeysForCollection(collectionId: string, collections: KnowledgeCollection[]) {
 	const collection = findCollection(collectionId, collections);
 
-	return collection?.files.map((file) => sourceKey(collection.id, file.id)) ?? [];
+	// 下载失败的来源没有内容，整本选的时候也不算进去（单个来源本来就点不了）
+	return (
+		collection?.files
+			.filter((file) => file.status !== 'failed')
+			.map((file) => sourceKey(collection.id, file.id)) ?? []
+	);
 }
 
 /** 笔记本页的深链。不传 fileId 时只定位到笔记本。 */

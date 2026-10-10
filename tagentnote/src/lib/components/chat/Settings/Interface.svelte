@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { untrack } from 'svelte';
 	import Switch from '$lib/components/common/Switch.svelte';
 	import Minus from '$lib/components/icons/Minus.svelte';
 	import Plus from '$lib/components/icons/Plus.svelte';
@@ -13,86 +14,49 @@
 
 	let { settings, saveSettings, onSave = () => {} }: Props = $props();
 
-	let textScale = $state<number | null>(null);
-	let highContrastMode = $state(false);
-	let showChatTitleInTab = $state(false);
-	let notificationSound = $state(false);
-	let notificationSoundAlways = $state(false);
-	let hapticFeedback = $state(false);
-	let copyFormatted = $state(false);
-	let enableMessageQueue = $state(false);
-	let chatDirection = $state<UserSettings['chatDirection']>('auto');
-	let landingPageMode = $state<UserSettings['landingPageMode']>('');
-	let backgroundImageUrl = $state<string | null>(null);
-	let chatBubble = $state(false);
-	let showUsername = $state(false);
-	let widescreenMode = $state(false);
-	let temporaryChatByDefault = $state(false);
-	let chatFadeStreamingText = $state(false);
-	let titleAutoGenerate = $state(false);
-	let autoFollowUps = $state(false);
-	let autoTags = $state(false);
-	let responseAutoCopy = $state(false);
-	let insertSuggestionPrompt = $state(false);
-	let keepFollowUpPrompts = $state(false);
-	let insertFollowUpPrompt = $state(false);
-	let regenerateMenu = $state(false);
-	let collapseCodeBlocks = $state(false);
-	let expandDetails = $state(false);
-	let stylizedPdfExport = $state(false);
-	let showFloatingActionButtons = $state(false);
-	let floatingActionButtons = $state<NonNullable<UserSettings['floatingActionButtons']> | null>(
-		null
+	let textScale = $state<number | null>(untrack(() => settings.textScale));
+	let highContrastMode = $state(untrack(() => settings.highContrastMode));
+	let showChatTitleInTab = $state(untrack(() => settings.showChatTitleInTab));
+	let notificationSound = $state(untrack(() => settings.notificationSound));
+	let notificationSoundAlways = $state(untrack(() => settings.notificationSoundAlways));
+	let hapticFeedback = $state(untrack(() => settings.hapticFeedback));
+	let copyFormatted = $state(untrack(() => settings.copyFormatted));
+	let enableMessageQueue = $state(untrack(() => settings.enableMessageQueue));
+	let chatDirection = $state<UserSettings['chatDirection']>(untrack(() => settings.chatDirection));
+	let landingPageMode = $state<UserSettings['landingPageMode']>(
+		untrack(() => settings.landingPageMode)
 	);
-	let ctrlEnterToSend = $state(false);
-	let richTextInput = $state(false);
-	let promptAutocomplete = $state(false);
-	let showFormattingToolbar = $state(false);
-	let detectArtifacts = $state(false);
-	let iframeSandboxAllowSameOrigin = $state(false);
-	let iframeSandboxAllowForms = $state(false);
+	let backgroundImageUrl = $state<string | null>(untrack(() => settings.backgroundImageUrl));
+	let chatBubble = $state(untrack(() => settings.chatBubble));
+	let showUsername = $state(untrack(() => settings.showUsername));
+	let widescreenMode = $state(untrack(() => settings.widescreenMode));
+	let temporaryChatByDefault = $state(untrack(() => settings.temporaryChatByDefault));
+	let chatFadeStreamingText = $state(untrack(() => settings.chatFadeStreamingText));
+	let titleAutoGenerate = $state(untrack(() => settings.titleAutoGenerate));
+	let autoFollowUps = $state(untrack(() => settings.autoFollowUps));
+	let autoTags = $state(untrack(() => settings.autoTags));
+	let responseAutoCopy = $state(untrack(() => settings.responseAutoCopy));
+	let insertSuggestionPrompt = $state(untrack(() => settings.insertSuggestionPrompt));
+	let keepFollowUpPrompts = $state(untrack(() => settings.keepFollowUpPrompts));
+	let insertFollowUpPrompt = $state(untrack(() => settings.insertFollowUpPrompt));
+	let regenerateMenu = $state(untrack(() => settings.regenerateMenu));
+	let collapseCodeBlocks = $state(untrack(() => settings.collapseCodeBlocks));
+	let expandDetails = $state(untrack(() => settings.expandDetails));
+	let stylizedPdfExport = $state(untrack(() => settings.stylizedPdfExport));
+	let showFloatingActionButtons = $state(untrack(() => settings.showFloatingActionButtons));
+	let floatingActionButtons = $state<NonNullable<UserSettings['floatingActionButtons']> | null>(
+		untrack(() => settings.floatingActionButtons)
+	);
+	let ctrlEnterToSend = $state(untrack(() => settings.ctrlEnterToSend));
+	let richTextInput = $state(untrack(() => settings.richTextInput));
+	let promptAutocomplete = $state(untrack(() => settings.promptAutocomplete));
+	let showFormattingToolbar = $state(untrack(() => settings.showFormattingToolbar));
+	let detectArtifacts = $state(untrack(() => settings.detectArtifacts));
+	let iframeSandboxAllowSameOrigin = $state(untrack(() => settings.iframeSandboxAllowSameOrigin));
+	let iframeSandboxAllowForms = $state(untrack(() => settings.iframeSandboxAllowForms));
 
 	let filesInputElement: HTMLInputElement | null = $state(null);
 	let showManageFloating = $state(false);
-
-	$effect(() => {
-		textScale = settings.textScale;
-		highContrastMode = settings.highContrastMode;
-		showChatTitleInTab = settings.showChatTitleInTab;
-		notificationSound = settings.notificationSound;
-		notificationSoundAlways = settings.notificationSoundAlways;
-		hapticFeedback = settings.hapticFeedback;
-		copyFormatted = settings.copyFormatted;
-		enableMessageQueue = settings.enableMessageQueue;
-		chatDirection = settings.chatDirection;
-		landingPageMode = settings.landingPageMode;
-		backgroundImageUrl = settings.backgroundImageUrl;
-		chatBubble = settings.chatBubble;
-		showUsername = settings.showUsername;
-		widescreenMode = settings.widescreenMode;
-		temporaryChatByDefault = settings.temporaryChatByDefault;
-		chatFadeStreamingText = settings.chatFadeStreamingText;
-		titleAutoGenerate = settings.titleAutoGenerate;
-		autoFollowUps = settings.autoFollowUps;
-		autoTags = settings.autoTags;
-		responseAutoCopy = settings.responseAutoCopy;
-		insertSuggestionPrompt = settings.insertSuggestionPrompt;
-		keepFollowUpPrompts = settings.keepFollowUpPrompts;
-		insertFollowUpPrompt = settings.insertFollowUpPrompt;
-		regenerateMenu = settings.regenerateMenu;
-		collapseCodeBlocks = settings.collapseCodeBlocks;
-		expandDetails = settings.expandDetails;
-		stylizedPdfExport = settings.stylizedPdfExport;
-		showFloatingActionButtons = settings.showFloatingActionButtons;
-		floatingActionButtons = settings.floatingActionButtons;
-		ctrlEnterToSend = settings.ctrlEnterToSend;
-		richTextInput = settings.richTextInput;
-		promptAutocomplete = settings.promptAutocomplete;
-		showFormattingToolbar = settings.showFormattingToolbar;
-		detectArtifacts = settings.detectArtifacts;
-		iframeSandboxAllowSameOrigin = settings.iframeSandboxAllowSameOrigin;
-		iframeSandboxAllowForms = settings.iframeSandboxAllowForms;
-	});
 
 	const setTextScaleHandler = (scale: number | null) => {
 		textScale = scale === 1 ? null : scale;

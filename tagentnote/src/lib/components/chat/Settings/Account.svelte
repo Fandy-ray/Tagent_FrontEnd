@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { untrack } from 'svelte';
 	import type { UserSettings } from '$lib/data/userSettings';
 
 	import Textarea from '$lib/components/common/Textarea.svelte';
@@ -12,21 +13,12 @@
 
 	let { settings, saveSettings, onSave = () => {} }: Props = $props();
 
-	let name = $state('');
-	let bio = $state('');
-	let gender = $state('');
-	let genderSelect = $state('');
-	let dateOfBirth = $state('');
-	let profileImageUrl = $state('');
-
-	$effect(() => {
-		name = settings.displayName;
-		bio = settings.bio || settings.userBio;
-		gender = settings.gender;
-		genderSelect = settings.gender;
-		dateOfBirth = settings.dateOfBirth;
-		profileImageUrl = settings.profileImageUrl ?? '';
-	});
+	let name = $state(untrack(() => settings.displayName));
+	let bio = $state(untrack(() => settings.bio || settings.userBio));
+	let gender = $state(untrack(() => settings.gender));
+	let genderSelect = $state(untrack(() => settings.gender));
+	let dateOfBirth = $state(untrack(() => settings.dateOfBirth));
+	let profileImageUrl = $state(untrack(() => settings.profileImageUrl ?? ''));
 
 	const submitHandler = async () => {
 		const avatarText = name.trim() ? name.trim().slice(0, 1).toUpperCase() : settings.avatarText;

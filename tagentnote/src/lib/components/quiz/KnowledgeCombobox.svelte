@@ -72,7 +72,10 @@
 	const isSelected = (key: string) => selectedKeys.includes(key);
 
 	const notebookSelection = (collection: KnowledgeCollection, files = collection.files) => {
-		const keys = files.map((file) => sourceKey(collection.id, file.id));
+		// 下载失败的来源点不了，整本勾选时也跳过它们
+		const keys = files
+			.filter((file) => file.status !== 'failed')
+			.map((file) => sourceKey(collection.id, file.id));
 		const count = keys.filter((key) => selectedKeys.includes(key)).length;
 
 		return {

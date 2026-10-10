@@ -99,6 +99,10 @@
 	const removeKnowledge = (id: string) => {
 		knowledgeItems = knowledgeItems.filter((item) => item.id !== id);
 	};
+
+	// 占位文字要换行：写在引号里的属性值里 \n 不转义、&#10; 也会被并成空格，所以放在这里
+	const SYSTEM_PROMPT_PLACEHOLDER =
+		'请在此填写模型的系统提示词\n例如：你是《超级马里奥兄弟》中的马里奥（Mario），扮演助理的角色。';
 </script>
 
 {#if open}
@@ -187,7 +191,7 @@
 					<div class="mb-1 text-[11px] text-gray-500">系统提示词</div>
 					<textarea
 						class="max-h-[180px] min-h-[72px] w-full resize-y bg-transparent text-sm outline-none placeholder:text-gray-600"
-						placeholder="请在此填写模型的系统提示词\n例如：你是《超级马里奥兄弟》中的马里奥（Mario），扮演助理的角色。"
+						placeholder={SYSTEM_PROMPT_PLACEHOLDER}
 						bind:value={systemPrompt}></textarea>
 				</div>
 

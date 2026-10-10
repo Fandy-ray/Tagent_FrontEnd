@@ -66,6 +66,9 @@
 		saving = false;
 		void goto(resolve(withParams('/workspace/skills')));
 	};
+
+	// 占位文字要换行：写在引号里的属性值里 \n 不转义、&#10; 也会被并成空格，所以放在这里
+	const SKILL_PLACEHOLDER = '---\nname: my-skill\n---\n\nInstructions…';
 </script>
 
 <EditorShell
@@ -115,7 +118,7 @@
 			class={`${field} min-h-[12rem] resize-y font-mono text-xs`}
 			bind:value={content}
 			rows="12"
-			placeholder="---\nname: my-skill\n---\n\nInstructions…"></textarea>
+			placeholder={SKILL_PLACEHOLDER}></textarea>
 	</div>
 	<div class="flex items-center justify-between py-1">
 		<span class="text-sm text-gray-300">启用</span>

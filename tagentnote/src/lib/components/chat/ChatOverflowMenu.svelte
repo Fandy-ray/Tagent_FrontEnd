@@ -135,7 +135,10 @@
 		tabindex="-1"
 		role="menu"
 		onclick={(event) => event.stopPropagation()}
-		onkeydown={(event) => event.stopPropagation()}
+		onkeydown={(event) => {
+			// Esc 要传到 window 上的监听去关菜单；焦点在菜单里时拦掉它，菜单就关不掉了
+			if (event.key !== 'Escape') event.stopPropagation();
+		}}
 	>
 		<button
 			type="button"

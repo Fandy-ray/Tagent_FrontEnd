@@ -286,6 +286,10 @@
 		});
 		saving = false;
 	};
+
+	// 占位文字要换行：写在引号里的属性值里 \n 不转义、&#10; 也会被并成空格，所以放在这里
+	const SYSTEM_PROMPT_PLACEHOLDER =
+		'在此编写模型系统提示词内容\n例如）你是《超级马里奥兄弟》中的马里奥，扮演助手的角色。';
 </script>
 
 <div class="mx-auto w-full max-w-4xl px-1 pb-12">
@@ -520,7 +524,7 @@
 						<div class="mb-2 text-xs font-medium">系统提示词</div>
 						<Textarea
 							className="w-full resize-none overflow-y-hidden bg-transparent text-sm outline-none"
-							placeholder="在此编写模型系统提示词内容\n例如）你是《超级马里奥兄弟》中的马里奥，扮演助手的角色。"
+							placeholder={SYSTEM_PROMPT_PLACEHOLDER}
 							rows={4}
 							bind:value={system}
 						/>
