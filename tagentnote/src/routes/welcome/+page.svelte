@@ -78,7 +78,7 @@
 	<div class="content">
 		<div class="badge" class:show={phase >= 1}>
 			<span class="badge-dot"></span>
-			AI for 高校教学智能体创新大赛 · 未来课堂方向
+			“AI+教育”创新应用技能大赛 · “高等教育-AI+教学”方向
 		</div>
 
 		<h1 class="title" class:show={phase >= 2}>

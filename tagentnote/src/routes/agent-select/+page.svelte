@@ -254,8 +254,11 @@
 			</div>
 
 			<div class="mt-6 flex items-center gap-2 text-xs text-gray-600">
-				<span class="size-1.5 rounded-full bg-emerald-400"></span>
-				<span>{modelsError || '答疑与测评将请求 basic-agent，笔记本仍使用 OpenNotebook。'}</span>
+				<!-- 正常时不再常驻一行状态说明，只在读不到模型时提示；登记模型的入口一直在 -->
+				{#if modelsError}
+					<span class="size-1.5 rounded-full bg-amber-400"></span>
+					<span>{modelsError}</span>
+				{/if}
 				<a
 					href={resolve('/models')}
 					class="ml-auto text-gray-500 underline-offset-2 transition hover:text-white hover:underline"

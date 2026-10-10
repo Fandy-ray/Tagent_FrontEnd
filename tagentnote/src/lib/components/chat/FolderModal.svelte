@@ -51,7 +51,6 @@
 	let knowledgeItems = $state<FolderKnowledgeItem[]>([]);
 	let showKnowledgePicker = $state(false);
 	let fileInput: HTMLInputElement | null = $state(null);
-	let knowledgeFileInput: HTMLInputElement | null = $state(null);
 
 	$effect(() => {
 		if (open) {
@@ -99,17 +98,6 @@
 
 	const removeKnowledge = (id: string) => {
 		knowledgeItems = knowledgeItems.filter((item) => item.id !== id);
-	};
-
-	const onUploadKnowledgeFiles = (event: Event) => {
-		const input = event.target as HTMLInputElement;
-		const files = Array.from(input.files ?? []);
-		for (const file of files) {
-			if (file.type.startsWith('image/')) continue;
-			const id = `local-file-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
-			knowledgeItems = [...knowledgeItems, { id, name: file.name, type: 'file' }];
-		}
-		input.value = '';
 	};
 </script>
 
@@ -238,20 +226,15 @@
 						>
 							选择知识
 						</button>
-						<button
-							type="button"
-							class="rounded-full border border-white/15 bg-transparent px-2.5 py-0.5 text-[11px] text-gray-200 transition hover:bg-white/[0.06]"
-							onclick={() => knowledgeFileInput?.click()}
-						>
-							上传文件
-						</button>
 
 						{#if showKnowledgePicker}
 							<div
 								class="absolute top-7 left-0 z-20 max-h-48 w-64 overflow-y-auto rounded-xl border border-white/10 bg-gray-900 py-1 shadow-xl"
 							>
 								{#if knowledgeOptions.length === 0}
-									<div class="px-3 py-1.5 text-[11px] text-gray-500">暂无可用知识库</div>
+									<div class="px-3 py-1.5 text-[11px] text-gray-500">
+										暂无可用笔记本（OpenNoteBook 为空或未连接）
+									</div>
 									<button
 										type="button"
 										class="w-full px-3 py-1.5 text-left text-[11px] text-sky-400 hover:bg-white/[0.06]"
@@ -260,7 +243,7 @@
 											onOpenWorkspaceKnowledge();
 										}}
 									>
-										前往工作空间添加
+										前往笔记本添加
 									</button>
 								{:else}
 									{#each knowledgeOptions as option (option.id)}
@@ -273,21 +256,23 @@
 											{option.name}
 										</button>
 									{/each}
+									<button
+										type="button"
+										class="w-full border-t border-white/10 px-3 py-1.5 text-left text-[11px] text-sky-400 hover:bg-white/[0.06]"
+										onclick={() => {
+											showKnowledgePicker = false;
+											onOpenWorkspaceKnowledge();
+										}}
+									>
+										前往笔记本添加更多 →
+									</button>
 								{/if}
 							</div>
 						{/if}
 					</div>
 
-					<input
-						bind:this={knowledgeFileInput}
-						type="file"
-						hidden
-						multiple
-						onchange={onUploadKnowledgeFiles}
-					/>
-
 					<div class="mt-1.5 text-[10px] leading-4 text-gray-500">
-						如需在此处附加知识库，请先将其添加到工作空间中的“知识库”中
+						这里绑定的是 OpenNoteBook 笔记本，去笔记本里上传解析后，再用“选择知识”绑定
 					</div>
 				</div>
 

@@ -797,6 +797,19 @@
 		syncUrl();
 	};
 
+	// 输入框里 `#` 选知识库、`@` 选模型 —— 和顶栏那两个选择器效果一致
+	const selectKnowledgeFromInput = (id: string, name: string) => {
+		collectionId = id;
+		syncUrl();
+		toast(`已引用知识库「${name}」`);
+	};
+
+	const selectModelFromInput = (id: string, name: string) => {
+		selectedModelId = id;
+		syncUrl();
+		toast(`已切换模型「${name}」`);
+	};
+
 	const handlePaperTaskChange = (next: PaperTask) => {
 		paperTitle = next.title;
 		paperKeywords = next.keywords;
@@ -2222,7 +2235,7 @@
 			onExportFolder={handleExportFolder}
 			knowledgeOptions={notebooks.map((item) => ({ id: item.id, name: item.name }))}
 			onOpenWorkspaceKnowledge={() => {
-				void goto(resolve('/workspace/knowledge'));
+				void goto(resolve('/notebook?from=qa'));
 			}}
 			onClose={() => {
 				sidebarOpen = false;
@@ -2353,6 +2366,10 @@
 								onReview={assistMode === 'paper' ? submitPaperForReview : null}
 								onFillSample={assistMode === 'paper' && samples.length > 0 ? fillSample : null}
 								onStop={stopResponse}
+								knowledgeOptions={notebooks.map((n) => ({ id: n.id, name: n.name }))}
+								{modelOptions}
+								onSelectKnowledge={selectKnowledgeFromInput}
+								onSelectModel={selectModelFromInput}
 							/>
 						</div>
 					</div>
@@ -2401,9 +2418,9 @@
 							onEditMessage={editMessage}
 							onSaveToNotebook={openSaveToNotebook}
 							onToast={toast}
-							onQuickAction={(content) => {
+							onQuickAction={(content, displayContent) => {
 								prompt = content;
-								submitPrompt(content);
+								submitPrompt(content, displayContent);
 							}}
 							onFollowUp={(content, insertOnly) => {
 								if (insertOnly) {
@@ -2448,6 +2465,10 @@
 								onReview={assistMode === 'paper' ? submitPaperForReview : null}
 								onFillSample={assistMode === 'paper' && samples.length > 0 ? fillSample : null}
 								onStop={stopResponse}
+								knowledgeOptions={notebooks.map((n) => ({ id: n.id, name: n.name }))}
+								{modelOptions}
+								onSelectKnowledge={selectKnowledgeFromInput}
+								onSelectModel={selectModelFromInput}
 							/>
 						</div>
 

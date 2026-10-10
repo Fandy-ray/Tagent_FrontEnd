@@ -24,6 +24,10 @@
 		/** 论文模式的「交稿批改」「填入范例」，原样转给输入框（见 MockMessageInput） */
 		onReview?: ((text: string) => void) | null;
 		onFillSample?: (() => void) | null;
+		knowledgeOptions?: { id: string; name: string }[];
+		modelOptions?: { id: string; name: string }[];
+		onSelectKnowledge?: (id: string, name: string) => void;
+		onSelectModel?: (id: string, name: string) => void;
 	};
 
 	let {
@@ -44,7 +48,11 @@
 		onStop = () => {},
 		onInsertSuggestion = () => {},
 		onReview = null,
-		onFillSample = null
+		onFillSample = null,
+		knowledgeOptions = [],
+		modelOptions = [],
+		onSelectKnowledge = () => {},
+		onSelectModel = () => {}
 	}: Props = $props();
 
 	const chatLanding = $derived(landingPageMode === 'chat');
@@ -126,6 +134,10 @@
 					{onStop}
 					{onReview}
 					{onFillSample}
+					{knowledgeOptions}
+					{modelOptions}
+					{onSelectKnowledge}
+					{onSelectModel}
 				/>
 			</div>
 		</div>
