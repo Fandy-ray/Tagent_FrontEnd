@@ -268,7 +268,7 @@ class KnowledgeBase:
                         or len(memo_keys) != len(matrix) or len(set(memo_keys)) != len(memo_keys)
                         or not all(isinstance(key, str) and re.fullmatch(r"[0-9a-f]{64}", key) for key in memo_keys)
                         or not np.isfinite(matrix).all()
-                        or str(data["vectors_sha256"].item()) != hashlib.sha256(matrix.tobytes()).hexdigest()):
+                        or str(data["mapping_sha256"].item()) != hashlib.sha256(json_bytes(memo_keys) + matrix.tobytes()).hexdigest()):
                         raise ValueError("Invalid vector memo")
                     known = dict(zip(memo_keys, matrix))
             except Exception as exc:  # noqa: BLE001 —— 坏了就当没有，全部重新嵌入
@@ -302,7 +302,7 @@ class KnowledgeBase:
             buffer = io.BytesIO()
             np.savez(buffer, keys=np.array(list(vectors)), vectors=matrix,
                      identity=json_bytes(identity).decode("utf-8"),
-                     vectors_sha256=hashlib.sha256(matrix.tobytes()).hexdigest())
+                     mapping_sha256=hashlib.sha256(json_bytes(list(vectors)) + matrix.tobytes()).hexdigest())
             atomic_write(path, buffer.getvalue())
         except Exception as exc:  # noqa: BLE001 —— 存不下只是下次还要重新嵌入
             log.warning("块向量缓存没存上：%s", exc)

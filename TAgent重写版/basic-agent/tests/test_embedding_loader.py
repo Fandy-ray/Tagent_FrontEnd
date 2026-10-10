@@ -367,3 +367,23 @@ def test_retrieval_cache_configuration_is_wired_and_disk_disable_wins(tmp_path, 
     assert kb._retrieval_cache.max_entries == 7 and kb._retrieval_cache.ttl_seconds == 12
     monkeypatch.setenv("TAGENT_VECTOR_CACHE", "0")
     assert AgentConfig.from_env().vector_cache_dir is None
+
+
+def test_reordered_memo_keys_are_rejected_before_rebuilding_the_index(tmp_path):
+    import numpy as np
+
+    kb = make_kb(tmp_path, CountingEmbeddings())
+    kb.warm_up()
+    memo = kb._vector_memo_path()
+    with np.load(memo, allow_pickle=False) as saved:
+        data = {name: saved[name] for name in saved.files}
+    assert len(data["keys"]) > 1
+    data["keys"] = data["keys"][::-1]
+    with memo.open("wb") as handle:
+        np.savez(handle, **data)  # 合法NPZ、CRC正确；但文本与向量的对应顺序被换了
+    (kb._index_cache_path() / "index.faiss").write_bytes(b"force index rebuild")
+    embeddings = CountingEmbeddings()
+    again = make_kb(tmp_path, embeddings)
+    again.warm_up()
+    assert embeddings.documents_embedded == len(again.chunks())
+    assert again.retrieve("仿真")[1]
