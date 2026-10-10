@@ -9,11 +9,11 @@
 from __future__ import annotations
 
 import hashlib
+import io
+import json
 import logging
-import os
 import random
 import re
-import shutil
 import threading
 from pathlib import Path
 from typing import Any
@@ -29,6 +29,8 @@ from app.config import (
     EXAM_SAMPLE_K,
 )
 from app.rag.citations import annotate_book_locations
+from app.rag.index_cache import IndexCache, atomic_write, cache_lock, json_bytes, loaded_embedding_revision
+from app.rag.query_result_cache import QueryResultCache
 from app.rag.references import REFERENCE_CHUNK_FORMAT, reference_documents, reference_files, retrieval_windows
 from app.util.markdown_sanitizer import clean_reference_for_display, truncate_markdown_fragment
 
@@ -72,6 +74,10 @@ class KnowledgeBase:
         vectorstore=None,
         index_cache_dir: str | Path | None = None,
         references_dir: str | Path | None = None,
+        embedding_revision: str | None = None,
+        retrieval_cache_enabled: bool = True,
+        retrieval_cache_max_entries: int = 128,
+        retrieval_cache_ttl_seconds: int = 60,
     ):
         self.text_db_dir = Path(text_db_dir or DEFAULT_TEXT_DB_DIR)
         # 参考文献目录（《系统仿真学报》等论文抽出的 .md）；None = 只用教材（单测默认如此）
@@ -80,6 +86,8 @@ class KnowledgeBase:
         self.index_cache_dir = Path(index_cache_dir) if index_cache_dir else None
         self.knowledge_file = Path(knowledge_file or DEFAULT_KNOWLEDGE_FILE)
         self.embeddings = embeddings
+        # 注入模型的调用方可提供稳定版本；默认只相信已加载模型的实际 commit。
+        self.embedding_revision = embedding_revision
         self.vectorstore = vectorstore
         self._knowledge_chunks: list[Document] | None = None
         # 并进索引的参考文献篇数，建好块之后才知道（describe 每次检索都会被调，不能每次去列目录）
@@ -87,6 +95,12 @@ class KnowledgeBase:
         # 嵌入模型是否已经单线程推理过一次（见 ensure_index）
         self._query_ready = False
         self._vector_lock = threading.RLock()
+        self._source_sha256: str | None = None
+        self._retrieval_identity: str | None = None
+        self._retrieval_cache = QueryResultCache(
+            enabled=retrieval_cache_enabled, max_entries=retrieval_cache_max_entries,
+            ttl_seconds=retrieval_cache_ttl_seconds,
+        )
 
     def describe(self) -> dict[str, Any]:
         return {
@@ -115,6 +129,17 @@ class KnowledgeBase:
         return context, documents
     def _distinct_search(self, query: str, k: int) -> list[Document]:
         """取 k 块不重复的。一块论文最多切出十来个检索窗口，靠前的窗口挤在两三块上时多取几轮，免得少给。"""
+        if self._retrieval_identity is None:
+            # 内存缓存不会跨实例；未知模型版本可用，但不能复用到磁盘或其他实例。
+            self._retrieval_identity = hashlib.sha256(json_bytes({
+                "corpus": self._source_sha256, "model": self._model_identity(),
+                "retrieval": "distinct-parent-v1", "chunks": f"{INDEX_CACHE_FORMAT}/{REFERENCE_CHUNK_FORMAT}",
+            })).hexdigest()
+        return self._retrieval_cache.get_or_load(
+            query, identity=self._retrieval_identity, k=k, load=lambda: self._uncached_distinct_search(query, k),
+        )
+
+    def _uncached_distinct_search(self, query: str, k: int) -> list[Document]:
         fetch = k * _FETCH_FACTOR
         while True:
             documents = self.vectorstore.similarity_search(query, k=fetch)
@@ -150,33 +175,32 @@ class KnowledgeBase:
     # 放应用数据目录而不是项目目录，理由同学习记录库：项目在 iCloud 同步的桌面上。
 
     def _index_cache_path(self) -> Path | None:
-        if self.index_cache_dir is None:
+        cache = self._index_cache()
+        return cache.directory if cache else None
+
+    def _model_identity(self) -> dict | None:
+        revision = self.embedding_revision or loaded_embedding_revision(self.embeddings)
+        if not revision:
             return None
-        digest = hashlib.sha256()
-        digest.update(INDEX_CACHE_FORMAT.encode())
-        digest.update(EMBEDDING_MODEL.encode())
-        digest.update(self.knowledge_file.read_bytes())
-        # 参考文献加了、删了、改了都要重建：文件名和内容都算进去（没有论文时缓存键和以前一样）
-        papers = reference_files(self.references_dir)
-        if papers:
-            digest.update(REFERENCE_CHUNK_FORMAT.encode())
-        for path in papers:
-            digest.update(b"\0" + path.name.encode() + b"\0")
-            digest.update(path.read_bytes())
-        return self.index_cache_dir / digest.hexdigest()[:16]
+        return {
+            "model": EMBEDDING_MODEL,
+            "revision": revision,
+            "precision": "float32",
+            "encode_kwargs": getattr(self.embeddings, "encode_kwargs", {}) or {},
+        }
+
+    def _index_cache(self) -> IndexCache | None:
+        identity = self._model_identity()
+        if self.index_cache_dir is None or identity is None:
+            return None
+        self.chunks()
+        return IndexCache(
+            self.index_cache_dir, source_sha256=self._source_sha256,
+            model_identity=identity, chunk_format=f"{INDEX_CACHE_FORMAT}/{REFERENCE_CHUNK_FORMAT}",
+        )
 
     def _load_or_build_index(self):
         from langchain_community.vectorstores import FAISS
-
-        cache = self._index_cache_path()
-        if cache is not None and (cache / "index.faiss").exists():
-            try:
-                # 反序列化只读我们自己写进应用数据目录的文件；能改那里的人本来就能以本用户身份跑代码
-                store = FAISS.load_local(str(cache), self.embeddings, allow_dangerous_deserialization=True)
-                log.info("向量索引走缓存：%s", cache)
-                return store
-            except Exception as exc:  # noqa: BLE001 —— 缓存坏了就重建，不能因此起不来
-                log.warning("向量索引缓存读不了，重建：%s", exc)
 
         # 教材一块一条；论文一块拆成几个检索窗口，向量按窗口算，存的仍是整块（见 references.WINDOW_SIZE）
         entries = [
@@ -186,15 +210,29 @@ class KnowledgeBase:
                 retrieval_windows(chunk) if chunk.metadata.get("source") == "reference" else [chunk.page_content]
             )
         ]
-        vectors = self._embed_reusing_memo([window for window, _ in entries])
-        store = FAISS.from_embeddings(
-            [(chunk.page_content, vector) for (_, chunk), vector in zip(entries, vectors)],
-            self.embeddings,
-            metadatas=[{k: v for k, v in chunk.metadata.items() if k != "body"} for _, chunk in entries],
-        )
-        if cache is not None:
-            self._save_index_cache(store, cache)
-        return store
+        documents = [Document(page_content=chunk.page_content, metadata={k: v for k, v in chunk.metadata.items() if k != "body"}) for _, chunk in entries]
+
+        def build():
+            vectors = self._embed_reusing_memo([window for window, _ in entries])
+            return FAISS.from_embeddings(
+                [(doc.page_content, vector) for doc, vector in zip(documents, vectors)],
+                self.embeddings, metadatas=[doc.metadata for doc in documents],
+            )
+
+        cache = self._index_cache()
+        if cache is None:
+            if self.index_cache_dir is not None:
+                log.warning("嵌入模型实际版本不可确认，禁用跨启动的磁盘缓存。")
+            return build()
+        with cache_lock(cache.directory) as writable:
+            if writable:
+                stored = cache.load(self.embeddings, documents)
+                if stored is not None:
+                    return stored
+            store = build()
+            if writable:
+                cache.save(store)
+            return store
 
     # ---------------------------------------------------------------- 逐块的向量缓存
     #
@@ -203,22 +241,36 @@ class KnowledgeBase:
     # 这里另存一份「每块文字 → 向量」，重建时只嵌入新出现的块：加一篇论文只算它自己那二十来块。
 
     def _vector_memo_path(self) -> Path | None:
-        if self.index_cache_dir is None:
+        identity = self._model_identity()
+        if self.index_cache_dir is None or identity is None:
             return None
-        model = hashlib.sha256(EMBEDDING_MODEL.encode()).hexdigest()[:8]
-        # 点开头：_save_index_cache 清理旧索引时会跳过它
-        return self.index_cache_dir / f".chunk-vectors-{model}.npz"
+        model = hashlib.sha256(json_bytes(identity)).hexdigest()
+        return self.index_cache_dir / "safe-v3" / f".chunk-vectors-{model}.npz"
 
     def _embed_reusing_memo(self, texts: list[str]) -> list[list[float]]:
+        memo_path = self._vector_memo_path()
+        if memo_path is not None:
+            with cache_lock(memo_path.parent / f".memo-lock-{memo_path.stem}") as writable:
+                return self._embed_with_memo(texts, memo_path if writable else None)
+        return self._embed_with_memo(texts, None)
+
+    def _embed_with_memo(self, texts: list[str], memo_path: Path | None) -> list[list[float]]:
         import numpy as np
 
-        memo_path = self._vector_memo_path()
-        keys = [hashlib.sha1(text.encode("utf-8")).hexdigest() for text in texts]
+        keys = [hashlib.sha256(text.encode("utf-8")).hexdigest() for text in texts]
         known: dict[str, Any] = {}
         if memo_path is not None and memo_path.exists():
             try:
-                with np.load(memo_path) as data:
-                    known = dict(zip(data["keys"].tolist(), data["vectors"]))
+                with np.load(memo_path, allow_pickle=False) as data:
+                    memo_keys, matrix = data["keys"].tolist(), data["vectors"]
+                    if (json.loads(str(data["identity"].item())) != self._model_identity()
+                        or matrix.ndim != 2 or matrix.dtype != np.float32
+                        or len(memo_keys) != len(matrix) or len(set(memo_keys)) != len(memo_keys)
+                        or not all(isinstance(key, str) and re.fullmatch(r"[0-9a-f]{64}", key) for key in memo_keys)
+                        or not np.isfinite(matrix).all()
+                        or str(data["vectors_sha256"].item()) != hashlib.sha256(matrix.tobytes()).hexdigest()):
+                        raise ValueError("Invalid vector memo")
+                    known = dict(zip(memo_keys, matrix))
             except Exception as exc:  # noqa: BLE001 —— 坏了就当没有，全部重新嵌入
                 log.warning("块向量缓存读不了，全部重新嵌入：%s", exc)
                 known = {}
@@ -229,54 +281,32 @@ class KnowledgeBase:
                 todo[key] = text
         if todo:
             fresh = self.embeddings.embed_documents(list(todo.values()))
+            if len(fresh) != len(todo):
+                raise ValueError("The embedding model returned an incomplete batch.")
             for key, vector in zip(todo, fresh):
                 known[key] = np.asarray(vector, dtype=np.float32)
         log.info("向量：复用 %d 块，新嵌入 %d 块", len(set(keys)) - len(todo), len(todo))
 
         if memo_path is not None:
-            self._save_vector_memo(memo_path, {key: known[key] for key in dict.fromkeys(keys)})
+            self._save_vector_memo(memo_path, {key: known[key] for key in dict.fromkeys(keys)}, self._model_identity())
         return [np.asarray(known[key], dtype=np.float32).tolist() for key in keys]
 
     @staticmethod
-    def _save_vector_memo(path: Path, vectors: dict[str, Any]) -> None:
-        """只留这次用到的块（不越攒越多），先写临时文件再改名。"""
+    def _save_vector_memo(path: Path, vectors: dict[str, Any], identity: dict) -> None:
+        """当前版本只留用到的块，原子更新；其他模型版本的文件不删除。"""
         import numpy as np
 
-        tmp = path.with_name(f"{path.name}.{os.getpid()}.{threading.get_ident()}.tmp")
         try:
             path.parent.mkdir(parents=True, exist_ok=True)
-            with open(tmp, "wb") as handle:
-                np.savez(handle, keys=np.array(list(vectors)), vectors=np.stack(list(vectors.values())))
-            os.replace(tmp, path)
-            # 换过嵌入模型的话，旧模型的那份没用了
-            for old in path.parent.glob(".chunk-vectors-*.npz"):
-                if old != path:
-                    old.unlink(missing_ok=True)
+            matrix = np.stack(list(vectors.values())).astype(np.float32)
+            buffer = io.BytesIO()
+            np.savez(buffer, keys=np.array(list(vectors)), vectors=matrix,
+                     identity=json_bytes(identity).decode("utf-8"),
+                     vectors_sha256=hashlib.sha256(matrix.tobytes()).hexdigest())
+            atomic_write(path, buffer.getvalue())
         except Exception as exc:  # noqa: BLE001 —— 存不下只是下次还要重新嵌入
             log.warning("块向量缓存没存上：%s", exc)
-        finally:
-            tmp.unlink(missing_ok=True)
 
-    @staticmethod
-    def _save_index_cache(store, cache: Path) -> None:
-        """先写临时目录再改名：进程写到一半被杀，留下的也不会是一份读得进来的半截索引。"""
-        tmp = cache.with_name(f".{cache.name}.{os.getpid()}.{threading.get_ident()}.tmp")
-        try:
-            cache.parent.mkdir(parents=True, exist_ok=True)
-            store.save_local(str(tmp))
-            if cache.exists():
-                shutil.rmtree(cache, ignore_errors=True)
-            os.replace(tmp, cache)
-            # 教材换过之后旧的那份就没用了，别越攒越多
-            for old in cache.parent.iterdir():
-                if old != cache and not old.name.startswith("."):
-                    shutil.rmtree(old, ignore_errors=True)
-            log.info("向量索引已缓存：%s", cache)
-        except Exception as exc:  # noqa: BLE001 —— 存不下缓存只是下次还慢，不影响这次
-            log.warning("向量索引缓存没存上：%s", exc)
-        finally:
-            if tmp.exists():
-                shutil.rmtree(tmp, ignore_errors=True)
     def chunks(self, notebook_ids: list[str] | None = None) -> list[Document]:
         if self._knowledge_chunks is not None:
             return self._knowledge_chunks
@@ -288,6 +318,14 @@ class KnowledgeBase:
                 if papers:
                     log.info("参考文献 %d 篇（%d 块）并入本地知识库", self._reference_count, len(papers))
                 self._knowledge_chunks = chunks + papers
+                digest = hashlib.sha256()
+                digest.update(INDEX_CACHE_FORMAT.encode())
+                digest.update(REFERENCE_CHUNK_FORMAT.encode())
+                digest.update(self.knowledge_file.read_bytes())
+                for path in reference_files(self.references_dir):
+                    digest.update(b"\0" + path.name.encode("utf-8") + b"\0")
+                    digest.update(path.read_bytes())
+                self._source_sha256 = digest.hexdigest()
             return self._knowledge_chunks
     @staticmethod
     def _build_text_database(path: Path) -> list[Document]:

@@ -142,6 +142,9 @@ class AgentConfig:
 
     # 向量索引的磁盘缓存目录。None = 不缓存（TAGENT_VECTOR_CACHE=0，或单测）
     vector_cache_dir: Path | None = None
+    retrieval_cache_enabled: bool = True
+    retrieval_cache_max_entries: int = 128
+    retrieval_cache_ttl_seconds: int = 60
 
     # 学习记录库（SQLite）。None = 用 default_data_dir() 下的默认文件。
     learning_store_enabled: bool = True
@@ -190,8 +193,12 @@ class AgentConfig:
             vector_cache_dir=(
                 None
                 if os.getenv("TAGENT_VECTOR_CACHE", "1") == "0"
+                else Path(cache_dir).expanduser() if (cache_dir := _env("RAG_INDEX_CACHE_DIR"))
                 else default_data_dir() / "vector-cache"
             ),
+            retrieval_cache_enabled=os.getenv("RAG_RETRIEVAL_CACHE", "1") != "0",
+            retrieval_cache_max_entries=max(1, min(1024, int(os.getenv("RAG_RETRIEVAL_CACHE_MAX_ENTRIES", "128")))),
+            retrieval_cache_ttl_seconds=max(0, min(3600, int(os.getenv("RAG_RETRIEVAL_CACHE_TTL_SECONDS", "60")))),
             learning_store_enabled=os.getenv("LEARNING_STORE", "1") != "0",
             learning_db_path=Path(db_path).expanduser() if (db_path := _env("TAGENT_DB_PATH")) else None,
             learning_backup_keep=max(1, int(os.getenv("LEARNING_BACKUP_KEEP", "7"))),

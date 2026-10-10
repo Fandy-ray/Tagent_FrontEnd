@@ -145,6 +145,7 @@ def make_kb(tmp_path, embeddings, *, references=True):
         embeddings=embeddings,
         index_cache_dir=tmp_path / "cache",
         references_dir=refs if references else None,
+        embedding_revision="test-embedding-v1",
     )
 
 
@@ -181,20 +182,39 @@ def test_adding_or_changing_a_paper_rebuilds_the_index_once(tmp_path):
     assert fourth.documents_embedded > 0  # 改了内容：重建
 
 
-def test_turning_references_off_keeps_the_old_cache_key(tmp_path):
-    """TAGENT_REFERENCES=0 时缓存键和没有这个功能之前一样：老的索引缓存照样能用。"""
-    import hashlib
-
-    from app.rag.knowledge_base import EMBEDDING_MODEL, INDEX_CACHE_FORMAT
-
+def test_turning_references_off_ignores_papers_in_the_safe_cache_identity(tmp_path):
+    """新版格式不读旧 pickle；关闭论文时，论文改动不影响教材缓存。"""
     kb = make_kb(tmp_path, FakeEmbeddings(), references=False)
+    kb.warm_up()
+    cache = kb._index_cache_path()
     add_paper(tmp_path)
-    digest = hashlib.sha256()
-    digest.update(INDEX_CACHE_FORMAT.encode())
-    digest.update(EMBEDDING_MODEL.encode())
-    digest.update(kb.knowledge_file.read_bytes())
-    assert kb._index_cache_path() == tmp_path / "cache" / digest.hexdigest()[:16]
+    again = make_kb(tmp_path, FakeEmbeddings(), references=False)
+    again.warm_up()
+    assert again._index_cache_path() == cache
+    assert cache.parent == tmp_path / "cache" / "safe-v3"
     assert not any(c.metadata.get("source") == "reference" for c in kb.ensure_index())
+
+
+def test_safe_cache_round_trip_preserves_paper_windows_and_parent_metadata(tmp_path):
+    first = make_kb(tmp_path, FakeEmbeddings())
+    add_paper(tmp_path, body=BODY * 3)
+    chunks = first.ensure_index()
+    count = first.vectorstore.index.ntotal
+    assert count > len(chunks)
+    expected = [(first.vectorstore.docstore.search(doc_id).page_content,
+                 first.vectorstore.docstore.search(doc_id).metadata)
+                for doc_id in first.vectorstore.index_to_docstore_id.values()]
+    second = FakeEmbeddings()
+    again = make_kb(tmp_path, second)
+    again.warm_up()
+    assert second.documents_embedded == 0 and again.vectorstore.index.ntotal == count
+    actual = [(again.vectorstore.docstore.search(doc_id).page_content,
+               again.vectorstore.docstore.search(doc_id).metadata)
+              for doc_id in again.vectorstore.index_to_docstore_id.values()]
+    assert actual == expected
+    documents = again.retrieve("排队论")[1]
+    parents = [d.metadata.get("parent") or d.page_content for d in documents]
+    assert len(parents) == len(set(parents))
 
 
 # ====================== 篇目清单 ======================
