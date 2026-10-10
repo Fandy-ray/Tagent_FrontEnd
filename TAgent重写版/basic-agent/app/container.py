@@ -144,6 +144,9 @@ def build_knowledge_base(settings: AgentConfig):
         knowledge_file=settings.knowledge_file,
         index_cache_dir=settings.vector_cache_dir,
         references_dir=settings.references_dir,
+        retrieval_cache_enabled=settings.retrieval_cache_enabled,
+        retrieval_cache_max_entries=settings.retrieval_cache_max_entries,
+        retrieval_cache_ttl_seconds=settings.retrieval_cache_ttl_seconds,
     )
     if settings.knowledge_source == "local":
         return local
