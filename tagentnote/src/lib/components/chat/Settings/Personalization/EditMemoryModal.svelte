@@ -1,7 +1,4 @@
 <script lang="ts">
-	import { getI18nContext } from '$lib/i18n';
-	const i18n = getI18nContext();
-
 	import Modal from '$lib/components/common/Modal.svelte';
 	import Spinner from '$lib/components/common/Spinner.svelte';
 	import XMark from '$lib/components/icons/XMark.svelte';
@@ -15,8 +12,8 @@
 
 	let { show = $bindable(false), memory = null, onSave = () => {} }: Props = $props();
 
-	let loading = false;
-	let content = '';
+	let loading = $state(false);
+	let content = $state('');
 
 	$effect(() => {
 		if (show && memory) {
@@ -48,7 +45,7 @@
 					show = false;
 				}}
 			>
-				<XMark className={'size-5'} />
+				<XMark className="size-5" />
 			</button>
 		</div>
 

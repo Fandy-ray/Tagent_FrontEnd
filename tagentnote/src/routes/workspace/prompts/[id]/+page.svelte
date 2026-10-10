@@ -1,5 +1,7 @@
 <script lang="ts">
+	import { SvelteURLSearchParams } from 'svelte/reactivity';
 	import { goto } from '$app/navigation';
+	import { resolve } from '$app/paths';
 	import { page } from '$app/stores';
 	import { onMount } from 'svelte';
 
@@ -11,7 +13,7 @@
 	let ready = $state(false);
 
 	const withParams = (path: string) => {
-		const params = new URLSearchParams();
+		const params = new SvelteURLSearchParams();
 		const model = $page.url.searchParams.get('model');
 		const chat = $page.url.searchParams.get('chat');
 		if (model) params.set('model', model);
@@ -20,7 +22,7 @@
 		return search ? `${path}?${search}` : path;
 	};
 
-	const back = () => void goto(withParams('/workspace/prompts'));
+	const back = () => void goto(resolve(withParams('/workspace/prompts')));
 
 	onMount(() => {
 		const editId = $page.params.id || '';

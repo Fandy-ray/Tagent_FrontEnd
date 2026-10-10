@@ -1,8 +1,10 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
+	import { resolve } from '$app/paths';
 	import { page } from '$app/stores';
 	import { env } from '$env/dynamic/public';
 	import { onMount } from 'svelte';
+	import { SvelteURLSearchParams } from 'svelte/reactivity';
 
 	import { listNotebookKnowledge } from '$lib/apis/opennotebook';
 	import { findCollection, type KnowledgeCollection } from '$lib/data/knowledge';
@@ -43,7 +45,7 @@
 		const mode = $page.url.searchParams.get('mode') ?? '';
 
 		if (from === 'qa') {
-			const params = new URLSearchParams();
+			const params = new SvelteURLSearchParams();
 			if (model) params.set('model', model);
 			if (notebook) params.set('notebook', notebook);
 			if (chat) params.set('chat', chat);
@@ -53,7 +55,7 @@
 		}
 
 		if (from === 'workspace') {
-			const params = new URLSearchParams();
+			const params = new SvelteURLSearchParams();
 			if (model) params.set('model', model);
 			if (chat) params.set('chat', chat);
 			const search = params.toString();
@@ -98,7 +100,7 @@
 	};
 
 	const returnToSource = () => {
-		void goto(returnPath);
+		void goto(resolve(returnPath));
 	};
 
 	onMount(() => {
@@ -112,6 +114,8 @@
 			});
 	});
 </script>
+
+<!-- eslint-disable svelte/no-navigation-without-resolve -- OpenNoteBook is an external configured service. -->
 
 <svelte:head>
 	<title>知识笔记本 | TAgent</title>
@@ -229,6 +233,8 @@
 			<span>刷新</span>
 		</button>
 
+		<!-- OpenNoteBook is a configured external service URL. -->
+		<!-- eslint-disable-next-line svelte/no-navigation-without-resolve -->
 		<a
 			href={openNotebookUrl}
 			target="_blank"

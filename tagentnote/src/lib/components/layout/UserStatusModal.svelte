@@ -71,6 +71,7 @@
 		<div
 			class="bg-gray-850 w-full max-w-sm rounded-2xl border border-gray-800 text-gray-100 shadow-2xl"
 			onclick={(e) => e.stopPropagation()}
+			tabindex="-1"
 			role="dialog"
 			aria-modal="true"
 			aria-label="设置您的状态"

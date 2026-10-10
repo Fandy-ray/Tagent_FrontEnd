@@ -10,7 +10,7 @@
 		class?: string;
 		readonly?: boolean;
 		type?: HTMLInputAttributes['type'];
-		autocomplete?: any;
+		autocomplete?: HTMLInputAttributes['autocomplete'];
 	};
 
 	let {

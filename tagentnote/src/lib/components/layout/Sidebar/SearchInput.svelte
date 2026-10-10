@@ -229,7 +229,7 @@
 						{loading ? '…' : selectedOption}
 					</div>
 					<div class="max-h-60 overflow-auto">
-						{#each filteredItems as item, itemIdx}
+						{#each filteredItems as item, itemIdx (item.id ?? itemIdx)}
 							<button
 								type="button"
 								class="flex w-full gap-1 rounded px-1.5 py-0.5 hover:bg-gray-900 {selectedIdx ===
@@ -256,7 +256,7 @@
 				{:else if filteredOptions.length > 0}
 					<div class="mb-1 px-1 font-medium text-gray-300">搜索选项</div>
 					<div class="max-h-60 overflow-auto">
-						{#each filteredOptions as option, optionIdx}
+						{#each filteredOptions as option, optionIdx (option.name ?? optionIdx)}
 							<button
 								type="button"
 								class="flex w-full gap-1 rounded px-1.5 py-0.5 hover:bg-gray-900 {selectedIdx ===

@@ -1,5 +1,7 @@
 <script lang="ts">
+	import { SvelteURLSearchParams } from 'svelte/reactivity';
 	import { goto } from '$app/navigation';
+	import { resolve } from '$app/paths';
 	import { page } from '$app/stores';
 	import { onMount } from 'svelte';
 
@@ -31,7 +33,7 @@
 	let pendingDeleteId = $state<string | null>(null);
 
 	const withParams = (path: string) => {
-		const params = new URLSearchParams();
+		const params = new SvelteURLSearchParams();
 		const model = $page.url.searchParams.get('model');
 		const chat = $page.url.searchParams.get('chat');
 		if (model) params.set('model', model);
@@ -59,7 +61,7 @@
 				name: `${s.name} (副本)`
 			})
 		);
-		void goto(withParams('/workspace/skills/create'));
+		void goto(resolve(withParams('/workspace/skills/create')));
 	};
 
 	const onImport = () => fileInput?.click();
@@ -148,7 +150,9 @@
 						{
 							label: '编辑',
 							onClick: () =>
-								void goto(withParams(`/workspace/skills/edit?id=${encodeURIComponent(skill.id)}`))
+								void goto(
+									resolve(withParams(`/workspace/skills/edit?id=${encodeURIComponent(skill.id)}`))
+								)
 						},
 						{ label: '克隆', onClick: () => cloneSkill(skill) },
 						{ label: '导出', onClick: () => downloadJson(`${skill.id}.json`, skill) },

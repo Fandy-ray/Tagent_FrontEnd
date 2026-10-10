@@ -1,5 +1,7 @@
 <script lang="ts">
+	import { SvelteURLSearchParams } from 'svelte/reactivity';
 	import { goto } from '$app/navigation';
+	import { resolve } from '$app/paths';
 	import { page } from '$app/stores';
 	import { onMount } from 'svelte';
 
@@ -34,7 +36,7 @@
 	let shiftKey = $state(false);
 
 	const withParams = (path: string) => {
-		const params = new URLSearchParams();
+		const params = new SvelteURLSearchParams();
 		const model = $page.url.searchParams.get('model');
 		const chat = $page.url.searchParams.get('chat');
 		if (model) params.set('model', model);
@@ -87,7 +89,7 @@
 				command: slugify(`${base} clone`)
 			})
 		);
-		void goto(withParams('/workspace/prompts/create'));
+		void goto(resolve(withParams('/workspace/prompts/create')));
 	};
 
 	const sharePrompt = (p: WorkspacePrompt) => {
@@ -224,7 +226,7 @@
 					aria-label="按标签筛选"
 				>
 					<option value="">标签</option>
-					{#each allTags as tag}
+					{#each allTags as tag (tag)}
 						<option value={tag}>{tag}</option>
 					{/each}
 				</select>
@@ -238,7 +240,8 @@
 			<!-- svelte-ignore a11y_no_static_element_interactions -->
 			<div
 				class="hover:bg-gray-850/50 flex w-full cursor-pointer space-x-4 rounded-2xl px-3 py-2.5 text-left transition"
-				onclick={() => void goto(withParams(`/workspace/prompts/${encodeURIComponent(prompt.id)}`))}
+				onclick={() =>
+					void goto(resolve(withParams(`/workspace/prompts/${encodeURIComponent(prompt.id)}`)))}
 			>
 				<div class="flex w-full flex-1 cursor-pointer flex-col space-x-4 pl-1">
 					<div class="mb-0.5 flex w-full items-center justify-between">

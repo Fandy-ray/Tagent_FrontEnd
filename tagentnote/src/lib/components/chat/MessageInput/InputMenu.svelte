@@ -246,6 +246,7 @@
 		use:portal
 		class="bg-gray-850 fixed z-[120] max-h-72 overflow-x-hidden overflow-y-auto rounded-2xl border border-gray-800 px-1 py-1 text-sm text-white shadow-lg transition"
 		style={menuStyle}
+		tabindex="-1"
 		role="menu"
 		aria-label="更多"
 	>
@@ -656,6 +657,7 @@
 		<div
 			class="bg-gray-850 flex h-full max-h-[22rem] w-full max-w-sm flex-col rounded-2xl border border-gray-800 text-white shadow-2xl"
 			onclick={(e) => e.stopPropagation()}
+			tabindex="-1"
 			role="dialog"
 			aria-modal="true"
 			aria-label="引用网页"

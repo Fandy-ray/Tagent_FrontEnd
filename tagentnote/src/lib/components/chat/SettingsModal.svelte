@@ -1,4 +1,6 @@
 <script lang="ts">
+	import { resolve } from '$app/paths';
+
 	import DataControls from '$lib/components/chat/Settings/DataControls.svelte';
 	import General from '$lib/components/chat/Settings/General.svelte';
 	import AppNotification from '$lib/components/icons/AppNotification.svelte';
@@ -32,7 +34,6 @@
 		onExportChats?: () => void;
 		onArchiveAllChats?: () => void;
 		onDeleteAllChats?: () => void;
-		onOpenArchived?: () => void;
 		onToast?: (message: string) => void;
 		/** 当前版本暂不提供管理员面板入口。 */
 		showAdminPanel?: boolean;
@@ -49,7 +50,6 @@
 		onExportChats = () => {},
 		onArchiveAllChats = () => {},
 		onDeleteAllChats = () => {},
-		onOpenArchived = () => {},
 		onToast = () => {},
 		showAdminPanel = false,
 		initialTab = 'general'
@@ -61,7 +61,7 @@
 	let searchDebounce: ReturnType<typeof setTimeout> | null = null;
 	let prevOpen = false;
 	let tabLoading = $state(false);
-	let lazyTabs = $state<Partial<Record<TabId, Component<any>>>>({});
+	let lazyTabs = $state<Partial<Record<TabId, Component<Record<string, unknown>>>>>({});
 
 	const allTabs: { id: TabId; title: string; keywords: string[] }[] = [
 		{
@@ -111,7 +111,7 @@
 		account: $i18n.t('Account')
 	});
 
-	const tabLoaders: Partial<Record<TabId, () => Promise<{ default: Component<any> }>>> = {
+	const tabLoaders = {
 		interface: () => import('$lib/components/chat/Settings/Interface.svelte'),
 		audio: () => import('$lib/components/chat/Settings/Audio.svelte'),
 		account: () => import('$lib/components/chat/Settings/Account.svelte')
@@ -124,7 +124,10 @@
 		tabLoading = true;
 		try {
 			const mod = await loader();
-			lazyTabs = { ...lazyTabs, [id]: mod.default };
+			lazyTabs = {
+				...lazyTabs,
+				[id]: mod.default as unknown as Component<Record<string, unknown>>
+			};
 		} finally {
 			tabLoading = false;
 		}
@@ -340,7 +343,7 @@
 
 					{#if userRole === 'admin' && showAdminPanel}
 						<a
-							href="/admin"
+							href={resolve('/admin')}
 							class="mt-0 flex min-w-fit flex-1 rounded-xl px-0.5 py-1 text-left transition select-none md:mt-auto md:flex-none md:px-2.5 {settings.highContrastMode
 								? 'hover:bg-gray-800'
 								: 'text-gray-600 hover:text-white'}"

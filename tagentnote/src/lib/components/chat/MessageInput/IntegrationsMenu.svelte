@@ -114,6 +114,7 @@
 		use:portal
 		class="bg-gray-850 fixed z-[120] max-h-72 overflow-y-auto rounded-2xl border border-gray-800 px-1 py-1 text-sm text-white shadow-lg"
 		style={menuStyle}
+		tabindex="-1"
 		role="menu"
 		aria-label="扩展功能"
 	>

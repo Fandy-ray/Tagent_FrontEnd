@@ -1,5 +1,7 @@
 <script lang="ts">
+	import { SvelteURLSearchParams } from 'svelte/reactivity';
 	import { goto } from '$app/navigation';
+	import { resolve } from '$app/paths';
 	import { page } from '$app/stores';
 	import { onMount } from 'svelte';
 
@@ -33,7 +35,7 @@
 	let pendingDeleteId = $state<string | null>(null);
 
 	const withParams = (path: string) => {
-		const params = new URLSearchParams();
+		const params = new SvelteURLSearchParams();
 		const model = $page.url.searchParams.get('model');
 		const chat = $page.url.searchParams.get('chat');
 		if (model) params.set('model', model);
@@ -77,13 +79,13 @@
 
 	const openItem = (item: KnowledgeCard) => {
 		if (item.notebookOnly && item.notebookId && !item.localId) {
-			const params = new URLSearchParams($page.url.searchParams);
+			const params = new SvelteURLSearchParams($page.url.searchParams);
 			params.set('notebook', item.notebookId);
 			params.set('from', 'workspace');
-			void goto(`/notebook?${params.toString()}`);
+			void goto(resolve(`/notebook?${params.toString()}`));
 			return;
 		}
-		void goto(withParams(`/workspace/knowledge/${encodeURIComponent(item.id)}`));
+		void goto(resolve(withParams(`/workspace/knowledge/${encodeURIComponent(item.id)}`)));
 	};
 
 	onMount(() => {

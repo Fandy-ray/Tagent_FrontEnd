@@ -14,7 +14,6 @@
 		path: string;
 		enabled: boolean;
 		auth_type?: string;
-		[key: string]: any;
 	};
 
 	type Props = {
@@ -53,9 +52,8 @@
 </script>
 
 <AddTerminalServerModal
-	direct
 	bind:show={showAddModal}
-	onSubmit={(server: any) => addServer(server)}
+	onSubmit={(server: TerminalServer) => addServer(server)}
 />
 
 <div>
@@ -80,7 +78,7 @@
 	</div>
 
 	<div class="flex flex-col gap-1.5">
-		{#each servers as _, idx}
+		{#each servers as server, idx (server.url || idx)}
 			<Connection
 				bind:connection={servers[idx]}
 				onSubmit={(updated: TerminalServer) => updateServer(idx, updated)}

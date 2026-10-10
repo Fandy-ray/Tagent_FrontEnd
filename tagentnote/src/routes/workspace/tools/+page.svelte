@@ -1,5 +1,7 @@
 <script lang="ts">
+	import { SvelteURLSearchParams } from 'svelte/reactivity';
 	import { goto } from '$app/navigation';
+	import { resolve } from '$app/paths';
 	import { page } from '$app/stores';
 	import { onMount } from 'svelte';
 
@@ -31,7 +33,7 @@
 	let manifestText = $state('');
 
 	const withParams = (path: string) => {
-		const params = new URLSearchParams();
+		const params = new SvelteURLSearchParams();
 		const model = $page.url.searchParams.get('model');
 		const chat = $page.url.searchParams.get('chat');
 		if (model) params.set('model', model);
@@ -59,7 +61,7 @@
 				name: `${t.name} (副本)`
 			})
 		);
-		void goto(withParams('/workspace/tools/create'));
+		void goto(resolve(withParams('/workspace/tools/create')));
 	};
 
 	const showManifest = (t: WorkspaceTool) => {
@@ -131,7 +133,9 @@
 						{
 							label: '编辑',
 							onClick: () =>
-								void goto(withParams(`/workspace/tools/edit?id=${encodeURIComponent(tool.id)}`))
+								void goto(
+									resolve(withParams(`/workspace/tools/edit?id=${encodeURIComponent(tool.id)}`))
+								)
 						},
 						{ label: '克隆', onClick: () => cloneTool(tool) },
 						{ label: '导出', onClick: () => downloadJson(`${tool.id}.json`, tool) },
@@ -201,6 +205,7 @@
 		<div
 			class="bg-gray-850 w-full max-w-md rounded-2xl border border-gray-800 p-4 shadow-2xl"
 			onclick={(e) => e.stopPropagation()}
+			tabindex="-1"
 			role="dialog"
 			aria-modal="true"
 		>

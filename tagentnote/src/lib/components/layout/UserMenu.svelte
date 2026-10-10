@@ -15,7 +15,6 @@
 		/** 兼容旧用法；variant 优先 */
 		profile?: boolean;
 		help?: boolean;
-		showActiveUsers?: boolean;
 		showPlayground?: boolean;
 		showAdmin?: boolean;
 		userName?: string;
@@ -44,7 +43,6 @@
 		userRole = 'admin',
 		profile = true,
 		help = false,
-		showActiveUsers = false,
 		showPlayground = false,
 		showAdmin = false,
 		userName = 'Tagent',
@@ -183,6 +181,7 @@
 		use:portal
 		class={`bg-gray-850 z-50 rounded-2xl border border-gray-800 px-1 py-1 text-sm text-white shadow-lg ${className}`}
 		style={menuStyle}
+		tabindex="-1"
 		role="menu"
 		aria-label={`${userName} 的菜单`}
 	>

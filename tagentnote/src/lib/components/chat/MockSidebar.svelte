@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { SvelteDate } from 'svelte/reactivity';
 	import FolderModal, { type FolderFormValue } from './FolderModal.svelte';
 	import RecursiveFolder from './RecursiveFolder.svelte';
 	import UserMenu from '$lib/components/layout/UserMenu.svelte';
@@ -25,7 +26,6 @@
 		chats?: ChatSummary[];
 		searchChats?: QaChat[];
 		folders?: QaFolder[];
-		modelId?: string;
 		userName?: string;
 		avatarText?: string;
 		activeNav?: NavKey;
@@ -35,7 +35,6 @@
 		onSelectFolder?: (folderId: string | null) => void;
 		onClose?: () => void;
 		onOpenNotes?: () => void;
-		onOpenWorkspace?: () => void;
 		onSettings?: () => void;
 		onArchivedChats?: () => void;
 		onPlayground?: () => void;
@@ -63,7 +62,6 @@
 		chats = [],
 		searchChats = [],
 		folders = [],
-		modelId = '',
 		userName = 'Tagent',
 		avatarText = 'T',
 		activeNav = 'chats',
@@ -135,7 +133,7 @@
 	const unfiledChats = $derived(filteredChats.filter((chat) => !chat.folderId));
 
 	const startOfToday = () => {
-		const date = new Date();
+		const date = new SvelteDate();
 		date.setHours(0, 0, 0, 0);
 		return date.getTime();
 	};
@@ -610,21 +608,19 @@
 				{onStatusSave}
 				{onToast}
 			>
-				{#snippet children()}
-					<div class="flex w-full items-center text-left">
-						<div class="relative mr-3 shrink-0 self-center">
-							<div
-								class="flex size-7 items-center justify-center rounded-full bg-amber-500 text-[10px] font-semibold text-white"
-							>
-								{avatarText}
-							</div>
-							<span
-								class="absolute -right-0.5 -bottom-0.5 size-2.5 rounded-full border-2 border-gray-200 bg-green-500 dark:border-gray-950"
-							></span>
+				<div class="flex w-full items-center text-left">
+					<div class="relative mr-3 shrink-0 self-center">
+						<div
+							class="flex size-7 items-center justify-center rounded-full bg-amber-500 text-[10px] font-semibold text-white"
+						>
+							{avatarText}
 						</div>
-						<div class="self-center font-medium text-gray-100">{userName}</div>
+						<span
+							class="absolute -right-0.5 -bottom-0.5 size-2.5 rounded-full border-2 border-gray-200 bg-green-500 dark:border-gray-950"
+						></span>
 					</div>
-				{/snippet}
+					<div class="self-center font-medium text-gray-100">{userName}</div>
+				</div>
 			</UserMenu>
 		</div>
 	</footer>
@@ -679,6 +675,7 @@
 		<div
 			class="bg-gray-850 w-full max-w-sm rounded-2xl border border-gray-800 p-4 text-white shadow-2xl"
 			onclick={(e) => e.stopPropagation()}
+			tabindex="-1"
 			role="dialog"
 			aria-modal="true"
 			aria-label={$i18n.t('Delete Folder')}

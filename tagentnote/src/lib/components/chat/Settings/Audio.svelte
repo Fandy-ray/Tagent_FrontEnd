@@ -11,14 +11,14 @@
 
 	let { settings, saveSettings, onSave = () => {} }: Props = $props();
 
-	let speechAutoSend = $state(settings.speechAutoSend);
-	let responseAutoPlayback = $state(settings.responseAutoPlayback);
-	let STTEngine = $state(settings.sttEngine);
-	let STTLanguage = $state(settings.sttLanguage);
-	let TTSEngine = $state(settings.ttsEngine);
-	let voice = $state(settings.ttsVoice);
-	let playbackRate = $state(settings.ttsPlaybackRate);
-	let nonLocalVoices = $state(settings.nonLocalVoices);
+	let speechAutoSend = $state(false);
+	let responseAutoPlayback = $state(false);
+	let STTEngine = $state('');
+	let STTLanguage = $state('');
+	let TTSEngine = $state('');
+	let voice = $state('');
+	let playbackRate = $state(1);
+	let nonLocalVoices = $state(false);
 	let voices = $state<SpeechSynthesisVoice[]>([]);
 
 	const loadVoices = () => {
@@ -155,9 +155,13 @@
 			<div class="mb-2.5 text-sm font-medium">设置音色</div>
 			<select class="w-full bg-transparent text-sm outline-none" bind:value={voice}>
 				<option value="" class="bg-gray-800" selected={voice !== ''}>默认</option>
-				{#each voices.filter((v) => nonLocalVoices || v.localService) as _voice}
-					<option value={_voice.name} class="bg-gray-800" selected={voice === _voice.name}>
-						{_voice.name}
+				{#each voices.filter((v) => nonLocalVoices || v.localService) as voiceOption (voiceOption.name)}
+					<option
+						value={voiceOption.name}
+						class="bg-gray-800"
+						selected={voice === voiceOption.name}
+					>
+						{voiceOption.name}
 					</option>
 				{/each}
 			</select>

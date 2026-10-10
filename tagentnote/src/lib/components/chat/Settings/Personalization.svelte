@@ -12,7 +12,7 @@
 
 	let { settings, saveSettings, onSave = () => {} }: Props = $props();
 
-	let enableMemory = $state(settings.memory);
+	let enableMemory = $state(false);
 	let showManageModal = $state(false);
 	let seeded = false;
 

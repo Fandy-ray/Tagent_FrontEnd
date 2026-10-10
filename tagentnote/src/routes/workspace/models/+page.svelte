@@ -1,5 +1,7 @@
 <script lang="ts">
+	import { SvelteURLSearchParams } from 'svelte/reactivity';
 	import { goto } from '$app/navigation';
+	import { resolve } from '$app/paths';
 	import { page } from '$app/stores';
 	import { onMount } from 'svelte';
 
@@ -49,7 +51,7 @@
 	};
 
 	const withParams = (path: string) => {
-		const params = new URLSearchParams();
+		const params = new SvelteURLSearchParams();
 		const model = $page.url.searchParams.get('model');
 		const chat = $page.url.searchParams.get('chat');
 		if (model) params.set('model', model);
@@ -154,7 +156,7 @@
 				owner: 'you'
 			})
 		);
-		void goto(withParams('/workspace/models/create'));
+		void goto(resolve(withParams('/workspace/models/create')));
 	};
 
 	const exportOne = (model: WorkspaceModel) => {
@@ -263,7 +265,9 @@
 						class="min-w-0 flex-1 text-left"
 						onclick={() => {
 							if (model.owner === 'system') return;
-							void goto(withParams(`/workspace/models/edit?id=${encodeURIComponent(model.id)}`));
+							void goto(
+								resolve(withParams(`/workspace/models/edit?id=${encodeURIComponent(model.id)}`))
+							);
 						}}
 					>
 						<div class="truncate text-sm font-medium text-white">{model.name}</div>
@@ -283,7 +287,9 @@
 										label: '编辑',
 										onClick: () =>
 											void goto(
-												withParams(`/workspace/models/edit?id=${encodeURIComponent(model.id)}`)
+												resolve(
+													withParams(`/workspace/models/edit?id=${encodeURIComponent(model.id)}`)
+												)
 											)
 									},
 									{ label: '克隆', onClick: () => cloneModel(model) },
@@ -348,6 +354,7 @@
 	<div
 		class="bg-gray-850 fixed z-[210] w-[170px] rounded-xl border border-gray-800 p-1 text-white shadow-sm"
 		style={actionsMenuStyle}
+		tabindex="-1"
 		role="menu"
 	>
 		<button

@@ -58,16 +58,16 @@
 
 	const selectAgent = (type: AgentType) => {
 		if (type === 'notebook') {
-			void goto('/notebook');
+			void goto(resolve('/notebook'));
 			return;
 		}
 
 		if (type === 'quiz') {
-			void goto(`/exam?model=${encodeURIComponent(selectedModelId)}`);
+			void goto(resolve(`/exam?model=${encodeURIComponent(selectedModelId)}`));
 			return;
 		}
 
-		void goto(`/qa?model=${encodeURIComponent(selectedModelId)}`);
+		void goto(resolve(`/qa?model=${encodeURIComponent(selectedModelId)}`));
 	};
 
 	const getIconBackground = (accent: AgentCard['accent']) => {

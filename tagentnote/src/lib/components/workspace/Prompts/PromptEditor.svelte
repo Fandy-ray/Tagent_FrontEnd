@@ -307,7 +307,7 @@
 			</div>
 
 			<div class="mt-2 mb-2 flex flex-wrap gap-1.5">
-				{#each tags as tag}
+				{#each tags as tag (tag)}
 					<button
 						type="button"
 						class="bg-gray-850 rounded-full px-2 py-0.5 text-xs text-gray-300 hover:bg-gray-800"
@@ -337,7 +337,7 @@
 				<div class="hidden w-72 shrink-0 overflow-hidden md:flex md:flex-col">
 					<div class="mb-2 shrink-0 text-xs text-gray-500">历史记录</div>
 					<div class="flex-1 space-y-0 overflow-y-auto">
-						{#each history as entry}
+						{#each history as entry (entry.id)}
 							<button
 								type="button"
 								class="mb-1 w-full rounded-2xl px-3.5 py-2 text-left transition {selectedHistoryId ===
@@ -487,7 +487,7 @@
 						</div>
 
 						<div class="mt-2 flex flex-wrap gap-1.5">
-							{#each tags as tag}
+							{#each tags as tag (tag)}
 								<button
 									type="button"
 									class="bg-gray-850 rounded-full px-2 py-0.5 text-xs text-gray-300 hover:bg-gray-800"

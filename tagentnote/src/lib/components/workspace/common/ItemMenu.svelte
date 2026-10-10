@@ -36,7 +36,7 @@
 		<div
 			class="bg-gray-850 absolute top-full right-0 z-50 mt-1 min-w-[8.5rem] overflow-hidden rounded-xl border border-gray-800 py-1 shadow-lg"
 		>
-			{#each items as item}
+			{#each items as item (item.label)}
 				<button
 					type="button"
 					class="block w-full px-3 py-1.5 text-left text-sm transition hover:bg-gray-800 {item.danger

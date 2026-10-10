@@ -1,5 +1,22 @@
 <script lang="ts">
+	import { SvelteSet, SvelteURLSearchParams } from 'svelte/reactivity';
+	type SpeechRecognitionResultLike = { [index: number]: { transcript: string } };
+	type SpeechRecognitionEventLike = { results: ArrayLike<SpeechRecognitionResultLike> };
+	type SpeechRecognitionLike = {
+		lang: string;
+		interimResults: boolean;
+		onresult: ((event: SpeechRecognitionEventLike) => void) | null;
+		onerror: (() => void) | null;
+		onend: (() => void) | null;
+		start: () => void;
+	};
+	type SpeechRecognitionConstructor = new () => SpeechRecognitionLike;
+	type SpeechWindow = Window & {
+		SpeechRecognition?: SpeechRecognitionConstructor;
+		webkitSpeechRecognition?: SpeechRecognitionConstructor;
+	};
 	import { goto } from '$app/navigation';
+	import { resolve } from '$app/paths';
 	import { page } from '$app/stores';
 	import { onDestroy, onMount, tick } from 'svelte';
 
@@ -317,8 +334,9 @@
 		dictationEnabled = !dictationEnabled;
 		toast(dictationEnabled ? '听写模式已开启（需浏览器语音权限）' : '听写模式已关闭');
 		if (!dictationEnabled) return;
+		const speechWindow = window as SpeechWindow;
 		const SpeechRecognition =
-			(window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+			speechWindow.SpeechRecognition ?? speechWindow.webkitSpeechRecognition;
 		if (!SpeechRecognition) {
 			toast('当前浏览器不支持语音听写');
 			dictationEnabled = false;
@@ -328,7 +346,7 @@
 			const recognition = new SpeechRecognition();
 			recognition.lang = 'zh-CN';
 			recognition.interimResults = false;
-			recognition.onresult = (event: any) => {
+			recognition.onresult = (event: SpeechRecognitionEventLike) => {
 				const text = event.results?.[0]?.[0]?.transcript ?? '';
 				if (text) {
 					prompt = `${prompt}${prompt ? ' ' : ''}${text}`;
@@ -348,7 +366,7 @@
 		}
 	};
 
-	const buildFollowUps = (question: string, _answer: string): string[] => {
+	const buildFollowUps = (question: string): string[] => {
 		const base = question.replace(/\s+/g, ' ').slice(0, 24);
 		return [`请更详细地解释「${base}」`, '用例子说明一下', '相关还有哪些知识点？'].filter(Boolean);
 	};
@@ -717,7 +735,7 @@
 	};
 
 	const syncUrl = () => {
-		const params = new URLSearchParams();
+		const params = new SvelteURLSearchParams();
 
 		if (selectedModelId) {
 			params.set('model', selectedModelId);
@@ -749,7 +767,7 @@
 			return;
 		}
 
-		void goto(next, {
+		void goto(resolve(next), {
 			replaceState: true,
 			keepFocus: true,
 			noScroll: true
@@ -809,7 +827,7 @@
 		bumpGeneration();
 		generating = false;
 		commitActive();
-		void goto('/agent-select');
+		void goto(resolve('/agent-select'));
 	};
 
 	const openSettings = () => {
@@ -873,7 +891,7 @@
 				...incoming.map((chat) => ({ ...chat, archived: chat.archived ?? false })),
 				...chats
 			];
-			const seen = new Set<string>();
+			const seen = new SvelteSet<string>();
 			chats = merged.filter((chat) => {
 				if (!chat?.id || seen.has(chat.id)) return false;
 				seen.add(chat.id);
@@ -932,18 +950,18 @@
 	};
 
 	const openPlayground = () => {
-		void goto('/playground');
+		void goto(resolve('/playground'));
 	};
 
 	const openAdmin = () => {
-		void goto('/admin');
+		void goto(resolve('/admin'));
 	};
 
 	const signOut = () => {
 		bumpGeneration();
 		generating = false;
 		commitActive();
-		void goto('/welcome');
+		void goto(resolve('/welcome'));
 	};
 
 	const unarchiveChat = (chatId: string) => {
@@ -1170,13 +1188,15 @@
 
 	const openExam = () => {
 		void goto(
-			`/exam?model=${encodeURIComponent(selectedModelId)}&from=qa&topic=${encodeURIComponent(collectionId)}`
+			resolve(
+				`/exam?model=${encodeURIComponent(selectedModelId)}&from=qa&topic=${encodeURIComponent(collectionId)}`
+			)
 		);
 	};
 
 	const openNotes = () => {
 		commitActive();
-		const params = new URLSearchParams();
+		const params = new SvelteURLSearchParams();
 		params.set('from', 'qa');
 		if (selectedModelId) params.set('model', selectedModelId);
 		if (collectionId) {
@@ -1184,16 +1204,7 @@
 			params.set('collection', collectionId);
 		}
 		if (activeChatId) params.set('chat', activeChatId);
-		void goto(`/notebook?${params.toString()}`);
-	};
-
-	const openWorkspace = () => {
-		commitActive();
-		const params = new URLSearchParams();
-		if (selectedModelId) params.set('model', selectedModelId);
-		if (activeChatId) params.set('chat', activeChatId);
-		const search = params.toString();
-		void goto(search ? `/workspace/models?${search}` : '/workspace/models');
+		void goto(resolve(`/notebook?${params.toString()}`));
 	};
 
 	const chatPlainText = () =>
@@ -1554,9 +1565,7 @@
 								...message,
 								model: result.model || selectedModelId,
 								citations,
-								followUps: userSettings.autoFollowUps
-									? buildFollowUps(question, result.content)
-									: undefined,
+								followUps: userSettings.autoFollowUps ? buildFollowUps(question) : undefined,
 								tags: userSettings.autoTags ? buildTags(question) : undefined
 							}
 						: message
@@ -2178,7 +2187,6 @@
 			chats={sidebarChats}
 			searchChats={modeChats}
 			{folders}
-			modelId={selectedModelId}
 			userName={userSettings.displayName}
 			avatarText={userSettings.avatarText}
 			statusEmoji={userSettings.statusEmoji}
@@ -2189,7 +2197,6 @@
 			onSelectChat={selectChat}
 			onSelectFolder={handleSelectFolder}
 			onOpenNotes={openNotes}
-			onOpenWorkspace={openWorkspace}
 			onSettings={openSettings}
 			onArchivedChats={openArchivedChats}
 			onPlayground={openPlayground}
@@ -2214,7 +2221,7 @@
 			onExportFolder={handleExportFolder}
 			knowledgeOptions={notebooks.map((item) => ({ id: item.id, name: item.name }))}
 			onOpenWorkspaceKnowledge={() => {
-				void goto('/workspace/knowledge');
+				void goto(resolve('/workspace/knowledge'));
 			}}
 			onClose={() => {
 				sidebarOpen = false;
@@ -2240,9 +2247,7 @@
 				onOpenSidebar={() => {
 					sidebarOpen = true;
 				}}
-				onNewChat={createEmptyChat}
 				onOpenExam={openExam}
-				onHome={returnToSelect}
 				onModelChange={syncUrl}
 				onCollectionChange={(id) => {
 					collectionId = id;
@@ -2512,7 +2517,6 @@
 			onExportChats={exportAllChats}
 			onArchiveAllChats={archiveAllChats}
 			onDeleteAllChats={deleteAllChats}
-			onOpenArchived={openArchivedChats}
 			onToast={(message) => {
 				saveToast = message;
 				window.setTimeout(() => {

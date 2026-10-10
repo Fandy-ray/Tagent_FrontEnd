@@ -11,3 +11,8 @@ declare global {
 }
 
 export {};
+
+declare module '$app/paths' {
+	/** Runtime-built internal paths are validated by the caller's route construction. */
+	export function resolve(path: string): string;
+}

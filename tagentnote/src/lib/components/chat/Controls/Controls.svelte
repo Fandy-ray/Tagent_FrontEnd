@@ -1,13 +1,14 @@
 <script lang="ts">
 	import { browser } from '$app/environment';
+	import type { Component } from 'svelte';
 
 	import Collapsible from '$lib/components/common/Collapsible.svelte';
 
 	type Props = {
-		params?: Record<string, any>;
+		params?: Record<string, unknown>;
 		embed?: boolean;
 		onClose?: () => void;
-		onChange?: (params: Record<string, any>) => void;
+		onChange?: (params: Record<string, unknown>) => void;
 	};
 
 	let {
@@ -30,7 +31,7 @@
 
 	let showSystemPrompt = $state(getOpen('systemPrompt'));
 	let showAdvancedParams = $state(false);
-	let AdvancedParamsComp = $state<any>(null);
+	let AdvancedParamsComp = $state<Component | null>(null);
 	let advancedLoading = $state(false);
 
 	const notify = () => {

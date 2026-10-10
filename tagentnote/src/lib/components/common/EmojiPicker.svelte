@@ -426,6 +426,7 @@
 			class={`bg-gray-850 absolute top-full z-[110] mt-2 w-80 max-w-[min(20rem,calc(100vw-2rem))] rounded-3xl border border-gray-800 text-white shadow-lg ${
 				align === 'end' ? 'right-0' : 'left-0'
 			}`}
+			tabindex="-1"
 			role="dialog"
 			aria-label="表情选择器"
 		>
@@ -444,7 +445,7 @@
 					{#each filteredGroups as group (group.label)}
 						<div class="mb-2 text-xs font-medium text-gray-500">{group.label}</div>
 						<div class="mb-3 flex flex-wrap gap-1.5">
-							{#each group.emojis as emoji}
+							{#each group.emojis as emoji (emoji)}
 								<button
 									type="button"
 									class={`cursor-pointer rounded-lg p-1.5 text-lg transition hover:bg-gray-700 ${

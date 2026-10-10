@@ -35,9 +35,7 @@
 		userName?: string;
 		avatarText?: string;
 		onOpenSidebar?: () => void;
-		onNewChat?: () => void;
 		onOpenExam?: () => void;
-		onHome?: () => void;
 		onModelChange?: () => void;
 		onCollectionChange?: (collectionId: string) => void;
 		onAssistModeChange?: (mode: AssistMode) => void;
@@ -74,9 +72,7 @@
 		userName = 'Tagent',
 		avatarText = 'T',
 		onOpenSidebar = () => {},
-		onNewChat = () => {},
 		onOpenExam = () => {},
-		onHome = () => {},
 		onModelChange = () => {},
 		onCollectionChange = () => {},
 		onAssistModeChange = () => {},

@@ -22,8 +22,6 @@
 		onCancel = () => {}
 	}: Props = $props();
 
-	let mounted = $state(false);
-
 	function scaleFly(_node: Element, { duration = 120 }: { duration?: number } = {}) {
 		return {
 			duration,
@@ -36,11 +34,7 @@
 	}
 
 	$effect(() => {
-		mounted = true;
-	});
-
-	$effect(() => {
-		if (mounted && show) {
+		if (show) {
 			const prev = document.body.style.overflow;
 			document.body.style.overflow = 'hidden';
 			const onKey = (event: KeyboardEvent) => {
@@ -69,9 +63,8 @@
 </script>
 
 {#if show}
-	<!-- svelte-ignore a11y_click_events_have_key_events -->
-	<!-- svelte-ignore a11y_no_static_element_interactions -->
 	<div
+		role="presentation"
 		class="fixed inset-0 right-0 bottom-0 left-0 z-[99999999] flex h-screen max-h-[100dvh] w-full justify-center overflow-hidden overscroll-contain bg-black/60"
 		transition:fade={{ duration: 10 }}
 		onmousedown={() => {
@@ -80,6 +73,7 @@
 		}}
 	>
 		<div
+			role="presentation"
 			class="modal-content shadow-3xl m-auto mx-2 w-[32rem] max-w-full rounded-4xl border border-white/10 bg-gray-950/95 backdrop-blur-sm"
 			in:scaleFly
 			onmousedown={(e) => e.stopPropagation()}

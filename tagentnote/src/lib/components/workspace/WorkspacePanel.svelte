@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { resolve } from '$app/paths';
 	import type { Snippet } from 'svelte';
 
 	type Props = {
@@ -35,6 +36,8 @@
 		children
 	}: Props = $props();
 </script>
+
+<!-- eslint-disable svelte/no-navigation-without-resolve -- configured external footer URLs are intentional. -->
 
 <div class="flex h-full min-h-0 flex-col">
 	<div class="flex items-center justify-between gap-3 px-0.5 pt-1">
@@ -102,9 +105,15 @@
 	{#if footerTitle}
 		<div class="mt-10 mb-4">
 			<div class="mb-1 text-xl font-medium text-white">由 Open WebUI 社区开发</div>
+			<!-- External footer URLs intentionally bypass resolve(); internal paths are resolved above. -->
+			<!-- eslint-disable-next-line svelte/no-navigation-without-resolve -->
 			<a
 				class="hover:bg-gray-850 mb-2 flex w-full items-center justify-between rounded-xl px-3.5 py-1.5 transition"
-				href={footerHref || '#'}
+				href={footerHref
+					? /^https?:\/\//i.test(footerHref)
+						? footerHref
+						: resolve(footerHref)
+					: '#'}
 				target={footerHref ? '_blank' : undefined}
 				rel={footerHref ? 'noreferrer' : undefined}
 			>

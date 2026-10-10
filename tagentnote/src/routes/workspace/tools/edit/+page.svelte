@@ -1,5 +1,7 @@
 <script lang="ts">
+	import { SvelteURLSearchParams } from 'svelte/reactivity';
 	import { goto } from '$app/navigation';
+	import { resolve } from '$app/paths';
 	import { page } from '$app/stores';
 	import { onMount } from 'svelte';
 
@@ -16,7 +18,7 @@
 	let manifest = $state<Record<string, unknown>>({});
 
 	const withParams = (path: string) => {
-		const params = new URLSearchParams();
+		const params = new SvelteURLSearchParams();
 		const model = $page.url.searchParams.get('model');
 		const chat = $page.url.searchParams.get('chat');
 		if (model) params.set('model', model);
@@ -58,7 +60,7 @@
 			updatedAt: Date.now()
 		});
 		saving = false;
-		void goto(withParams('/workspace/tools'));
+		void goto(resolve(withParams('/workspace/tools')));
 	};
 </script>
 
@@ -68,7 +70,7 @@
 		<button
 			type="button"
 			class="mt-3 block w-full text-white underline"
-			onclick={() => void goto(withParams('/workspace/tools'))}
+			onclick={() => void goto(resolve(withParams('/workspace/tools')))}
 		>
 			返回列表
 		</button>
@@ -79,7 +81,7 @@
 		subtitle={id}
 		{saving}
 		saveLabel="保存"
-		onBack={() => void goto(withParams('/workspace/tools'))}
+		onBack={() => void goto(resolve(withParams('/workspace/tools')))}
 		{onSave}
 	>
 		<div>

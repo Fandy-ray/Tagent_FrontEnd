@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { onDestroy, tick, untrack } from 'svelte';
+	import { SvelteDate, SvelteMap, SvelteSet } from 'svelte/reactivity';
 	import Modal from '$lib/components/common/Modal.svelte';
 	import Spinner from '$lib/components/common/Spinner.svelte';
 	import SearchInput from '$lib/components/layout/Sidebar/SearchInput.svelte';
@@ -56,8 +57,8 @@
 	];
 
 	const getTimeRange = (updatedAt: number) => {
-		const now = new Date();
-		const date = new Date(updatedAt);
+		const now = new SvelteDate();
+		const date = new SvelteDate(updatedAt);
 		const diffDays = (now.getTime() - date.getTime()) / (1000 * 3600 * 24);
 
 		if (
@@ -81,11 +82,11 @@
 	};
 
 	const formatCalendar = (updatedAt: number) => {
-		const now = new Date();
-		const date = new Date(updatedAt);
-		const startToday = new Date(now);
+		const now = new SvelteDate();
+		const date = new SvelteDate(updatedAt);
+		const startToday = new SvelteDate(now);
 		startToday.setHours(0, 0, 0, 0);
-		const startDate = new Date(date);
+		const startDate = new SvelteDate(date);
 		startDate.setHours(0, 0, 0, 0);
 		const dayDiff = Math.round((startToday.getTime() - startDate.getTime()) / 86400000);
 
@@ -98,7 +99,7 @@
 	};
 
 	const collectTags = (list: QaChat[]) => {
-		const map = new Map<string, string>();
+		const map = new SvelteMap<string, string>();
 		for (const chat of list) {
 			for (const tag of chat.tags ?? []) {
 				const id = tag.replaceAll(' ', '_').toLowerCase();
@@ -147,7 +148,7 @@
 		);
 		const text = textWords.join(' ');
 
-		const folderIds = new Set<string>();
+		const folderIds = new SvelteSet<string>();
 		for (const key of folderKeys) {
 			const needle = key.replaceAll(' ', '_').toLowerCase();
 			for (const folder of folders) {
@@ -282,7 +283,7 @@
 		chatListLoading = true;
 		page += 1;
 		const list = searchChats(query, page);
-		const existing = new Set(chatList.map((c) => c.id));
+		const existing = new SvelteSet(chatList.map((c) => c.id));
 		const unique = list.filter((c) => !existing.has(c.id));
 		allChatsLoaded = unique.length === 0;
 		chatList = [...chatList, ...unique];

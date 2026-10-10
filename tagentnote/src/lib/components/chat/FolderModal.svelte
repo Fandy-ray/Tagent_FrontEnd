@@ -123,6 +123,7 @@
 		<div
 			class="bg-gray-850 max-h-[90vh] w-full max-w-xl overflow-y-auto rounded-2xl border border-gray-800 text-gray-100 shadow-2xl"
 			onclick={(e) => e.stopPropagation()}
+			tabindex="-1"
 			role="dialog"
 			aria-modal="true"
 			aria-label={title}
@@ -198,7 +199,7 @@
 					<div class="mb-1 text-[11px] text-gray-500">系统提示词</div>
 					<textarea
 						class="max-h-[180px] min-h-[72px] w-full resize-y bg-transparent text-sm outline-none placeholder:text-gray-600"
-						placeholder={`请在此填写模型的系统提示词\n例如：你是《超级马里奥兄弟》中的马里奥（Mario），扮演助理的角色。`}
+						placeholder="请在此填写模型的系统提示词\n例如：你是《超级马里奥兄弟》中的马里奥（Mario），扮演助理的角色。"
 						bind:value={systemPrompt}></textarea>
 				</div>
 

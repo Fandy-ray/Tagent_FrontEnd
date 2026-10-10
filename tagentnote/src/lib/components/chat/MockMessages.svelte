@@ -82,7 +82,6 @@
 	let editingId = $state<string | null>(null);
 	let editDraft = $state('');
 	let speakingId = $state<string | null>(null);
-	let speechUtterance: SpeechSynthesisUtterance | null = null;
 
 	const defaultActions = [
 		{
@@ -105,7 +104,6 @@
 		} catch {
 			/* ignore */
 		}
-		speechUtterance = null;
 		speakingId = null;
 	};
 
@@ -135,7 +133,6 @@
 		utter.onerror = () => {
 			speakingId = null;
 		};
-		speechUtterance = utter;
 		speakingId = messageId;
 		window.speechSynthesis.speak(utter);
 	};
@@ -374,7 +371,7 @@
 
 							{#if (message.followUps?.length ?? 0) > 0 && (keepFollowUpPrompts || message.id === lastAssistantId) && !message.streaming}
 								<div class="mt-2 flex flex-wrap gap-1.5">
-									{#each message.followUps ?? [] as followUp}
+									{#each message.followUps ?? [] as followUp (followUp)}
 										<button
 											type="button"
 											class="rounded-full border border-white/10 bg-white/[0.03] px-3 py-1 text-left text-[12px] text-gray-300 transition hover:bg-white/[0.07] hover:text-white"
@@ -388,7 +385,7 @@
 
 							{#if (message.tags?.length ?? 0) > 0 && !message.streaming}
 								<div class="mt-1.5 flex flex-wrap gap-1">
-									{#each message.tags ?? [] as tag}
+									{#each message.tags ?? [] as tag (tag)}
 										<span class="rounded-full bg-white/[0.06] px-2 py-0.5 text-[10px] text-gray-400"
 											>#{tag}</span
 										>
@@ -398,7 +395,7 @@
 
 							{#if showFloatingActionButtons && !message.streaming}
 								<div class="mt-1.5 flex flex-wrap gap-1">
-									{#each actions as action}
+									{#each actions as action (action.id)}
 										<button
 											type="button"
 											class="rounded-full border border-white/10 px-2.5 py-0.5 text-[11px] text-gray-400 transition hover:bg-white/[0.06] hover:text-white"

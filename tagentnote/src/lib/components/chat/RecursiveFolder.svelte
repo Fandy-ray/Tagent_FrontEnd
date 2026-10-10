@@ -1,4 +1,5 @@
 <script lang="ts">
+	import RecursiveFolder from './RecursiveFolder.svelte';
 	import type { QaFolder } from '$lib/data/qaFolders';
 
 	export type FolderChatItem = {
@@ -209,7 +210,7 @@
 
 	{#if expanded}
 		{#each children as child (child.id)}
-			<svelte:self
+			<RecursiveFolder
 				folder={child}
 				{folders}
 				{chats}

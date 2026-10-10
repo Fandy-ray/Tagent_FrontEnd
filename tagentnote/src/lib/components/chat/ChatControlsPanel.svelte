@@ -7,11 +7,11 @@
 
 	type Props = {
 		open?: boolean;
-		params?: Record<string, any>;
+		params?: Record<string, unknown>;
 		messages?: MockMessage[];
 		modelName?: string;
 		onClose?: () => void;
-		onChange?: (params: Record<string, any>) => void;
+		onChange?: (params: Record<string, unknown>) => void;
 		onSelectMessage?: (messageId: string) => void;
 	};
 

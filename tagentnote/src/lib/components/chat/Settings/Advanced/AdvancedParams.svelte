@@ -97,13 +97,20 @@
 		'Add Custom Parameter': '添加自定义参数',
 		Ollama: 'Ollama'
 	};
-	const t = (key: string, _vars?: Record<string, unknown>) => zh[key] ?? key;
+	const t = (key: string) => zh[key] ?? key;
+	type AdvancedParams = Record<string, unknown> & {
+		reasoning_tags: boolean | [string, string] | null;
+		use_mmap?: boolean | null;
+		use_mlock?: boolean | null;
+		format?: string;
+		custom_params: Record<string, string>;
+	};
 
 	type Props = {
-		onChange?: (params: any) => void;
+		onChange?: (params: Record<string, unknown>) => void;
 		admin?: boolean;
 		custom?: boolean;
-		params?: Record<string, any>;
+		params?: AdvancedParams;
 	};
 
 	let {
@@ -135,14 +142,15 @@
 			use_mmap: null,
 			use_mlock: null,
 			think: null,
-			format: null,
+			format: undefined,
 			keep_alive: null,
 			num_keep: null,
 			num_ctx: null,
 			num_batch: null,
 			num_thread: null,
-			num_gpu: null
-		} as Record<string, any>)
+			num_gpu: null,
+			custom_params: {}
+		} as unknown as AdvancedParams)
 	}: Props = $props();
 
 	const emitChange = () => {
@@ -292,7 +300,7 @@
 					onclick={() => {
 						if ((params?.reasoning_tags ?? null) === null) {
 							params.reasoning_tags = ['', ''];
-						} else if ((params?.reasoning_tags ?? []).length === 2) {
+						} else if (Array.isArray(params.reasoning_tags) && params.reasoning_tags.length === 2) {
 							params.reasoning_tags = true;
 						} else if ((params?.reasoning_tags ?? null) !== false) {
 							params.reasoning_tags = false;
@@ -314,14 +322,14 @@
 			</div>
 		</Tooltip>
 
-		{#if ![true, false, null].includes(params?.reasoning_tags ?? null) && (params?.reasoning_tags ?? []).length === 2}
+		{#if Array.isArray(params.reasoning_tags) && params.reasoning_tags.length === 2}
 			<div class="mt-0.5 flex space-x-2">
 				<div class=" flex-1">
 					<input
 						class="w-full bg-transparent text-sm outline-hidden outline-none"
 						type="text"
 						placeholder={t('Start Tag')}
-						bind:value={params.reasoning_tags[0]}
+						bind:value={(params.reasoning_tags as [string, string])[0]}
 						autocomplete="off"
 					/>
 				</div>
@@ -331,7 +339,7 @@
 						class="w-full bg-transparent text-sm outline-hidden outline-none"
 						type="text"
 						placeholder={t('End Tag')}
-						bind:value={params.reasoning_tags[1]}
+						bind:value={(params.reasoning_tags as [string, string])[1]}
 						autocomplete="off"
 					/>
 				</div>
@@ -535,9 +543,7 @@
 			className="inline-tooltip"
 		>
 			<div class="flex w-full justify-between">
-				<div class=" self-center text-xs">
-					{'logit_bias'}
-				</div>
+				<div class=" self-center text-xs">logit_bias</div>
 				<button
 					class="flex shrink-0 rounded-sm p-1 px-3 text-xs outline-hidden transition"
 					type="button"
@@ -580,9 +586,7 @@
 			className="inline-tooltip"
 		>
 			<div class="flex w-full justify-between">
-				<div class=" self-center text-xs">
-					{'max_tokens'}
-				</div>
+				<div class=" self-center text-xs">max_tokens</div>
 
 				<button
 					class="flex shrink-0 rounded-sm p-1 px-3 text-xs outline-hidden transition"
@@ -635,9 +639,7 @@
 			className="inline-tooltip"
 		>
 			<div class="flex w-full justify-between">
-				<div class=" self-center text-xs">
-					{'top_k'}
-				</div>
+				<div class=" self-center text-xs">top_k</div>
 				<button
 					class="flex shrink-0 rounded-sm p-1 px-3 text-xs outline-hidden transition"
 					type="button"
@@ -690,9 +692,7 @@
 			className="inline-tooltip"
 		>
 			<div class="flex w-full justify-between">
-				<div class=" self-center text-xs">
-					{'top_p'}
-				</div>
+				<div class=" self-center text-xs">top_p</div>
 
 				<button
 					class="flex shrink-0 rounded-sm p-1 px-3 text-xs outline-hidden transition"
@@ -746,9 +746,7 @@
 			className="inline-tooltip"
 		>
 			<div class="flex w-full justify-between">
-				<div class=" self-center text-xs">
-					{'min_p'}
-				</div>
+				<div class=" self-center text-xs">min_p</div>
 				<button
 					class="flex shrink-0 rounded-sm p-1 px-3 text-xs outline-hidden transition"
 					type="button"
@@ -801,9 +799,7 @@
 			className="inline-tooltip"
 		>
 			<div class="flex w-full justify-between">
-				<div class=" self-center text-xs">
-					{'frequency_penalty'}
-				</div>
+				<div class=" self-center text-xs">frequency_penalty</div>
 
 				<button
 					class="flex shrink-0 rounded-sm p-1 px-3 text-xs outline-hidden transition"
@@ -857,9 +853,7 @@
 			className="inline-tooltip"
 		>
 			<div class="flex w-full justify-between">
-				<div class=" self-center text-xs">
-					{'presence_penalty'}
-				</div>
+				<div class=" self-center text-xs">presence_penalty</div>
 
 				<button
 					class="flex flex-shrink-0 rounded p-1 px-3 text-xs transition outline-none"
@@ -911,9 +905,7 @@
 			className="inline-tooltip"
 		>
 			<div class="flex w-full justify-between">
-				<div class=" self-center text-xs">
-					{'mirostat'}
-				</div>
+				<div class=" self-center text-xs">mirostat</div>
 				<button
 					class="flex shrink-0 rounded-sm p-1 px-3 text-xs outline-hidden transition"
 					type="button"
@@ -966,9 +958,7 @@
 			className="inline-tooltip"
 		>
 			<div class="flex w-full justify-between">
-				<div class=" self-center text-xs">
-					{'mirostat_eta'}
-				</div>
+				<div class=" self-center text-xs">mirostat_eta</div>
 				<button
 					class="flex shrink-0 rounded-sm p-1 px-3 text-xs outline-hidden transition"
 					type="button"
@@ -1021,9 +1011,7 @@
 			className="inline-tooltip"
 		>
 			<div class="flex w-full justify-between">
-				<div class=" self-center text-xs">
-					{'mirostat_tau'}
-				</div>
+				<div class=" self-center text-xs">mirostat_tau</div>
 
 				<button
 					class="flex shrink-0 rounded-sm p-1 px-3 text-xs outline-hidden transition"
@@ -1075,9 +1063,7 @@
 			className="inline-tooltip"
 		>
 			<div class="flex w-full justify-between">
-				<div class=" self-center text-xs">
-					{'repeat_last_n'}
-				</div>
+				<div class=" self-center text-xs">repeat_last_n</div>
 
 				<button
 					class="flex shrink-0 rounded-sm p-1 px-3 text-xs outline-hidden transition"
@@ -1131,9 +1117,7 @@
 			className="inline-tooltip"
 		>
 			<div class="flex w-full justify-between">
-				<div class=" self-center text-xs">
-					{'tfs_z'}
-				</div>
+				<div class=" self-center text-xs">tfs_z</div>
 
 				<button
 					class="flex shrink-0 rounded-sm p-1 px-3 text-xs outline-hidden transition"
@@ -1187,9 +1171,7 @@
 			className="inline-tooltip"
 		>
 			<div class="flex w-full justify-between">
-				<div class=" self-center text-xs">
-					{'repeat_penalty'}
-				</div>
+				<div class=" self-center text-xs">repeat_penalty</div>
 
 				<button
 					class="flex flex-shrink-0 rounded p-1 px-3 text-xs transition outline-none"
@@ -1244,9 +1226,7 @@
 				className="inline-tooltip"
 			>
 				<div class="flex w-full justify-between">
-					<div class=" self-center text-xs">
-						{'use_mmap'}
-					</div>
+					<div class=" self-center text-xs">use_mmap</div>
 					<button
 						class="flex shrink-0 rounded-sm p-1 px-3 text-xs outline-hidden transition"
 						type="button"
@@ -1269,7 +1249,10 @@
 						{params.use_mmap ? t('Enabled') : t('Disabled')}
 					</div>
 					<div class=" pr-2">
-						<Switch bind:state={params.use_mmap} />
+						<Switch
+							state={params.use_mmap ?? false}
+							onChange={() => (params.use_mmap = !(params.use_mmap ?? false))}
+						/>
 					</div>
 				</div>
 			{/if}
@@ -1284,9 +1267,7 @@
 				className="inline-tooltip"
 			>
 				<div class="flex w-full justify-between">
-					<div class=" self-center text-xs">
-						{'use_mlock'}
-					</div>
+					<div class=" self-center text-xs">use_mlock</div>
 
 					<button
 						class="flex shrink-0 rounded-sm p-1 px-3 text-xs outline-hidden transition"
@@ -1311,7 +1292,10 @@
 					</div>
 
 					<div class=" pr-2">
-						<Switch bind:state={params.use_mlock} />
+						<Switch
+							state={params.use_mlock ?? false}
+							onChange={() => (params.use_mlock = !(params.use_mlock ?? false))}
+						/>
 					</div>
 				</div>
 			{/if}
@@ -1328,7 +1312,7 @@
 		>
 			<div class=" flex w-full justify-between py-0.5">
 				<div class=" self-center text-xs">
-					{'think'} ({t('Ollama')})
+					think ({t('Ollama')})
 				</div>
 				<button
 					class="flex rounded-sm p-1 px-3 text-xs transition"
@@ -1381,12 +1365,12 @@
 		>
 			<div class=" flex w-full justify-between py-0.5">
 				<div class=" self-center text-xs">
-					{'format'} ({t('Ollama')})
+					format ({t('Ollama')})
 				</div>
 				<button
 					class="flex rounded-sm p-1 px-3 text-xs transition"
 					onclick={() => {
-						params.format = (params?.format ?? null) === null ? 'json' : null;
+						params.format = (params?.format ?? null) === null ? 'json' : undefined;
 					}}
 					type="button"
 				>
@@ -1420,7 +1404,7 @@
 		>
 			<div class="flex w-full justify-between">
 				<div class=" self-center text-xs">
-					{'num_keep'} ({t('Ollama')})
+					num_keep ({t('Ollama')})
 				</div>
 
 				<button
@@ -1473,7 +1457,7 @@
 		>
 			<div class="flex w-full justify-between">
 				<div class=" self-center text-xs">
-					{'num_ctx'} ({t('Ollama')})
+					num_ctx ({t('Ollama')})
 				</div>
 
 				<button
@@ -1528,7 +1512,7 @@
 		>
 			<div class="flex w-full justify-between">
 				<div class=" self-center text-xs">
-					{'num_batch'} ({t('Ollama')})
+					num_batch ({t('Ollama')})
 				</div>
 
 				<button
@@ -1584,7 +1568,7 @@
 			>
 				<div class="flex w-full justify-between">
 					<div class=" self-center text-xs">
-						{'num_thread'} ({t('Ollama')})
+						num_thread ({t('Ollama')})
 					</div>
 
 					<button
@@ -1640,7 +1624,7 @@
 			>
 				<div class="flex w-full justify-between">
 					<div class=" self-center text-xs">
-						{'num_gpu'} ({t('Ollama')})
+						num_gpu ({t('Ollama')})
 					</div>
 
 					<button
@@ -1696,7 +1680,7 @@
 			>
 				<div class=" flex w-full justify-between py-0.5">
 					<div class=" self-center text-xs">
-						{'keep_alive'} ({t('Ollama')})
+						keep_alive ({t('Ollama')})
 					</div>
 					<button
 						class="flex rounded-sm p-1 px-3 text-xs transition"
@@ -1728,7 +1712,7 @@
 
 		{#if custom && admin}
 			<div class="flex flex-col justify-center">
-				{#each Object.keys(params?.custom_params ?? {}) as key}
+				{#each Object.keys(params?.custom_params ?? {}) as key (key)}
 					<div class=" mb-1 w-full justify-between py-0.5">
 						<div class="flex w-full justify-between">
 							<div class=" self-center text-xs">

@@ -19,8 +19,8 @@
 		ariaLabel
 	}: Props = $props();
 
-	const minHeight = minSize !== undefined ? `${minSize}px` : undefined;
-	const maxHeight = maxSize !== undefined ? `${maxSize}px` : undefined;
+	const minHeight = $derived(minSize !== undefined ? `${minSize}px` : undefined);
+	const maxHeight = $derived(maxSize !== undefined ? `${maxSize}px` : undefined);
 </script>
 
 <textarea

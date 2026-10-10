@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { resolve } from '$app/paths';
 	import type { Snippet } from 'svelte';
 	import Search from '$lib/components/icons/Search.svelte';
 	import Plus from '$lib/components/icons/Plus.svelte';
@@ -84,7 +85,7 @@
 					{#if primaryHref}
 						<a
 							class="inline-flex items-center gap-0.5 rounded-lg bg-white px-2 py-1 text-xs leading-none font-medium text-black transition hover:bg-gray-200"
-							href={primaryHref}
+							href={resolve(primaryHref)}
 						>
 							<Plus className="size-3" />
 							<span class="hidden md:inline">{primaryLabel}</span>

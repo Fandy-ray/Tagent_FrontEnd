@@ -1,5 +1,6 @@
 <script>
 	import { goto } from '$app/navigation';
+	import { resolve } from '$app/paths';
 	import { onMount } from 'svelte';
 
 	let phase = $state(0); // 0=hidden, 1=badge, 2=title, 3=cta
@@ -7,7 +8,7 @@
 	onMount(() => {
 		try {
 			localStorage.setItem('theme', 'dark');
-		} catch (_) {
+		} catch {
 			// 本地存储不可用时保持当前主题
 		}
 
@@ -86,7 +87,7 @@
 
 		<p class="subtitle" class:show={phase >= 2}>课程答疑 · 论文辅助 · 知识笔记本 · 智能测评</p>
 
-		<button class="cta-btn" class:show={phase >= 3} onclick={() => goto('/agent-select')}>
+		<button class="cta-btn" class:show={phase >= 3} onclick={() => goto(resolve('/agent-select'))}>
 			<span class="cta-text">进入平台</span>
 			<span class="cta-arrow">→</span>
 		</button>

@@ -1,5 +1,7 @@
 <script lang="ts">
+	import { SvelteURLSearchParams } from 'svelte/reactivity';
 	import { goto } from '$app/navigation';
+	import { resolve } from '$app/paths';
 	import { page } from '$app/stores';
 	import { onMount } from 'svelte';
 
@@ -21,7 +23,7 @@
 	] as const;
 
 	const withParams = (path: string, extra?: Record<string, string>) => {
-		const params = new URLSearchParams();
+		const params = new SvelteURLSearchParams();
 		if (modelId) params.set('model', modelId);
 		if (activeChatId) params.set('chat', activeChatId);
 		if (extra) {
@@ -49,14 +51,14 @@
 	});
 
 	const goQa = (opts?: { newChat?: boolean; chatId?: string }) => {
-		const params = new URLSearchParams();
+		const params = new SvelteURLSearchParams();
 		if (modelId) params.set('model', modelId);
 		if (!opts?.newChat) {
 			const chatId = opts?.chatId ?? activeChatId;
 			if (chatId) params.set('chat', chatId);
 		}
 		const search = params.toString();
-		void goto(search ? `/qa?${search}` : '/qa');
+		void goto(resolve(search ? `/qa?${search}` : '/qa'));
 	};
 </script>
 
@@ -70,13 +72,11 @@
 			{activeChatId}
 			{chats}
 			{searchChats}
-			{modelId}
 			activeNav="workspace"
-			onHome={() => goto('/agent-select')}
+			onHome={() => goto(resolve('/agent-select'))}
 			onNewChat={() => goQa({ newChat: true })}
 			onSelectChat={(chatId) => goQa({ chatId })}
-			onOpenNotes={() => goto(withParams('/notebook', { from: 'qa' }))}
-			onOpenWorkspace={() => goto(withParams('/workspace/models'))}
+			onOpenNotes={() => goto(resolve(withParams('/notebook', { from: 'qa' })))}
 			onClose={() => {
 				sidebarOpen = false;
 			}}
@@ -119,7 +119,7 @@
 							class={`min-w-fit p-1.5 transition select-none ${
 								isActiveTab(tab.href) ? 'text-white' : 'text-gray-600 hover:text-white'
 							}`}
-							href={withParams(tab.href)}
+							href={resolve(withParams(tab.href))}
 						>
 							{tab.label}
 						</a>

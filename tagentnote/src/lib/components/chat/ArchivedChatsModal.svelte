@@ -45,6 +45,7 @@
 		<div
 			class="bg-gray-850 flex max-h-[80vh] w-full max-w-lg flex-col rounded-2xl border border-gray-800 text-white shadow-2xl"
 			onclick={(event) => event.stopPropagation()}
+			tabindex="-1"
 			role="dialog"
 			aria-modal="true"
 			aria-label="已归档对话"

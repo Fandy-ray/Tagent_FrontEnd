@@ -31,6 +31,7 @@
 		<div
 			class="bg-gray-850 w-full max-w-sm rounded-2xl border border-gray-800 p-4 text-white shadow-2xl"
 			onclick={(e) => e.stopPropagation()}
+			tabindex="-1"
 			role="dialog"
 			aria-modal="true"
 		>

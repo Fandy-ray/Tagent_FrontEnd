@@ -40,7 +40,7 @@
 </script>
 
 <div class="flex flex-wrap gap-1">
-	{#each tags as tag}
+	{#each tags as tag (tag.name)}
 		<div class="flex items-center gap-1 rounded-full bg-gray-700 px-2 py-0.5 text-xs text-gray-200">
 			<span>{tag.name}</span>
 			{#if !readonly}

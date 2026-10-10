@@ -13,6 +13,18 @@
 	import Spinner from '$lib/components/common/Spinner.svelte';
 	import XMark from '$lib/components/icons/XMark.svelte';
 	import Textarea from '$lib/components/common/Textarea.svelte';
+	export type ConnectionConfig = {
+		auth_type?: string;
+		headers?: string | Record<string, string>;
+		enable?: boolean;
+		tags?: Array<{ name: string }>;
+		prefix_id?: string;
+		model_ids?: string[];
+		connection_type?: string;
+		azure?: boolean;
+		api_version?: string;
+	};
+	export type ConnectionDraft = { url: string; key: string; config: ConnectionConfig };
 
 	const showToast = (message: string, type: 'success' | 'error' = 'success') => {
 		const toast = document.createElement('div');
@@ -26,8 +38,8 @@
 		show?: boolean;
 		edit?: boolean;
 		direct?: boolean;
-		connection?: any;
-		onSubmit?: (connection: any) => void;
+		connection?: ConnectionDraft | null;
+		onSubmit?: (connection: ConnectionDraft) => void;
 		onDelete?: () => void;
 	};
 
@@ -49,16 +61,11 @@
 	let prefixId = $state('');
 	let enable = $state(true);
 	let headers = $state('');
-	let tags: any[] = $state([]);
+	let tags: Array<{ name: string }> = $state([]);
 	let modelId = $state('');
-	let modelIds: any[] = $state([]);
+	let modelIds: string[] = $state([]);
 	let loading = $state(false);
 	let showDeleteConfirmDialog = $state(false);
-
-	$effect(() => {
-		azure =
-			(url.includes('azure.') || url.includes('cognitive.microsoft.com')) && !direct ? true : false;
-	});
 
 	const verifyOpenAIHandler = async () => {
 		url = url.replace(/\/$/, '');
@@ -174,7 +181,9 @@
 			modelIds = connection.config?.model_ids ?? [];
 
 			connectionType = connection.config?.connection_type ?? 'external';
-			azure = connection.config?.azure ?? false;
+			azure =
+				connection.config?.azure ??
+				((url.includes('azure.') || url.includes('cognitive.microsoft.com')) && !direct);
 			apiVersion = connection.config?.api_version ?? '';
 		}
 	};
@@ -203,7 +212,7 @@
 					show = false;
 				}}
 			>
-				<XMark className={'size-5'} />
+				<XMark className="size-5" />
 			</button>
 		</div>
 
@@ -464,7 +473,7 @@
 
 							{#if modelIds.length > 0}
 								<ul class="flex flex-col">
-									{#each modelIds as _, modelIdx}
+									{#each modelIds as modelId, modelIdx (modelId)}
 										{@const m = modelIds[modelIdx]}
 										<li class="flex w-full items-center justify-between gap-2">
 											<div class="flex-1 rounded-lg py-1 text-sm">

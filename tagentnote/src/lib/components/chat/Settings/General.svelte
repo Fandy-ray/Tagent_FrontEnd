@@ -1,4 +1,6 @@
 <script lang="ts">
+	import type { Component } from 'svelte';
+
 	import { applyTheme, type UserSettings } from '$lib/data/userSettings';
 	import { getI18nContext } from '$lib/i18n';
 
@@ -12,7 +14,7 @@
 
 	let { settings, saveSettings, onSave = () => {} }: Props = $props();
 
-	const buildParams = (source: Record<string, any> = {}) => {
+	const buildParams = (source: Record<string, unknown> = {}) => {
 		const next = { ...source };
 		const stopRaw = next.stop;
 		const customParams = { ...(next.custom_params ?? {}) };
@@ -49,15 +51,23 @@
 		};
 	};
 
-	let selectedTheme = $state(settings.theme);
-	let lang = $state(settings.language);
-	let notificationEnabled = $state(settings.notificationEnabled);
-	let system = $state(settings.system);
+	let selectedTheme = $state<UserSettings['theme']>('system');
+	let lang = $state('');
+	let notificationEnabled = $state(false);
+	let system = $state('');
 	let showAdvanced = $state(false);
-	let params = $state<Record<string, any>>(buildParams(settings.params ?? {}));
+	let params = $state<Record<string, unknown>>(buildParams());
 	let advancedLoading = $state(false);
 
-	let AdvancedParamsComp = $state<any>(null);
+	let AdvancedParamsComp = $state<Component | null>(null);
+
+	$effect(() => {
+		selectedTheme = settings.theme;
+		lang = settings.language;
+		notificationEnabled = settings.notificationEnabled;
+		system = settings.system;
+		params = buildParams(settings.params ?? {});
+	});
 
 	const themeChangeHandler = async (theme: UserSettings['theme']) => {
 		selectedTheme = theme;

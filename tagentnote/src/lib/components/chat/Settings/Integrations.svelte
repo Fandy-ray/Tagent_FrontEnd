@@ -84,7 +84,7 @@
 						</div>
 
 						<div class="flex flex-col gap-1.5">
-							{#each servers as _, idx}
+							{#each servers as server, idx (server.id ?? idx)}
 								<Connection
 									bind:connection={servers[idx]}
 									onSubmit={() => updateHandler()}

@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
+	import { resolve } from '$app/paths';
 </script>
 
 <svelte:head>
@@ -15,7 +16,7 @@
 		<button
 			type="button"
 			class="mt-6 rounded-xl bg-gray-800 px-4 py-2 text-sm transition hover:bg-gray-700"
-			onclick={() => goto('/qa')}
+			onclick={() => goto(resolve('/qa'))}
 		>
 			返回答疑
 		</button>

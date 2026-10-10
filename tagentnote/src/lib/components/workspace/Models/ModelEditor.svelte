@@ -66,7 +66,15 @@
 	let showAdvanced = $state(false);
 	let showPreview = $state(false);
 	let showAccessModal = $state(false);
-	let params = $state<Record<string, any>>({});
+	let params = $state<
+		Record<string, unknown> & {
+			reasoning_tags: boolean | [string, string] | null;
+			custom_params: Record<string, string>;
+			use_mmap?: boolean | null;
+			use_mlock?: boolean | null;
+			format?: string;
+		}
+	>({ reasoning_tags: null, custom_params: {} });
 	let suggestionPrompts = $state<SuggestionPrompt[] | null>(null);
 	let knowledgeIds = $state<string[]>([]);
 	let knowledgeFiles = $state<{ id: string; name: string; type: 'file'; size?: number }[]>([]);
@@ -150,7 +158,11 @@
 		defaultFeatureIds = [...(model.meta?.defaultFeatureIds || [])];
 		suggestionPrompts = normalizeSuggestions(model.meta?.suggestionPrompts);
 		ttsVoice = model.meta?.ttsVoice || '';
-		params = { ...(model.params || {}) };
+		params = {
+			reasoning_tags: null,
+			custom_params: {},
+			...(model.params || {})
+		};
 		if (typeof params.stop === 'object' && Array.isArray(params.stop)) {
 			params = { ...params, stop: params.stop.join(',') };
 		}
@@ -471,7 +483,7 @@
 
 					<div class="mb-1 w-full max-w-full">
 						<div class="flex flex-wrap gap-1.5">
-							{#each tags as tag}
+							{#each tags as tag (tag)}
 								<button
 									type="button"
 									class="bg-gray-850 rounded-full px-2 py-0.5 text-xs text-gray-300 hover:bg-gray-800"
@@ -508,7 +520,7 @@
 						<div class="mb-2 text-xs font-medium">系统提示词</div>
 						<Textarea
 							className="w-full resize-none overflow-y-hidden bg-transparent text-sm outline-none"
-							placeholder={'在此编写模型系统提示词内容\n例如）你是《超级马里奥兄弟》中的马里奥，扮演助手的角色。'}
+							placeholder="在此编写模型系统提示词内容\n例如）你是《超级马里奥兄弟》中的马里奥，扮演助手的角色。"
 							rows={4}
 							bind:value={system}
 						/>

@@ -11,13 +11,26 @@
 	import Textarea from '$lib/components/common/Textarea.svelte';
 	import ConfirmDialog from '$lib/components/common/ConfirmDialog.svelte';
 	import { fileSaver } from '$lib/utils/fileSaver';
+	import type { ToolServer } from '$lib/data/userSettings';
+	type ToolImportData = {
+		type?: 'openapi' | 'mcp';
+		url?: string;
+		spec_type?: 'url' | 'json';
+		spec?: string;
+		path?: string;
+		auth_type?: string;
+		headers?: Record<string, string>;
+		key?: string;
+		info?: { id?: string; name?: string; description?: string };
+		config?: { enable?: boolean };
+	};
 
 	type Props = {
 		show?: boolean;
 		edit?: boolean;
 		direct?: boolean;
-		connection?: any;
-		onSubmit?: (c: any) => void;
+		connection?: ToolServer | null;
+		onSubmit?: (c: ToolServer) => void;
 		onDelete?: () => void;
 	};
 
@@ -57,7 +70,7 @@
 		reader.onload = (event) => {
 			const json = String(event.target?.result ?? '');
 			try {
-				let data: any = JSON.parse(json);
+				let data: ToolImportData | ToolImportData[] = JSON.parse(json);
 				if (Array.isArray(data)) {
 					if (data.length === 0) {
 						alert($i18n.t('Please select a valid JSON file'));
@@ -102,10 +115,11 @@
 					spec_type,
 					spec,
 					path,
-					auth_type,
+					auth_type: auth_type as ToolServer['auth_type'],
 					headers: headers ? JSON.parse(headers) : undefined,
 					key,
-					info: { id, name, description }
+					info: { id, name, description },
+					enabled: enable
 				}
 			],
 			null,
@@ -150,14 +164,15 @@
 				spec_type,
 				spec,
 				path,
-				auth_type,
+				auth_type: auth_type as ToolServer['auth_type'],
 				headers: headers ? JSON.parse(headers) : undefined,
 				key,
 				config: {
 					enable,
 					function_name_filter_list: functionNameFilterList
 				},
-				info: { id, name, description }
+				info: { id, name, description },
+				enabled: enable
 			};
 
 			await onSubmit(connection);
@@ -241,7 +256,7 @@
 						show = false;
 					}}
 				>
-					<XMark className={'size-5'} />
+					<XMark className="size-5" />
 				</button>
 			</div>
 		</div>

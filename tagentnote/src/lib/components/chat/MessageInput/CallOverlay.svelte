@@ -72,6 +72,7 @@
 		<div
 			class="relative w-full max-w-md rounded-3xl border border-gray-800 bg-gray-900 px-6 py-8 text-center text-white shadow-2xl"
 			onclick={(e) => e.stopPropagation()}
+			tabindex="-1"
 			role="dialog"
 			aria-modal="true"
 			aria-label="语音模式"

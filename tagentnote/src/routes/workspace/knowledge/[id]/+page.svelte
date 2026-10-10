@@ -1,5 +1,7 @@
 <script lang="ts">
+	import { SvelteURLSearchParams } from 'svelte/reactivity';
 	import { goto } from '$app/navigation';
+	import { resolve } from '$app/paths';
 	import { page } from '$app/stores';
 	import { onMount } from 'svelte';
 
@@ -28,7 +30,7 @@
 	let confirmKb = $state(false);
 
 	const withParams = (path: string) => {
-		const params = new URLSearchParams();
+		const params = new SvelteURLSearchParams();
 		const model = $page.url.searchParams.get('model');
 		const chat = $page.url.searchParams.get('chat');
 		if (model) params.set('model', model);
@@ -97,10 +99,10 @@
 
 	const openNotebook = () => {
 		if (!notebookId.trim()) return;
-		const params = new URLSearchParams($page.url.searchParams);
+		const params = new SvelteURLSearchParams($page.url.searchParams);
 		params.set('notebook', notebookId.trim());
 		params.set('from', 'workspace');
-		void goto(`/notebook?${params.toString()}`);
+		void goto(resolve(`/notebook?${params.toString()}`));
 	};
 
 	onMount(load);
@@ -112,7 +114,7 @@
 		<button
 			type="button"
 			class="mt-3 block w-full text-white underline"
-			onclick={() => void goto(withParams('/workspace/knowledge'))}
+			onclick={() => void goto(resolve(withParams('/workspace/knowledge')))}
 		>
 			返回列表
 		</button>
@@ -123,7 +125,7 @@
 		subtitle={item.id}
 		{saving}
 		saveLabel="保存"
-		onBack={() => void goto(withParams('/workspace/knowledge'))}
+		onBack={() => void goto(resolve(withParams('/workspace/knowledge')))}
 		{onSave}
 	>
 		<div>
@@ -219,6 +221,7 @@
 		<div
 			class="bg-gray-850 w-full max-w-md rounded-2xl border border-gray-800 p-4 shadow-2xl"
 			onclick={(e) => e.stopPropagation()}
+			tabindex="-1"
 			role="dialog"
 			aria-modal="true"
 		>
@@ -276,7 +279,7 @@
 	onConfirm={() => {
 		if (item) {
 			deleteKnowledge(item.id);
-			void goto(withParams('/workspace/knowledge'));
+			void goto(resolve(withParams('/workspace/knowledge')));
 		}
 	}}
 />

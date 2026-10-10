@@ -1,5 +1,7 @@
 <script lang="ts">
+	import { SvelteURLSearchParams } from 'svelte/reactivity';
 	import { goto } from '$app/navigation';
+	import { resolve } from '$app/paths';
 	import { page } from '$app/stores';
 	import { onMount } from 'svelte';
 
@@ -16,7 +18,7 @@
 	let isActive = $state(true);
 
 	const withParams = (path: string) => {
-		const params = new URLSearchParams();
+		const params = new SvelteURLSearchParams();
 		const model = $page.url.searchParams.get('model');
 		const chat = $page.url.searchParams.get('chat');
 		if (model) params.set('model', model);
@@ -62,7 +64,7 @@
 			updatedAt: Date.now()
 		});
 		saving = false;
-		void goto(withParams('/workspace/skills'));
+		void goto(resolve(withParams('/workspace/skills')));
 	};
 </script>
 
@@ -71,7 +73,7 @@
 	subtitle="Markdown 技能定义"
 	{saving}
 	saveLabel="保存并创建"
-	onBack={() => void goto(withParams('/workspace/skills'))}
+	onBack={() => void goto(resolve(withParams('/workspace/skills')))}
 	{onSave}
 >
 	<div>
@@ -110,10 +112,10 @@
 		<label class={label} for="skill-content">内容（Markdown）</label>
 		<textarea
 			id="skill-content"
-			class="{field} min-h-[12rem] resize-y font-mono text-xs"
+			class={`${field} min-h-[12rem] resize-y font-mono text-xs`}
 			bind:value={content}
 			rows="12"
-			placeholder={'---\nname: my-skill\n---\n\nInstructions…'}></textarea>
+			placeholder="---\nname: my-skill\n---\n\nInstructions…"></textarea>
 	</div>
 	<div class="flex items-center justify-between py-1">
 		<span class="text-sm text-gray-300">启用</span>

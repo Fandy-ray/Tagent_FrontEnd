@@ -2,9 +2,9 @@
 	import { getI18nContext } from '$lib/i18n';
 	import Tooltip from '$lib/components/common/Tooltip.svelte';
 	import Switch from '$lib/components/common/Switch.svelte';
-	import SensitiveInput from '$lib/components/common/SensitiveInput.svelte';
 	import Cog6 from '$lib/components/icons/Cog6.svelte';
 	import AddConnectionModal from './AddConnectionModal.svelte';
+	import type { ConnectionDraft, ConnectionConfig } from './AddConnectionModal.svelte';
 	import ConfirmDialog from '$lib/components/common/ConfirmDialog.svelte';
 
 	const i18n = getI18nContext();
@@ -12,9 +12,9 @@
 	type Props = {
 		url?: string;
 		key?: string;
-		config?: Record<string, any>;
+		config?: ConnectionConfig;
 		highContrastMode?: boolean;
-		onSubmit?: (connection: any) => void;
+		onSubmit?: (connection: ConnectionDraft) => void;
 		onDelete?: () => void;
 	};
 
@@ -42,7 +42,7 @@
 	onDelete={() => {
 		showDeleteConfirmDialog = true;
 	}}
-	onSubmit={(connection: any) => {
+	onSubmit={(connection: ConnectionDraft) => {
 		url = connection.url;
 		key = connection.key;
 		config = connection.config;

@@ -10,6 +10,13 @@
 	import Plus from '$lib/components/icons/Plus.svelte';
 	import Star from '$lib/components/icons/Star.svelte';
 	import XMark from '$lib/components/icons/XMark.svelte';
+	import type { UserSettings, DirectConnection } from '$lib/data/userSettings';
+
+	type LegacyConnectionSettings = {
+		OPENAI_API_BASE_URLS?: string[];
+		OPENAI_API_KEYS?: string[];
+		OPENAI_API_CONFIGS?: Array<Record<string, string | number | boolean>>;
+	};
 
 	const i18n = getI18nContext();
 
@@ -26,8 +33,8 @@
 	};
 
 	type Props = {
-		settings: any;
-		saveSettings: (updated: any) => Promise<void> | void;
+		settings: UserSettings;
+		saveSettings: (updated: Partial<UserSettings>) => Promise<void> | void;
 		onSave?: () => void;
 	};
 
@@ -61,31 +68,41 @@
 		loading = true;
 		error = '';
 		try {
-			const stored: any = settings?.directConnections;
+			const stored = settings?.directConnections as unknown as
+				DirectConnection[] | LegacyConnectionSettings | undefined;
 			if (Array.isArray(stored)) {
-				providers = stored as Provider[];
+				providers = stored.map((connection, idx) => ({
+					id: `connection-${idx}`,
+					name: `Connection ${idx + 1}`,
+					base_url: connection.url,
+					upstream_model: '',
+					auth_mode: 'bearer' as const,
+					temperature: 0.1,
+					enabled: connection.enabled ?? true
+				}));
 			} else if (stored && typeof stored === 'object') {
 				// Migrate from old OPENAI_API_BASE_URLS/KEYS/CONFIGS format to array
-				const urls: any[] = stored.OPENAI_API_BASE_URLS ?? [];
-				const keys: any[] = stored.OPENAI_API_KEYS ?? [];
-				const configs: any = stored.OPENAI_API_CONFIGS ?? {};
-				providers = urls.map((url: any, idx: number) => ({
+				const urls = stored.OPENAI_API_BASE_URLS ?? [];
+				const keys = stored.OPENAI_API_KEYS ?? [];
+				const configs = stored.OPENAI_API_CONFIGS ?? [];
+				providers = urls.map((url: string, idx: number) => ({
 					id: `migrated-${idx}-${Date.now()}`,
-					name: configs?.[idx]?.name || `Connection ${idx + 1}`,
+					name: String(configs?.[idx]?.name || `Connection ${idx + 1}`),
 					base_url: url,
-					upstream_model: configs?.[idx]?.upstream_model || '',
+					upstream_model: String(configs?.[idx]?.upstream_model || ''),
 					auth_mode: 'bearer',
 					api_key_masked: keys[idx]
 						? `${String(keys[idx]).slice(0, 4)}${'*'.repeat(Math.max(4, String(keys[idx]).length - 4))}`
 						: undefined,
-					model_id: configs?.[idx]?.model_id,
-					temperature: configs?.[idx]?.temperature ?? 0.1,
-					enabled: configs?.[idx]?.enable ?? true
+					model_id: configs?.[idx]?.model_id ? String(configs[idx].model_id) : undefined,
+					temperature: Number(configs?.[idx]?.temperature ?? 0.1),
+					enabled: Boolean(configs?.[idx]?.enable ?? true)
 				}));
 			} else {
 				providers = [];
 			}
-			defaultModelId = settings?.defaultAgentModelId ?? '';
+			defaultModelId =
+				(settings as UserSettings & { defaultAgentModelId?: string }).defaultAgentModelId ?? '';
 		} catch (exception) {
 			error = exception instanceof Error ? exception.message : 'Unable to load models.';
 		} finally {
@@ -95,9 +112,13 @@
 
 	const persist = async () => {
 		await saveSettings({
-			directConnections: providers,
-			defaultAgentModelId: defaultModelId
-		});
+			defaultAgentModelId: defaultModelId,
+			directConnections: providers.map((provider) => ({
+				url: provider.base_url,
+				key: '',
+				enabled: provider.enabled
+			}))
+		} as Partial<UserSettings>);
 		onSave();
 	};
 

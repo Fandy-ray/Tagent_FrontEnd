@@ -123,6 +123,7 @@
 		<div
 			class="bg-gray-850 max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-2xl border border-gray-800 px-5 py-4 text-white shadow-2xl"
 			onclick={(event) => event.stopPropagation()}
+			tabindex="-1"
 			role="dialog"
 			aria-modal="true"
 			aria-label="键盘快捷键"
@@ -162,7 +163,7 @@
 								{item.label}{#if item.tooltip}<span class="text-xs">&nbsp;*</span>{/if}
 							</div>
 							<div class="flex h-full shrink-0 items-start justify-end space-x-1 text-xs">
-								{#each item.keys as key}
+								{#each item.keys as key (key)}
 									<div
 										class="flex h-fit items-start justify-center rounded-sm border border-white/10 px-1 py-0.5 text-gray-300 capitalize"
 									>

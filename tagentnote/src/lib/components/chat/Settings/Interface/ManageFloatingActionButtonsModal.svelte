@@ -87,7 +87,7 @@
 				{#if !floatingActionButtons?.length}
 					<p class="text-xs text-gray-500">使用默认快捷操作，或点击添加自定义项。</p>
 				{:else}
-					{#each floatingActionButtons as action, idx}
+					{#each floatingActionButtons as action, idx (action.id)}
 						<div class="space-y-1 rounded-xl border border-gray-800 p-2">
 							<input
 								class="w-full bg-transparent text-xs outline-none"

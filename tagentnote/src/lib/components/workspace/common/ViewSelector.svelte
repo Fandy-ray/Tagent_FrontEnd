@@ -39,7 +39,7 @@
 		<div
 			class="bg-gray-850 absolute top-full left-0 z-30 mt-1 min-w-[10rem] overflow-hidden rounded-xl border border-gray-800 py-1 shadow-lg"
 		>
-			{#each items as item}
+			{#each items as item (item.value)}
 				<button
 					type="button"
 					class="flex w-full items-center px-3 py-1.5 text-left text-sm hover:bg-gray-800 {value ===

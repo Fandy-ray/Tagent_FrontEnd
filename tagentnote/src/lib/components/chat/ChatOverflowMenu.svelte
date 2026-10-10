@@ -132,8 +132,10 @@
 		use:portal
 		class="bg-gray-850 rounded-2xl border border-gray-800 px-1 py-1 text-white shadow-lg shadow-black/40"
 		style={menuStyle}
+		tabindex="-1"
 		role="menu"
 		onclick={(event) => event.stopPropagation()}
+		onkeydown={(event) => event.stopPropagation()}
 	>
 		<button
 			type="button"

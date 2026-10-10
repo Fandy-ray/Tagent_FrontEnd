@@ -119,6 +119,7 @@
 
 		<div
 			class="bg-gray-850 relative w-full max-w-md rounded-2xl border border-white/10 p-4 text-left shadow-2xl"
+			tabindex="-1"
 			role="dialog"
 			aria-labelledby="save-to-notebook-title"
 		>
