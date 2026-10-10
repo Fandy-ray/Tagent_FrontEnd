@@ -301,9 +301,7 @@ export function applyTheme(theme: UserSettings['theme']) {
 export function applyTextScale(scale: number | null) {
 	if (!browser) return;
 	const safe =
-		typeof scale === 'number' && Number.isFinite(scale)
-			? Math.min(1.5, Math.max(1, scale))
-			: null;
+		typeof scale === 'number' && Number.isFinite(scale) ? Math.min(1.5, Math.max(1, scale)) : null;
 	const effective = safe && safe !== 1 ? safe : null;
 	document.documentElement.style.setProperty(
 		'--app-text-scale',

@@ -15,11 +15,7 @@
 		onDelete?: (id: string) => void;
 	};
 
-	let {
-		show = $bindable(false),
-		files = [],
-		onDelete = () => {}
-	}: Props = $props();
+	let { show = $bindable(false), files = [], onDelete = () => {} }: Props = $props();
 
 	let query = $state('');
 	let orderBy = $state<'name' | 'createdAt'>('createdAt');
@@ -117,7 +113,7 @@
 		<div class="flex w-full flex-col px-5 pb-4 text-gray-200">
 			<div class="mb-0.5 flex w-full space-x-2">
 				<div class="flex flex-1">
-					<div class="self-center ml-1 mr-3">
+					<div class="mr-3 ml-1 self-center">
 						<svg
 							xmlns="http://www.w3.org/2000/svg"
 							viewBox="0 0 20 20"
@@ -140,11 +136,11 @@
 				</div>
 			</div>
 
-			<div class="flex flex-col w-full">
+			<div class="flex w-full flex-col">
 				{#if filtered.length > 0}
 					<div class="mb-1.5 flex text-xs font-medium">
 						<button
-							class="basis-3/5 cursor-pointer select-none px-1.5 py-1"
+							class="basis-3/5 cursor-pointer px-1.5 py-1 select-none"
 							onclick={() => setSortKey('name')}
 							type="button"
 						>
@@ -160,7 +156,7 @@
 							</div>
 						</button>
 						<button
-							class="hidden basis-2/5 cursor-pointer select-none justify-end px-1.5 py-1 sm:flex"
+							class="hidden basis-2/5 cursor-pointer justify-end px-1.5 py-1 select-none sm:flex"
 							onclick={() => setSortKey('createdAt')}
 							type="button"
 						>
@@ -191,13 +187,13 @@
 						<div
 							role="button"
 							tabindex="0"
-							class="flex w-full cursor-pointer items-center justify-between rounded-lg px-3 py-2 text-sm hover:bg-gray-850"
+							class="hover:bg-gray-850 flex w-full cursor-pointer items-center justify-between rounded-lg px-3 py-2 text-sm"
 						>
-							<div class="basis-3/5 min-w-0">
+							<div class="min-w-0 basis-3/5">
 								<div class="line-clamp-1 text-ellipsis">{file.name}</div>
 								<div class="text-xs text-gray-500">{formatSize(file.size ?? 0)}</div>
 							</div>
-							<div class="basis-2/5 flex items-center justify-end">
+							<div class="flex basis-2/5 items-center justify-end">
 								<div class="hidden text-xs text-gray-500 sm:flex">
 									{formatDate(file.createdAt)}
 								</div>

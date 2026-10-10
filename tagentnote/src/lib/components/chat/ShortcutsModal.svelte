@@ -121,7 +121,7 @@
 		onclick={onClose}
 	>
 		<div
-			class="max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-2xl border border-gray-800 bg-gray-850 px-5 py-4 text-white shadow-2xl"
+			class="bg-gray-850 max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-2xl border border-gray-800 px-5 py-4 text-white shadow-2xl"
 			onclick={(event) => event.stopPropagation()}
 			role="dialog"
 			aria-modal="true"
@@ -135,7 +135,13 @@
 					onclick={onClose}
 					aria-label="关闭"
 				>
-					<svg class="size-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+					<svg
+						class="size-5"
+						viewBox="0 0 24 24"
+						fill="none"
+						stroke="currentColor"
+						stroke-width="1.8"
+					>
 						<path stroke-linecap="round" d="M6 6l12 12M18 6L6 18"></path>
 					</svg>
 				</button>
@@ -158,7 +164,7 @@
 							<div class="flex h-full shrink-0 items-start justify-end space-x-1 text-xs">
 								{#each item.keys as key}
 									<div
-										class="flex h-fit items-start justify-center rounded-sm border border-white/10 px-1 py-0.5 capitalize text-gray-300"
+										class="flex h-fit items-start justify-center rounded-sm border border-white/10 px-1 py-0.5 text-gray-300 capitalize"
 									>
 										{formatKey(key)}
 									</div>

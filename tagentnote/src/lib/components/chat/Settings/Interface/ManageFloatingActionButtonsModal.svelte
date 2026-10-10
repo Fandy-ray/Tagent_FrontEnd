@@ -46,12 +46,19 @@
 		}}
 	>
 		<div
-			class="w-full max-w-md rounded-2xl border border-gray-800 bg-gray-850 p-4 text-sm shadow-2xl"
+			class="bg-gray-850 w-full max-w-md rounded-2xl border border-gray-800 p-4 text-sm shadow-2xl"
 			onclick={(e) => e.stopPropagation()}
 		>
 			<div class="mb-3 flex items-center justify-between">
 				<div class="text-lg font-medium">快捷操作</div>
-				<button type="button" class="text-gray-500" onclick={() => { show = false; onClose(); }}>关闭</button>
+				<button
+					type="button"
+					class="text-gray-500"
+					onclick={() => {
+						show = false;
+						onClose();
+					}}>关闭</button
+				>
 			</div>
 
 			<div class="mb-2 flex items-center justify-between text-xs">
@@ -77,7 +84,7 @@
 			</div>
 
 			<div class="max-h-72 space-y-2 overflow-y-auto">
-				{#if !(floatingActionButtons?.length)}
+				{#if !floatingActionButtons?.length}
 					<p class="text-xs text-gray-500">使用默认快捷操作，或点击添加自定义项。</p>
 				{:else}
 					{#each floatingActionButtons as action, idx}
@@ -91,8 +98,7 @@
 								class="w-full resize-y bg-transparent text-xs outline-none"
 								rows="2"
 								bind:value={action.prompt}
-								placeholder="提示词模板"
-							></textarea>
+								placeholder="提示词模板"></textarea>
 							<div class="flex items-center justify-between text-xs">
 								<label class="flex items-center gap-1 text-gray-400">
 									<input type="checkbox" bind:checked={action.input} />
@@ -102,7 +108,9 @@
 									type="button"
 									class="text-red-300"
 									onclick={() => {
-										floatingActionButtons = (floatingActionButtons ?? []).filter((_, i) => i !== idx);
+										floatingActionButtons = (floatingActionButtons ?? []).filter(
+											(_, i) => i !== idx
+										);
 										if (!floatingActionButtons.length) floatingActionButtons = null;
 									}}
 								>

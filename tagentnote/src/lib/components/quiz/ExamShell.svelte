@@ -226,7 +226,7 @@
 	});
 </script>
 
-<div bind:this={rootEl} class="flex h-full min-h-0 flex-col bg-gray-850 text-gray-100">
+<div bind:this={rootEl} class="bg-gray-850 flex h-full min-h-0 flex-col text-gray-100">
 	<div
 		class="flex shrink-0 items-center justify-between border-b border-white/[0.08] px-3.5 pt-3 pb-2"
 	>
@@ -249,7 +249,7 @@
 
 		<div class="flex min-w-0 items-center gap-1.5">
 			<select
-				class="h-8 max-w-52 min-w-0 rounded-lg border border-white/[0.18] bg-gray-850 px-2 text-xs text-gray-100 outline-none focus:border-blue-400 disabled:cursor-not-allowed disabled:opacity-60"
+				class="bg-gray-850 h-8 max-w-52 min-w-0 rounded-lg border border-white/[0.18] px-2 text-xs text-gray-100 outline-none focus:border-blue-400 disabled:cursor-not-allowed disabled:opacity-60"
 				bind:value={selectedModelId}
 				disabled={modelsLoading || running !== '' || availableModels.length === 0}
 				aria-label="测评模型"

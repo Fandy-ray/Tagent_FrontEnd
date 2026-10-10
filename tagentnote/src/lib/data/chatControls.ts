@@ -52,7 +52,11 @@ export function loadChatControls(): ChatControlParams {
 			return defaults;
 		}
 		const parsed = JSON.parse(raw) as Partial<ChatControlParams>;
-		return { ...defaults, ...parsed, custom_params: { ...defaults.custom_params, ...(parsed.custom_params ?? {}) } };
+		return {
+			...defaults,
+			...parsed,
+			custom_params: { ...defaults.custom_params, ...(parsed.custom_params ?? {}) }
+		};
 	} catch {
 		return defaults;
 	}

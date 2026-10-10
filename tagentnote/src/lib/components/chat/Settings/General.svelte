@@ -12,7 +12,6 @@
 
 	let { settings, saveSettings, onSave = () => {} }: Props = $props();
 
-
 	const buildParams = (source: Record<string, any> = {}) => {
 		const next = { ...source };
 		const stopRaw = next.stop;
@@ -111,7 +110,11 @@
 					params.stream_delta_chunk_size !== null ? params.stream_delta_chunk_size : undefined,
 				function_calling: params.function_calling !== null ? params.function_calling : undefined,
 				seed: params.seed !== null ? params.seed : undefined,
-				stop: params.stop ? String(params.stop).split(',').filter((e: string) => e) : undefined,
+				stop: params.stop
+					? String(params.stop)
+							.split(',')
+							.filter((e: string) => e)
+					: undefined,
 				temperature: params.temperature !== null ? params.temperature : undefined,
 				reasoning_effort: params.reasoning_effort !== null ? params.reasoning_effort : undefined,
 				logit_bias: params.logit_bias !== null ? params.logit_bias : undefined,
@@ -182,7 +185,7 @@
 			</div>
 		</div>
 
-		<hr class="my-3 border-gray-850/30" />
+		<hr class="border-gray-850/30 my-3" />
 
 		<div>
 			<div class="my-2.5 text-sm font-medium">{$i18n.t('System Prompt')}</div>
@@ -190,8 +193,7 @@
 				bind:value={system}
 				class="w-full resize-y bg-transparent text-sm text-gray-300 outline-none"
 				rows="4"
-				placeholder={$i18n.t('System Prompt Placeholder')}
-			></textarea>
+				placeholder={$i18n.t('System Prompt Placeholder')}></textarea>
 		</div>
 
 		<div class="mt-2 space-y-3 pr-1.5">

@@ -56,9 +56,8 @@
 	let showDeleteConfirmDialog = $state(false);
 
 	$effect(() => {
-		azure = (url.includes('azure.') || url.includes('cognitive.microsoft.com')) && !direct
-			? true
-			: false;
+		azure =
+			(url.includes('azure.') || url.includes('cognitive.microsoft.com')) && !direct ? true : false;
 	});
 
 	const verifyOpenAIHandler = async () => {
@@ -265,8 +264,7 @@
 									<datalist id="suggestions">
 										<option value="https://api.openai.com/v1"></option>
 										<option value="https://api.anthropic.com/v1"></option>
-										<option
-											value="https://generativelanguage.googleapis.com/v1beta/openai"
+										<option value="https://generativelanguage.googleapis.com/v1beta/openai"
 										></option>
 										<option value="https://api.mistral.ai/v1"></option>
 										<option value="https://api.groq.com/openai/v1"></option>
@@ -278,7 +276,7 @@
 
 							<Tooltip content={$i18n.t('Verify Connection')} className="self-end -mb-1">
 								<button
-									class="self-center rounded-lg bg-transparent p-1 transition hover:bg-gray-100 dark:hover:bg-gray-850"
+									class="dark:hover:bg-gray-850 self-center rounded-lg bg-transparent p-1 transition hover:bg-gray-100"
 									onclick={() => {
 										verifyOpenAIHandler();
 									}}
@@ -349,15 +347,11 @@
 											</div>
 										{:else if auth_type === 'session'}
 											<div class="self-center text-xs text-gray-500">
-												{$i18n.t(
-													'Forwards system user session credentials to authenticate'
-												)}
+												{$i18n.t('Forwards system user session credentials to authenticate')}
 											</div>
 										{:else if auth_type === 'system_oauth'}
 											<div class="self-center text-xs text-gray-500">
-												{$i18n.t(
-													'Forwards system user OAuth access token to authenticate'
-												)}
+												{$i18n.t('Forwards system user OAuth access token to authenticate')}
 											</div>
 										{:else if auth_type === 'microsoft_entra_id'}
 											<div class="self-center text-xs text-gray-500">
@@ -497,10 +491,9 @@
 									{#if azure}
 										{$i18n.t('Deployment names are required for Azure OpenAI')}
 									{:else}
-										{$i18n.t(
-											'Leave empty to include all models from "{{url}}/models" endpoint',
-											{ url }
-										)}
+										{$i18n.t('Leave empty to include all models from "{{url}}/models" endpoint', {
+											url
+										})}
 									{/if}
 								</div>
 							{/if}
@@ -567,7 +560,7 @@
 						</div>
 
 						<button
-							class={`flex items-center gap-2 whitespace-nowrap rounded-full bg-black px-3.5 py-1.5 text-sm font-medium text-white transition hover:bg-gray-900 dark:bg-white dark:text-black dark:hover:bg-gray-100 ${loading ? 'cursor-not-allowed' : ''}`}
+							class={`flex items-center gap-2 rounded-full bg-black px-3.5 py-1.5 text-sm font-medium whitespace-nowrap text-white transition hover:bg-gray-900 dark:bg-white dark:text-black dark:hover:bg-gray-100 ${loading ? 'cursor-not-allowed' : ''}`}
 							type="submit"
 							disabled={loading}
 						>

@@ -268,9 +268,7 @@ export async function streamAgentChat(
 		: { mode, ...(notebookIdsOrOptions ?? {}) };
 
 	const messages = [
-		...(options.system
-			? [{ role: 'system' as const, content: options.system }]
-			: []),
+		...(options.system ? [{ role: 'system' as const, content: options.system }] : []),
 		{ role: 'user' as const, content: question }
 	];
 

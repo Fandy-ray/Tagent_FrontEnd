@@ -65,7 +65,7 @@
 				{#if importLabel}
 					<button
 						type="button"
-						class="flex scale-90 items-center rounded-lg bg-gray-850 px-2 py-0.1 text-[1px] font-medium leading-none text-gray-200 transition hover:bg-gray-800"
+						class="bg-gray-850 py-0.1 flex scale-90 items-center rounded-lg px-2 text-[1px] leading-none font-medium text-gray-200 transition hover:bg-gray-800"
 						onclick={onImport}
 					>
 						{importLabel}
@@ -74,7 +74,7 @@
 				{#if exportLabel}
 					<button
 						type="button"
-						class="flex items-center rounded-lg bg-gray-850 px-2 py-1 text-xs font-medium leading-none text-gray-200 transition hover:bg-gray-800"
+						class="bg-gray-850 flex items-center rounded-lg px-2 py-1 text-xs leading-none font-medium text-gray-200 transition hover:bg-gray-800"
 						onclick={onExport}
 					>
 						{exportLabel}
@@ -83,7 +83,7 @@
 				{#if primaryLabel}
 					{#if primaryHref}
 						<a
-							class="inline-flex items-center gap-0.5 rounded-lg bg-white px-2 py-1 text-xs font-medium leading-none text-black transition hover:bg-gray-200"
+							class="inline-flex items-center gap-0.5 rounded-lg bg-white px-2 py-1 text-xs leading-none font-medium text-black transition hover:bg-gray-200"
 							href={primaryHref}
 						>
 							<Plus className="size-3" />
@@ -92,7 +92,7 @@
 					{:else}
 						<button
 							type="button"
-							class="inline-flex items-center gap-0.5 rounded-lg bg-white px-2 py-1 text-xs font-medium leading-none text-black transition hover:bg-gray-200"
+							class="inline-flex items-center gap-0.5 rounded-lg bg-white px-2 py-1 text-xs leading-none font-medium text-black transition hover:bg-gray-200"
 							onclick={onPrimary}
 						>
 							<Plus className="size-3" />
@@ -104,7 +104,7 @@
 		</div>
 	</div>
 
-	<div class="rounded-3xl border border-gray-850/30 bg-gray-900 py-2">
+	<div class="border-gray-850/30 rounded-3xl border bg-gray-900 py-2">
 		<div class="flex w-full items-center space-x-2 px-3.5 py-0.5 pb-2">
 			<div class="flex flex-1 items-center">
 				<div class="mr-3 ml-1 self-center">
@@ -136,7 +136,7 @@
 		{#if showViewSelector || filters || toolbarEnd}
 			<div class="relative z-20 flex w-full items-center gap-2 bg-transparent px-3">
 				<div
-					class="flex min-w-0 flex-1 gap-0.5 overflow-x-auto whitespace-nowrap rounded-full bg-transparent px-0.5 text-center text-sm scrollbar-none"
+					class="flex min-w-0 flex-1 scrollbar-none gap-0.5 overflow-x-auto rounded-full bg-transparent px-0.5 text-center text-sm whitespace-nowrap"
 				>
 					{#if showViewSelector}
 						<ViewSelector

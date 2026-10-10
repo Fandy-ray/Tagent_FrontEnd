@@ -209,7 +209,7 @@
 					</div>
 
 					<button
-						class={`flex items-center gap-2 whitespace-nowrap rounded-full bg-black px-3.5 py-1.5 text-sm font-medium text-white transition hover:bg-gray-900 dark:bg-white dark:text-black dark:hover:bg-gray-100 ${loading ? 'cursor-not-allowed' : ''}`}
+						class={`flex items-center gap-2 rounded-full bg-black px-3.5 py-1.5 text-sm font-medium whitespace-nowrap text-white transition hover:bg-gray-900 dark:bg-white dark:text-black dark:hover:bg-gray-100 ${loading ? 'cursor-not-allowed' : ''}`}
 						type="submit"
 						disabled={loading}
 					>

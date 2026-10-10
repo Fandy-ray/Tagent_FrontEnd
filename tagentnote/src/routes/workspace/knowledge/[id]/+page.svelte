@@ -217,7 +217,7 @@
 		onclick={() => (showDocModal = false)}
 	>
 		<div
-			class="w-full max-w-md rounded-2xl border border-gray-800 bg-gray-850 p-4 shadow-2xl"
+			class="bg-gray-850 w-full max-w-md rounded-2xl border border-gray-800 p-4 shadow-2xl"
 			onclick={(e) => e.stopPropagation()}
 			role="dialog"
 			aria-modal="true"
@@ -234,8 +234,7 @@
 						id="doc-content"
 						class="{field} min-h-[8rem] resize-y"
 						bind:value={docContent}
-						rows="6"
-					></textarea>
+						rows="6"></textarea>
 				</div>
 			</div>
 			<div class="mt-4 flex justify-end gap-2">

@@ -102,8 +102,11 @@
 	</div>
 	<div>
 		<label class={label} for="tool-desc">描述</label>
-		<textarea id="tool-desc" class="{field} min-h-[3.5rem] resize-y" bind:value={description} rows="2"
-		></textarea>
+		<textarea
+			id="tool-desc"
+			class="{field} min-h-[3.5rem] resize-y"
+			bind:value={description}
+			rows="2"></textarea>
 	</div>
 	<div>
 		<label class={label} for="tool-content">内容（Python）</label>
@@ -111,7 +114,6 @@
 			id="tool-content"
 			class="{field} min-h-[12rem] resize-y font-mono text-xs"
 			bind:value={content}
-			rows="12"
-		></textarea>
+			rows="12"></textarea>
 	</div>
 </EditorShell>

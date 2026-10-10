@@ -100,8 +100,11 @@
 	</div>
 	<div>
 		<label class={label} for="skill-desc">描述</label>
-		<textarea id="skill-desc" class="{field} min-h-[3.5rem] resize-y" bind:value={description} rows="2"
-		></textarea>
+		<textarea
+			id="skill-desc"
+			class="{field} min-h-[3.5rem] resize-y"
+			bind:value={description}
+			rows="2"></textarea>
 	</div>
 	<div>
 		<label class={label} for="skill-content">内容（Markdown）</label>
@@ -110,8 +113,7 @@
 			class="{field} min-h-[12rem] resize-y font-mono text-xs"
 			bind:value={content}
 			rows="12"
-			placeholder={'---\nname: my-skill\n---\n\nInstructions…'}
-		></textarea>
+			placeholder={'---\nname: my-skill\n---\n\nInstructions…'}></textarea>
 	</div>
 	<div class="flex items-center justify-between py-1">
 		<span class="text-sm text-gray-300">启用</span>

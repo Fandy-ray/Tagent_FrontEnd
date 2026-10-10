@@ -88,7 +88,9 @@
 
 {#if artifactPreview}
 	<div class="mt-3 overflow-hidden rounded-xl border border-white/10 bg-black/40">
-		<div class="border-b border-white/10 px-3 py-1.5 text-[11px] uppercase tracking-wide text-gray-400">
+		<div
+			class="border-b border-white/10 px-3 py-1.5 text-[11px] tracking-wide text-gray-400 uppercase"
+		>
 			产物 · {artifactPreview.lang}
 		</div>
 		{#if artifactPreview.lang === 'html' || artifactPreview.lang === 'svg'}

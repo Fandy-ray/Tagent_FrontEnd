@@ -46,7 +46,10 @@ const VALIDATION_HINTS: [string, string][] = [
 	['base_url must', '接口地址要以 http:// 或 https:// 开头，且不能带用户名密码'],
 	['served_model_id contains', '模型 ID 只能用英文字母、数字和 . _ : -，最长 128 个字符'],
 	['already exists', '这个模型 ID 已经登记过了，换一个，或者去改原来那条'],
-	['extra_body must not set', '附加参数不能改 model、messages、max_tokens、temperature、stream 等由系统决定的字段'],
+	[
+		'extra_body must not set',
+		'附加参数不能改 model、messages、max_tokens、temperature、stream 等由系统决定的字段'
+	],
 	['extra_body must be at most', '附加参数太长了（JSON 不能超过 2000 个字符）'],
 	['extra_body', '附加参数要写成一个 JSON 对象，例如 {"thinking": {"type": "disabled"}}'],
 	['temperature', '温度要在 0 到 2 之间'],
@@ -118,7 +121,11 @@ export const updateModelProvider = (token: string, id: string, input: ModelProvi
 	call<ModelProvider>(token, `/${encodeURIComponent(id)}`, 'PUT', withoutBlankKey(input));
 
 export const deleteModelProvider = (token: string, id: string) =>
-	call<{ status: boolean; default_model_id: string }>(token, `/${encodeURIComponent(id)}`, 'DELETE');
+	call<{ status: boolean; default_model_id: string }>(
+		token,
+		`/${encodeURIComponent(id)}`,
+		'DELETE'
+	);
 
 export const setDefaultModelProvider = (token: string, id: string) =>
 	call<ModelRegistry>(token, '/default', 'POST', { served_model_id: id });
@@ -130,8 +137,7 @@ function withoutBlankKey(input: ModelProviderInput) {
 }
 
 export type ProbeResult =
-	| { ok: true; reply: string; seconds: number }
-	| { ok: false; reason: string };
+	{ ok: true; reply: string; seconds: number } | { ok: false; reason: string };
 
 /** 能连上的思考模型，额度给少了会把正文挤没；给 64 个 token 足够回一个字 */
 const PROBE_MAX_TOKENS = 64;
@@ -158,7 +164,10 @@ export async function probeModel(servedModelId: string): Promise<ProbeResult> {
 		});
 	} catch (error) {
 		if (error instanceof DOMException && error.name === 'TimeoutError') {
-			return { ok: false, reason: `${PROBE_TIMEOUT_MS / 1000} 秒没有回应：检查接口地址，或者模型服务那边是否在排队。` };
+			return {
+				ok: false,
+				reason: `${PROBE_TIMEOUT_MS / 1000} 秒没有回应：检查接口地址，或者模型服务那边是否在排队。`
+			};
 		}
 		return { ok: false, reason: '连不上 basic-agent，确认它已经启动。' };
 	}
@@ -170,7 +179,10 @@ export async function probeModel(servedModelId: string): Promise<ProbeResult> {
 
 	if (!response.ok) {
 		if (response.status === 401 || response.status === 403) {
-			return { ok: false, reason: `模型服务拒绝了这个 Key（上游返回 ${response.status}），检查 Key 是否填对、是否还有余额。` };
+			return {
+				ok: false,
+				reason: `模型服务拒绝了这个 Key（上游返回 ${response.status}），检查 Key 是否填对、是否还有余额。`
+			};
 		}
 		if (response.status === 404) {
 			return { ok: false, reason: '上游说没有这个模型（404）：检查接口地址和上游模型名。' };

@@ -61,7 +61,13 @@
 		<div class="mb-2 flex items-center justify-between text-gray-100">
 			<div class="text-md self-center font-medium">对话高级设置</div>
 			<button type="button" class="self-center" aria-label="关闭对话控制" onclick={onClose}>
-				<svg class="size-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+				<svg
+					class="size-3.5"
+					viewBox="0 0 24 24"
+					fill="none"
+					stroke="currentColor"
+					stroke-width="2"
+				>
 					<path stroke-linecap="round" d="M6 6l12 12M18 6L6 18"></path>
 				</svg>
 			</button>
@@ -81,8 +87,7 @@
 					class="w-full resize-y bg-transparent py-1.5 text-xs text-gray-100 outline-none placeholder:text-gray-500"
 					rows="4"
 					placeholder="输入系统提示词"
-					oninput={notify}
-				></textarea>
+					oninput={notify}></textarea>
 			{/snippet}
 		</Collapsible>
 

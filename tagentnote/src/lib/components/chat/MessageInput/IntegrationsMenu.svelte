@@ -90,7 +90,7 @@
 	<button
 		type="button"
 		id="integration-menu-button"
-		class="flex size-8 items-center justify-center rounded-full text-white outline-none transition hover:bg-gray-800"
+		class="flex size-8 items-center justify-center rounded-full text-white transition outline-none hover:bg-gray-800"
 		title="扩展功能"
 		aria-label="扩展功能"
 		aria-expanded={open}
@@ -112,7 +112,7 @@
 	<div
 		bind:this={menuEl}
 		use:portal
-		class="fixed z-[120] max-h-72 overflow-y-auto rounded-2xl border border-gray-800 bg-gray-850 px-1 py-1 text-sm text-white shadow-lg"
+		class="bg-gray-850 fixed z-[120] max-h-72 overflow-y-auto rounded-2xl border border-gray-800 px-1 py-1 text-sm text-white shadow-lg"
 		style={menuStyle}
 		role="menu"
 		aria-label="扩展功能"
@@ -126,7 +126,13 @@
 				}}
 			>
 				<span class="flex items-center gap-2">
-					<svg class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75">
+					<svg
+						class="size-4"
+						viewBox="0 0 24 24"
+						fill="none"
+						stroke="currentColor"
+						stroke-width="1.75"
+					>
 						<path
 							stroke-linecap="round"
 							stroke-linejoin="round"
@@ -138,14 +144,26 @@
 						<span class="ml-0.5 text-gray-500">{tools.length}</span>
 					</span>
 				</span>
-				<svg class="size-4 text-gray-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+				<svg
+					class="size-4 text-gray-500"
+					viewBox="0 0 24 24"
+					fill="none"
+					stroke="currentColor"
+					stroke-width="1.8"
+				>
 					<path stroke-linecap="round" stroke-linejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5"></path>
 				</svg>
 			</button>
 
 			<div class="flex w-full items-center justify-between gap-2 rounded-xl px-3 py-1.5">
 				<span class="flex items-center gap-2">
-					<svg class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+					<svg
+						class="size-4"
+						viewBox="0 0 24 24"
+						fill="none"
+						stroke="currentColor"
+						stroke-width="1.5"
+					>
 						<path
 							stroke-linecap="round"
 							stroke-linejoin="round"
@@ -159,7 +177,13 @@
 
 			<div class="flex w-full items-center justify-between gap-2 rounded-xl px-3 py-1.5">
 				<span class="flex items-center gap-2">
-					<svg class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+					<svg
+						class="size-4"
+						viewBox="0 0 24 24"
+						fill="none"
+						stroke="currentColor"
+						stroke-width="1.5"
+					>
 						<path
 							stroke-linecap="round"
 							stroke-linejoin="round"
@@ -173,7 +197,13 @@
 
 			<div class="flex w-full items-center justify-between gap-2 rounded-xl px-3 py-1.5">
 				<span class="flex items-center gap-2">
-					<svg class="size-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75">
+					<svg
+						class="size-3.5"
+						viewBox="0 0 24 24"
+						fill="none"
+						stroke="currentColor"
+						stroke-width="1.75"
+					>
 						<path
 							stroke-linecap="round"
 							stroke-linejoin="round"
@@ -192,8 +222,15 @@
 					tab = 'main';
 				}}
 			>
-				<svg class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
-					<path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5 8.25 12l7.5-7.5"></path>
+				<svg
+					class="size-4"
+					viewBox="0 0 24 24"
+					fill="none"
+					stroke="currentColor"
+					stroke-width="1.8"
+				>
+					<path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5 8.25 12l7.5-7.5"
+					></path>
 				</svg>
 				<span>返回</span>
 			</button>
@@ -205,10 +242,7 @@
 							<span class="block truncate text-xs text-gray-500">{tool.description}</span>
 						{/if}
 					</span>
-					<Switch
-						state={selectedToolIds.includes(tool.id)}
-						onChange={() => toggleTool(tool.id)}
-					/>
+					<Switch state={selectedToolIds.includes(tool.id)} onChange={() => toggleTool(tool.id)} />
 				</div>
 			{/each}
 		{/if}

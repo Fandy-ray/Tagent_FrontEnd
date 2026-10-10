@@ -98,7 +98,7 @@
 	{#if promptSuggestions.length > 0}
 		<div class="flex flex-col gap-2">
 			{#each promptSuggestions as prompt, promptIdx (promptIdx)}
-				<div class="flex rounded-2xl border border-gray-850/30 bg-transparent p-2">
+				<div class="border-gray-850/30 flex rounded-2xl border bg-transparent p-2">
 					<div class="flex w-full flex-col gap-1 px-2 md:flex-row md:gap-2">
 						<div class="min-w-60 gap-0.5">
 							<input
@@ -116,8 +116,7 @@
 							class="w-full resize-none self-center bg-transparent text-sm outline-none placeholder:text-gray-500"
 							placeholder="提示词"
 							rows="2"
-							bind:value={prompt.content}
-						></textarea>
+							bind:value={prompt.content}></textarea>
 					</div>
 					<button
 						aria-label="删除"

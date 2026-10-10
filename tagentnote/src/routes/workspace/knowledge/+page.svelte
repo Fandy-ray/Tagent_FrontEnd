@@ -112,7 +112,7 @@
 				<!-- svelte-ignore a11y_click_events_have_key_events -->
 				<!-- svelte-ignore a11y_no_static_element_interactions -->
 				<div
-					class="group relative cursor-pointer rounded-2xl border border-gray-800/80 bg-gray-850/40 p-4 transition hover:bg-gray-850"
+					class="group bg-gray-850/40 hover:bg-gray-850 relative cursor-pointer rounded-2xl border border-gray-800/80 p-4 transition"
 					onclick={() => openItem(item)}
 				>
 					<div class="mb-2 flex items-start justify-between gap-2">

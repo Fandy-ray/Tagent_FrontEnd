@@ -8,8 +8,12 @@
 		onDelete?: (id: string) => void;
 	};
 
-	let { show = $bindable(false), chats, onUpdate = () => {}, onDelete = () => {} }: Props =
-		$props();
+	let {
+		show = $bindable(false),
+		chats,
+		onUpdate = () => {},
+		onDelete = () => {}
+	}: Props = $props();
 
 	const handleUnshare = (id: string) => {
 		chats = chats.map((c) => (c.id === id ? { ...c, shared: false, shareId: undefined } : c));

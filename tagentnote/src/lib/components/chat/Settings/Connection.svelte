@@ -67,9 +67,7 @@
 		placement="top-start"
 	>
 		{#if !(config?.enable ?? true)}
-			<div
-				class="absolute inset-0 z-10 bg-white opacity-60 dark:bg-gray-900"
-			></div>
+			<div class="absolute inset-0 z-10 bg-white opacity-60 dark:bg-gray-900"></div>
 		{/if}
 		<div class="flex w-full gap-2">
 			<div class="relative flex-1">
@@ -87,7 +85,7 @@
 		<Tooltip content={$i18n.t('Configure')}>
 			<button
 				aria-label={$i18n.t('Open modal to configure connection')}
-				class="self-center rounded-lg bg-transparent p-1 transition hover:bg-gray-100 dark:hover:bg-gray-850"
+				class="dark:hover:bg-gray-850 self-center rounded-lg bg-transparent p-1 transition hover:bg-gray-100"
 				onclick={() => {
 					showConfigModal = true;
 				}}

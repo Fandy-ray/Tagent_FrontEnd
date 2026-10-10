@@ -173,18 +173,14 @@
 
 		if (tagIds.includes('none')) {
 			filtered = filtered.filter((c) => {
-				const chatTags = [
-					...(c.tags ?? []),
-					...c.messages.flatMap((m) => m.tags ?? [])
-				];
+				const chatTags = [...(c.tags ?? []), ...c.messages.flatMap((m) => m.tags ?? [])];
 				return chatTags.length === 0;
 			});
 		} else if (tagIds.length > 0) {
 			filtered = filtered.filter((c) => {
-				const chatTags = [
-					...(c.tags ?? []),
-					...c.messages.flatMap((m) => m.tags ?? [])
-				].map((t) => t.replaceAll(' ', '_').toLowerCase());
+				const chatTags = [...(c.tags ?? []), ...c.messages.flatMap((m) => m.tags ?? [])].map((t) =>
+					t.replaceAll(' ', '_').toLowerCase()
+				);
 				return tagIds.every((id) => chatTags.includes(id));
 			});
 		}
@@ -402,7 +398,7 @@
 				{#each actions as action, idx (action.label)}
 					<button
 						type="button"
-						class="flex w-full items-center rounded-xl px-3 py-2 text-sm hover:bg-gray-850 {selectedIdx ===
+						class="hover:bg-gray-850 flex w-full items-center rounded-xl px-3 py-2 text-sm {selectedIdx ===
 						idx
 							? 'bg-gray-850'
 							: ''}"
@@ -429,7 +425,7 @@
 				{/each}
 
 				{#if chatList}
-					<hr class="my-3 border-gray-850/30" />
+					<hr class="border-gray-850/30 my-3" />
 
 					{#if chatList.length === 0}
 						<div class="px-5 py-4 text-center text-xs text-gray-400">未找到结果</div>
@@ -438,9 +434,7 @@
 					{#each chatList as chat, idx (chat.id)}
 						{#if idx === 0 || (idx > 0 && chat.time_range !== chatList[idx - 1].time_range)}
 							<div
-								class="w-full px-2 pb-2 text-xs font-medium text-gray-500 {idx === 0
-									? ''
-									: 'pt-5'}"
+								class="w-full px-2 pb-2 text-xs font-medium text-gray-500 {idx === 0 ? '' : 'pt-5'}"
 							>
 								{chat.time_range}
 							</div>
@@ -448,7 +442,7 @@
 
 						<button
 							type="button"
-							class="flex w-full items-center justify-between rounded-xl px-3 py-2 text-sm hover:bg-gray-850 {selectedIdx ===
+							class="hover:bg-gray-850 flex w-full items-center justify-between rounded-xl px-3 py-2 text-sm {selectedIdx ===
 							idx + actions.length
 								? 'bg-gray-850'
 								: ''}"
@@ -464,7 +458,7 @@
 							}}
 						>
 							<div class="flex-1">
-								<div class="line-clamp-1 w-full text-ellipsis text-left">{chat.title}</div>
+								<div class="line-clamp-1 w-full text-left text-ellipsis">{chat.title}</div>
 							</div>
 							<div class="shrink-0 pl-3 text-xs text-gray-400">
 								{formatCalendar(chat.updatedAt)}
@@ -509,7 +503,9 @@
 					<div class="flex h-full w-full flex-col gap-4 px-3 pt-4 pb-8">
 						{#each previewMessages as message (message.id)}
 							{#if message.role === 'user'}
-								<div class="ml-auto max-w-[85%] rounded-3xl bg-gray-800 px-4 py-2 text-sm text-gray-100">
+								<div
+									class="ml-auto max-w-[85%] rounded-3xl bg-gray-800 px-4 py-2 text-sm text-gray-100"
+								>
 									<p class="whitespace-pre-wrap">{message.content}</p>
 								</div>
 							{:else}

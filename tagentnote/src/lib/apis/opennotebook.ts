@@ -1,10 +1,6 @@
 import { env } from '$env/dynamic/public';
 
-import {
-	type KnowledgeCollection,
-	type KnowledgeFile,
-	type SourceKind
-} from '$lib/data/knowledge';
+import { type KnowledgeCollection, type KnowledgeFile, type SourceKind } from '$lib/data/knowledge';
 
 type NotebookListItem = {
 	id: string;
@@ -165,9 +161,7 @@ export async function listNotebooks(signal?: AbortSignal): Promise<NotebookSumma
 			)
 				.then((notes) => notes.length)
 				.catch(() =>
-					typeof reportedCount === 'number' && Number.isFinite(reportedCount)
-						? reportedCount
-						: 0
+					typeof reportedCount === 'number' && Number.isFinite(reportedCount) ? reportedCount : 0
 				);
 
 			return {
@@ -293,9 +287,7 @@ export async function getSourceText(sourceId: string, signal?: AbortSignal) {
 	return source?.full_text?.trim() || '';
 }
 
-export async function listNotebookKnowledge(
-	signal?: AbortSignal
-): Promise<KnowledgeCollection[]> {
+export async function listNotebookKnowledge(signal?: AbortSignal): Promise<KnowledgeCollection[]> {
 	const notebooks = await fetchJson<NotebookListItem[]>(
 		'/api/notebooks?archived=false&order_by=updated+desc',
 		signal ?? new AbortController().signal

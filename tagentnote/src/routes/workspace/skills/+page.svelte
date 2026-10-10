@@ -148,9 +148,7 @@
 						{
 							label: '编辑',
 							onClick: () =>
-								void goto(
-									withParams(`/workspace/skills/edit?id=${encodeURIComponent(skill.id)}`)
-								)
+								void goto(withParams(`/workspace/skills/edit?id=${encodeURIComponent(skill.id)}`))
 						},
 						{ label: '克隆', onClick: () => cloneSkill(skill) },
 						{ label: '导出', onClick: () => downloadJson(`${skill.id}.json`, skill) },

@@ -162,7 +162,9 @@ const expandAliases = (text: string) => {
 
 export function contentTerms(text: string): string[] {
 	let source = text.toLowerCase();
-	const multi = [...STOP_WORDS].filter((word) => word.length >= 2).sort((a, b) => b.length - a.length);
+	const multi = [...STOP_WORDS]
+		.filter((word) => word.length >= 2)
+		.sort((a, b) => b.length - a.length);
 
 	for (const word of multi) {
 		source = source.split(word).join(' ');
@@ -325,7 +327,10 @@ const kindFromId = (id: string, fallback: SourceKind = 'file'): SourceKind => {
 };
 
 const cleanTitle = (title: string) =>
-	title.replace(/（备份）/g, '').replace(/\.[a-z0-9]+$/i, '').trim() || title;
+	title
+		.replace(/（备份）/g, '')
+		.replace(/\.[a-z0-9]+$/i, '')
+		.trim() || title;
 
 const mergeLocator = (...parts: Locator[]): Locator => {
 	const merged: Locator = {};
@@ -404,7 +409,10 @@ export function citationFromUnknown(
 	if (typeof raw === 'string') {
 		const locator = extractLocator(raw);
 		const matched = matchFileFromText(raw, collections, notebook?.id);
-		if (matched && isRelevantToQuery(`${matched.collection.name} ${matched.file.title} ${raw}`, raw)) {
+		if (
+			matched &&
+			isRelevantToQuery(`${matched.collection.name} ${matched.file.title} ${raw}`, raw)
+		) {
 			return toCitation(matched.collection, matched.file, 'qa', {
 				...locator,
 				locator: formatLocator(locator) || undefined,
@@ -465,8 +473,12 @@ export function citationFromUnknown(
 
 	const collection =
 		(notebook ? findCollection(notebook.id, collections) : null) ||
-		(asString(record.collectionId) ? findCollection(asString(record.collectionId), collections) : null) ||
-		(asString(record.notebook_id) ? findCollection(asString(record.notebook_id), collections) : null);
+		(asString(record.collectionId)
+			? findCollection(asString(record.collectionId), collections)
+			: null) ||
+		(asString(record.notebook_id)
+			? findCollection(asString(record.notebook_id), collections)
+			: null);
 
 	if (!collection && !notebook && !fileId && !title) {
 		return null;

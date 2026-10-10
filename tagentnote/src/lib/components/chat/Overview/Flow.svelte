@@ -56,7 +56,13 @@
 				title="纵向布局"
 				aria-label="纵向布局"
 			>
-				<svg class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+				<svg
+					class="size-4"
+					viewBox="0 0 24 24"
+					fill="none"
+					stroke="currentColor"
+					stroke-width="1.8"
+				>
 					<path stroke-linecap="round" d="M4 6h16M4 12h10M4 18h16"></path>
 				</svg>
 			</ControlButton>
@@ -65,7 +71,13 @@
 				title="横向布局"
 				aria-label="横向布局"
 			>
-				<svg class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+				<svg
+					class="size-4"
+					viewBox="0 0 24 24"
+					fill="none"
+					stroke="currentColor"
+					stroke-width="1.8"
+				>
 					<path stroke-linecap="round" d="M6 4v16M12 4v10M18 4v16"></path>
 				</svg>
 			</ControlButton>

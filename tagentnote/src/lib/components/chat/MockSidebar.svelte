@@ -221,18 +221,12 @@
 
 	const onChatDragStart = (event: DragEvent, chatId: string) => {
 		event.dataTransfer?.setData('application/x-chat-id', chatId);
-		event.dataTransfer?.setData(
-			'text/plain',
-			JSON.stringify({ type: 'chat', id: chatId })
-		);
+		event.dataTransfer?.setData('text/plain', JSON.stringify({ type: 'chat', id: chatId }));
 		if (event.dataTransfer) event.dataTransfer.effectAllowed = 'move';
 	};
 
 	const onFolderDragStart = (event: DragEvent, folderId: string) => {
-		event.dataTransfer?.setData(
-			'text/plain',
-			JSON.stringify({ type: 'folder', id: folderId })
-		);
+		event.dataTransfer?.setData('text/plain', JSON.stringify({ type: 'folder', id: folderId }));
 		event.dataTransfer?.setData('application/x-folder-id', folderId);
 		if (event.dataTransfer) event.dataTransfer.effectAllowed = 'move';
 	};
@@ -272,7 +266,7 @@
 </script>
 
 <aside
-	class="flex h-screen w-[260px] shrink-0 select-none flex-col overflow-hidden border-r border-white/[0.04] bg-gray-900 text-sm text-gray-200"
+	class="flex h-screen w-[260px] shrink-0 flex-col overflow-hidden border-r border-white/[0.04] bg-gray-900 text-sm text-gray-200 select-none"
 >
 	<header class="flex h-12 shrink-0 items-center gap-2 px-2">
 		<button
@@ -282,7 +276,9 @@
 			title="返回选择智能体"
 			aria-label="返回选择智能体"
 		>
-			<div class="flex size-6 items-center justify-center rounded-full border border-black/20 bg-white text-[8px] font-black text-black dark:border-transparent">
+			<div
+				class="flex size-6 items-center justify-center rounded-full border border-black/20 bg-white text-[8px] font-black text-black dark:border-transparent"
+			>
 				OI
 			</div>
 		</button>
@@ -318,12 +314,12 @@
 		</button>
 	</header>
 
-	<div class="min-h-0 flex-1 overflow-y-auto px-[7px] pb-3 pt-1">
+	<div class="min-h-0 flex-1 overflow-y-auto px-[7px] pt-1 pb-3">
 		<nav class="pb-2">
 			<button
 				type="button"
 				id="sidebar-new-chat-button"
-				class="group flex w-full items-center gap-3 rounded-2xl px-2.5 py-2 text-gray-200 outline-none transition hover:bg-gray-900"
+				class="group flex w-full items-center gap-3 rounded-2xl px-2.5 py-2 text-gray-200 transition outline-none hover:bg-gray-900"
 				onclick={onNewChat}
 			>
 				<svg
@@ -345,7 +341,7 @@
 			<button
 				type="button"
 				id="sidebar-search-button"
-				class="group flex w-full items-center gap-3 rounded-2xl px-2.5 py-2 text-gray-200 outline-none transition hover:bg-gray-900"
+				class="group flex w-full items-center gap-3 rounded-2xl px-2.5 py-2 text-gray-200 transition outline-none hover:bg-gray-900"
 				onclick={() => {
 					showSearch = true;
 				}}
@@ -365,7 +361,12 @@
 				</span>
 			</button>
 
-			<button type="button" class={navClass('notes')} onclick={onOpenNotes} title={$i18n.t('Open Notes')}>
+			<button
+				type="button"
+				class={navClass('notes')}
+				onclick={onOpenNotes}
+				title={$i18n.t('Open Notes')}
+			>
 				<svg
 					class="size-[18px] shrink-0"
 					viewBox="0 0 24 24"
@@ -385,7 +386,6 @@
 				</svg>
 				<span class="flex-1 text-left text-sm">{$i18n.t('Notes')}</span>
 			</button>
-
 		</nav>
 
 		<section class="mt-0.5 px-0.5 pb-1">
@@ -412,7 +412,13 @@
 						openCreateFolder(null);
 					}}
 				>
-					<svg class="size-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+					<svg
+						class="size-3.5"
+						viewBox="0 0 24 24"
+						fill="none"
+						stroke="currentColor"
+						stroke-width="2"
+					>
 						<path stroke-linecap="round" d="M12 5v14M5 12h14"></path>
 					</svg>
 				</button>
@@ -434,7 +440,7 @@
 						{selectedFolderId}
 						{dragOverFolderId}
 						openMenuId={openFolderMenuId}
-						onSelectFolder={onSelectFolder}
+						{onSelectFolder}
 						onToggleExpanded={onToggleFolderExpanded}
 						onOpenMenu={(id) => {
 							openFolderMenuId = id;
@@ -444,7 +450,7 @@
 						onCreateSub={(parentId) => openCreateFolder(parentId)}
 						onExport={onExportFolder}
 						onDelete={askDeleteFolder}
-						onSelectChat={onSelectChat}
+						{onSelectChat}
 						onMoveChatOut={(chatId) => onMoveChatToFolder(chatId, null)}
 						{onChatDragStart}
 						{onFolderDragStart}
@@ -458,7 +464,7 @@
 		</section>
 
 		<section>
-			<div class="flex items-center justify-between px-2.5 pb-2 pt-1">
+			<div class="flex items-center justify-between px-2.5 pt-1 pb-2">
 				<div class="text-xs font-medium text-gray-500">{$i18n.t('Chats')}</div>
 				{#if selectedFolderId}
 					<button
@@ -490,11 +496,13 @@
 					</button>
 				{/each}
 				{#if selectedChats.length === 0}
-					<p class="px-2.5 py-4 text-xs text-gray-500">{$i18n.t('No chats in this folder. New chats will be placed here.')}</p>
+					<p class="px-2.5 py-4 text-xs text-gray-500">
+						{$i18n.t('No chats in this folder. New chats will be placed here.')}
+					</p>
 				{/if}
 			{:else}
 				{#each groupedUnfiledChats as group (group.label)}
-					<div class="px-2.5 pb-1.5 pt-1 text-xs font-medium text-gray-500">
+					<div class="px-2.5 pt-1 pb-1.5 text-xs font-medium text-gray-500">
 						{group.label}
 					</div>
 					<div class="space-y-0.5">
@@ -527,7 +535,13 @@
 											openFolderMenuId = null;
 										}}
 									>
-										<svg class="size-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+										<svg
+											class="size-3.5"
+											viewBox="0 0 24 24"
+											fill="none"
+											stroke="currentColor"
+											stroke-width="1.8"
+										>
 											<path
 												stroke-linecap="round"
 												stroke-linejoin="round"
@@ -572,8 +586,7 @@
 		</section>
 	</div>
 
-	<footer class="relative shrink-0 px-1.5 pb-2 pt-4">
-
+	<footer class="relative shrink-0 px-1.5 pt-4 pb-2">
 		<div class="relative">
 			<UserMenu
 				variant="sidebar"
@@ -588,14 +601,14 @@
 				{statusEmoji}
 				{statusMessage}
 				triggerClassName="flex w-full items-center rounded-2xl px-1.5 py-2 transition hover:bg-gray-900/50"
-				onSettings={onSettings}
-				onArchivedChats={onArchivedChats}
-				onPlayground={onPlayground}
-				onAdmin={onAdmin}
-				onShortcuts={onShortcuts}
-				onSignOut={onSignOut}
-				onStatusSave={onStatusSave}
-				onToast={onToast}
+				{onSettings}
+				{onArchivedChats}
+				{onPlayground}
+				{onAdmin}
+				{onShortcuts}
+				{onSignOut}
+				{onStatusSave}
+				{onToast}
 			>
 				{#snippet children()}
 					<div class="flex w-full items-center text-left">
@@ -637,13 +650,17 @@
 
 <FolderModal
 	open={folderModalOpen}
-	title={folderModalMode === 'rename' ? $i18n.t('Edit Folder') : folderModalMode === 'sub' ? $i18n.t('Create Subfolder') : $i18n.t('Create Folder')}
+	title={folderModalMode === 'rename'
+		? $i18n.t('Edit Folder')
+		: folderModalMode === 'sub'
+			? $i18n.t('Create Subfolder')
+			: $i18n.t('Create Folder')}
 	initialName={folderModalDraft.name}
 	initialSystemPrompt={folderModalDraft.systemPrompt}
 	initialBackgroundImageUrl={folderModalDraft.backgroundImageUrl}
 	initialKnowledgeItems={folderModalDraft.knowledgeItems}
 	{knowledgeOptions}
-	onOpenWorkspaceKnowledge={onOpenWorkspaceKnowledge}
+	{onOpenWorkspaceKnowledge}
 	onClose={() => {
 		folderModalOpen = false;
 	}}
@@ -660,7 +677,7 @@
 		}}
 	>
 		<div
-			class="w-full max-w-sm rounded-2xl border border-gray-800 bg-gray-850 p-4 text-white shadow-2xl"
+			class="bg-gray-850 w-full max-w-sm rounded-2xl border border-gray-800 p-4 text-white shadow-2xl"
 			onclick={(e) => e.stopPropagation()}
 			role="dialog"
 			aria-modal="true"
@@ -668,7 +685,9 @@
 		>
 			<h3 class="text-base font-medium">{$i18n.t('Delete this folder?')}</h3>
 			<p class="mt-2 text-sm text-gray-400">
-				{$i18n.t('Are you sure you want to delete "{{NAME}}"?', { NAME: folders.find((f) => f.id === deleteTargetId)?.name ?? '' })}
+				{$i18n.t('Are you sure you want to delete "{{NAME}}"?', {
+					NAME: folders.find((f) => f.id === deleteTargetId)?.name ?? ''
+				})}
 			</p>
 			<label class="mt-3 flex items-center gap-2 text-xs text-gray-400">
 				<input type="checkbox" bind:checked={deleteContents} />

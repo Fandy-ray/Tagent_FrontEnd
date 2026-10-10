@@ -63,7 +63,7 @@
 		<div class="flex items-center gap-2">
 			<div class="font-medium">{$i18n.t('Open Terminal')}</div>
 			<span
-				class="rounded-full bg-gray-100 px-1.5 py-0.5 text-[0.65rem] font-medium uppercase text-gray-500 dark:bg-gray-800 dark:text-gray-400"
+				class="rounded-full bg-gray-100 px-1.5 py-0.5 text-[0.65rem] font-medium text-gray-500 uppercase dark:bg-gray-800 dark:text-gray-400"
 				>{$i18n.t('Experimental')}</span
 			>
 		</div>

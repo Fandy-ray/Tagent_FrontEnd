@@ -250,57 +250,57 @@
 				{#each contextFields as field}
 					<label class="block">
 						<span class="mb-1 block text-[11px] text-gray-500">{field.label}</span>
-					<textarea
+						<textarea
 							class="min-h-14 w-full resize-y rounded-lg border border-white/10 bg-black/20 px-3 py-2 text-xs text-gray-100 outline-none placeholder:text-gray-600 focus:border-amber-300/50"
 							placeholder={field.placeholder}
 							value={context[field.id]}
 							oninput={(event) =>
 								updateContext(field.id, (event.currentTarget as HTMLTextAreaElement).value)}
-					></textarea>
+						></textarea>
 						<PaperNotePicker
 							{collections}
 							selected={context.attachedNotes?.[field.id] ?? []}
 							onChange={(notes) => updateAttachedNotes(field.id, notes)}
 						/>
-					{#if field.id === 'dataSource' || field.id === 'dataStatus' || field.id === 'resultSummary'}
-						<div class="mt-2">
-							<div class="flex flex-wrap items-center gap-2">
-								<label
-									class="inline-flex cursor-pointer items-center gap-1 rounded-md border border-white/10 px-2 py-1 text-[11px] text-gray-400 transition hover:border-amber-200/30 hover:bg-white/[0.06] hover:text-amber-100"
-								>
-									<span aria-hidden="true">↑</span>
-									上传 CSV / Excel
-									<input
-										type="file"
-										class="hidden"
-										accept=".csv,.tsv,.txt,.md,.json,.xlsx,.xls,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel"
-										multiple
-										onchange={addDataFiles}
-									/>
-								</label>
-								<span class="text-[11px] text-gray-600">表格会解析为数据摘录发送给智能体</span>
-							</div>
-							{#if context.attachedFiles && context.attachedFiles.length > 0}
-								<div class="mt-1 space-y-1">
-									{#each context.attachedFiles as file (file.id)}
-										<div class="flex items-center gap-1 text-[11px] text-gray-500">
-											<span class="min-w-0 flex-1 truncate">{file.name}</span>
-											<span class="max-w-48 truncate text-gray-600">{file.status}</span>
-											<button
-												type="button"
-												class="shrink-0 px-1 text-gray-600 hover:text-gray-200"
-												onclick={() => removeDataFile(file.id)}
-												aria-label={`移除文件 ${file.name}`}
-											>
-												×
-											</button>
-										</div>
-									{/each}
+						{#if field.id === 'dataSource' || field.id === 'dataStatus' || field.id === 'resultSummary'}
+							<div class="mt-2">
+								<div class="flex flex-wrap items-center gap-2">
+									<label
+										class="inline-flex cursor-pointer items-center gap-1 rounded-md border border-white/10 px-2 py-1 text-[11px] text-gray-400 transition hover:border-amber-200/30 hover:bg-white/[0.06] hover:text-amber-100"
+									>
+										<span aria-hidden="true">↑</span>
+										上传 CSV / Excel
+										<input
+											type="file"
+											class="hidden"
+											accept=".csv,.tsv,.txt,.md,.json,.xlsx,.xls,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel"
+											multiple
+											onchange={addDataFiles}
+										/>
+									</label>
+									<span class="text-[11px] text-gray-600">表格会解析为数据摘录发送给智能体</span>
 								</div>
-							{/if}
-						</div>
-					{/if}
-				</label>
+								{#if context.attachedFiles && context.attachedFiles.length > 0}
+									<div class="mt-1 space-y-1">
+										{#each context.attachedFiles as file (file.id)}
+											<div class="flex items-center gap-1 text-[11px] text-gray-500">
+												<span class="min-w-0 flex-1 truncate">{file.name}</span>
+												<span class="max-w-48 truncate text-gray-600">{file.status}</span>
+												<button
+													type="button"
+													class="shrink-0 px-1 text-gray-600 hover:text-gray-200"
+													onclick={() => removeDataFile(file.id)}
+													aria-label={`移除文件 ${file.name}`}
+												>
+													×
+												</button>
+											</div>
+										{/each}
+									</div>
+								{/if}
+							</div>
+						{/if}
+					</label>
 				{/each}
 			</div>
 

@@ -146,7 +146,7 @@
 		<div class="flex w-full flex-col px-5 pb-4 text-gray-200">
 			<div class="mt-0.5 mb-1.5 flex w-full space-x-2">
 				<div class="flex flex-1">
-					<div class="self-center ml-1 mr-3">
+					<div class="mr-3 ml-1 self-center">
 						<svg
 							xmlns="http://www.w3.org/2000/svg"
 							viewBox="0 0 20 20"
@@ -169,12 +169,12 @@
 				</div>
 			</div>
 
-			<div class="flex flex-col w-full">
+			<div class="flex w-full flex-col">
 				{#if filteredChats !== null}
 					{#if filteredChats.length > 0}
 						<div class="mb-1.5 flex text-xs font-medium">
 							<button
-								class="basis-3/5 cursor-pointer select-none px-1.5 py-1"
+								class="basis-3/5 cursor-pointer px-1.5 py-1 select-none"
 								onclick={() => setSortKey('title')}
 								type="button"
 							>
@@ -190,7 +190,7 @@
 								</div>
 							</button>
 							<button
-								class="hidden basis-2/5 cursor-pointer select-none justify-end px-1.5 py-1 sm:flex"
+								class="hidden basis-2/5 cursor-pointer justify-end px-1.5 py-1 select-none sm:flex"
 								onclick={() => setSortKey('updated_at')}
 								type="button"
 							>
@@ -221,7 +221,7 @@
 							<div
 								role="button"
 								tabindex="0"
-								class="flex w-full items-center rounded-lg px-3 py-2 text-sm hover:bg-gray-850"
+								class="hover:bg-gray-850 flex w-full items-center rounded-lg px-3 py-2 text-sm"
 								onclick={() => {
 									if (shareUrl && chat.shareId) {
 										void copyShareLink(chat.shareId);
@@ -236,10 +236,10 @@
 									}
 								}}
 							>
-								<div class="basis-3/5 min-w-0">
+								<div class="min-w-0 basis-3/5">
 									<div class="line-clamp-1 text-ellipsis">{chat.title}</div>
 								</div>
-								<div class="basis-2/5 flex items-center justify-end">
+								<div class="flex basis-2/5 items-center justify-end">
 									<div class="hidden text-xs text-gray-500 sm:flex">
 										{formatRelative(chat.updatedAt)}
 									</div>
@@ -321,12 +321,7 @@
 															stroke-linejoin="round"
 															d="M13.19 8.688a4.5 4.5 0 0 1 1.242 7.244l-4.5 4.5a4.5 4.5 0 0 1-6.364-6.364l1.757-1.757m9.193-3.193 1.757-1.757a4.5 4.5 0 0 0-6.364-6.364L4.757 7.05"
 														></path>
-														<line
-															x1="3"
-															y1="3"
-															x2="21"
-															y2="21"
-														></line>
+														<line x1="3" y1="3" x2="21" y2="21"></line>
 													</svg>
 												</button>
 											{/if}

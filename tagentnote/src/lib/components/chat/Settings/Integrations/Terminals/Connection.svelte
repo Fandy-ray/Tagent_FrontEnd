@@ -64,9 +64,7 @@
 <div class="flex w-full items-center gap-2">
 	<Tooltip className="w-full relative" content={''} placement="top-start">
 		<div class="flex w-full">
-			<div
-				class={`flex flex-1 items-center gap-1.5 ${!connection?.enabled ? 'opacity-50' : ''}`}
-			>
+			<div class={`flex flex-1 items-center gap-1.5 ${!connection?.enabled ? 'opacity-50' : ''}`}>
 				<Tooltip content={$i18n.t('Terminal')}>
 					<Cloud className="size-4" strokeWidth="1.5" />
 				</Tooltip>
@@ -81,7 +79,7 @@
 	<div class="flex items-center gap-1">
 		<Tooltip content={$i18n.t('Configure')}>
 			<button
-				class="self-center rounded-lg bg-transparent p-1 transition hover:bg-gray-100 dark:hover:bg-gray-850"
+				class="dark:hover:bg-gray-850 self-center rounded-lg bg-transparent p-1 transition hover:bg-gray-100"
 				onclick={() => {
 					showConfigModal = true;
 				}}

@@ -29,7 +29,7 @@
 		}}
 	>
 		<div
-			class="w-full max-w-sm rounded-2xl border border-gray-800 bg-gray-850 p-4 text-white shadow-2xl"
+			class="bg-gray-850 w-full max-w-sm rounded-2xl border border-gray-800 p-4 text-white shadow-2xl"
 			onclick={(e) => e.stopPropagation()}
 			role="dialog"
 			aria-modal="true"

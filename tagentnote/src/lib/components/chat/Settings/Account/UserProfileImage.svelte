@@ -9,9 +9,7 @@
 	const notify = (message: string, _kind: 'success' | 'error' | 'info' = 'info') => {
 		console.log(`[toast][${_kind}] ${message}`);
 		try {
-			window.dispatchEvent(
-				new CustomEvent('tagent-toast', { detail: { message, kind: _kind } })
-			);
+			window.dispatchEvent(new CustomEvent('tagent-toast', { detail: { message, kind: _kind } }));
 		} catch {
 			// ignore
 		}
@@ -85,7 +83,6 @@
 	const useInitials = () => {
 		profileImageUrl = '';
 	};
-
 </script>
 
 <input
@@ -150,6 +147,5 @@
 		>
 			首字母
 		</button>
-
 	</div>
 </div>

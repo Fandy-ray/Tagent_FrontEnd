@@ -16,8 +16,12 @@
 		onDelete?: () => void;
 	};
 
-	let { connection = $bindable(null), direct = false, onSubmit = () => {}, onDelete = () => {} }: Props =
-		$props();
+	let {
+		connection = $bindable(null),
+		direct = false,
+		onSubmit = () => {},
+		onDelete = () => {}
+	}: Props = $props();
 
 	let showConfigModal = $state(false);
 	let showDeleteConfirmDialog = $state(false);
@@ -72,7 +76,7 @@
 	<div class="flex items-center gap-1">
 		<Tooltip content={$i18n.t('Configure')} className="self-start">
 			<button
-				class="self-center rounded-lg bg-transparent p-1 transition hover:bg-gray-100 dark:hover:bg-gray-850"
+				class="dark:hover:bg-gray-850 self-center rounded-lg bg-transparent p-1 transition hover:bg-gray-100"
 				onclick={() => {
 					showConfigModal = true;
 				}}

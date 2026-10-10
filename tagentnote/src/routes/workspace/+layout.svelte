@@ -89,7 +89,7 @@
 				{#if !sidebarOpen}
 					<button
 						type="button"
-						class="mr-1 flex rounded-lg p-1.5 text-gray-400 transition hover:bg-gray-850 hover:text-white"
+						class="hover:bg-gray-850 mr-1 flex rounded-lg p-1.5 text-gray-400 transition hover:text-white"
 						onclick={() => {
 							sidebarOpen = true;
 						}}
@@ -110,16 +110,14 @@
 				{/if}
 
 				<div
-					class="flex w-fit touch-auto gap-1 overflow-x-auto rounded-full bg-transparent py-1 text-center text-sm font-medium scrollbar-none"
+					class="flex w-fit touch-auto scrollbar-none gap-1 overflow-x-auto rounded-full bg-transparent py-1 text-center text-sm font-medium"
 				>
 					{#each tabs as tab (tab.href)}
 						<a
 							draggable="false"
 							aria-current={isActiveTab(tab.href) ? 'page' : undefined}
 							class={`min-w-fit p-1.5 transition select-none ${
-								isActiveTab(tab.href)
-									? 'text-white'
-									: 'text-gray-600 hover:text-white'
+								isActiveTab(tab.href) ? 'text-white' : 'text-gray-600 hover:text-white'
 							}`}
 							href={withParams(tab.href)}
 						>

@@ -11,12 +11,7 @@
 		onDelete?: (e: CustomEvent<string>) => void;
 	};
 
-	let {
-		tags = $bindable([]),
-		readonly = false,
-		onAdd,
-		onDelete
-	}: Props = $props();
+	let { tags = $bindable([]), readonly = false, onAdd, onDelete }: Props = $props();
 
 	let inputValue = $state('');
 
@@ -46,18 +41,22 @@
 
 <div class="flex flex-wrap gap-1">
 	{#each tags as tag}
-		<div
-			class="flex items-center gap-1 rounded-full bg-gray-700 px-2 py-0.5 text-xs text-gray-200"
-		>
+		<div class="flex items-center gap-1 rounded-full bg-gray-700 px-2 py-0.5 text-xs text-gray-200">
 			<span>{tag.name}</span>
 			{#if !readonly}
-<button
-	type="button"
-	class="hover:text-white"
-	onclick={() => deleteTag(tag.name)}
-	aria-label="Remove tag"
->
-					<svg class="size-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+				<button
+					type="button"
+					class="hover:text-white"
+					onclick={() => deleteTag(tag.name)}
+					aria-label="Remove tag"
+				>
+					<svg
+						class="size-3"
+						viewBox="0 0 24 24"
+						fill="none"
+						stroke="currentColor"
+						stroke-width="2"
+					>
 						<path d="M18 6L6 18M6 6l12 12" />
 					</svg>
 				</button>

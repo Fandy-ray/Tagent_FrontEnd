@@ -52,7 +52,9 @@
 
 	const filtered = $derived(
 		filterByView(prompts, viewOption)
-			.filter((p) => matchQuery(`${p.title} ${p.command} ${p.content} ${(p.tags || []).join(' ')}`, query))
+			.filter((p) =>
+				matchQuery(`${p.title} ${p.command} ${p.content} ${(p.tags || []).join(' ')}`, query)
+			)
 			.filter((p) => !selectedTag || (p.tags || []).includes(selectedTag))
 	);
 
@@ -217,7 +219,7 @@
 		{#if allTags.length > 0}
 			<div class="relative ml-1">
 				<select
-					class="appearance-none rounded-xl bg-gray-850 py-1.5 pr-7 pl-2.5 text-sm text-gray-200 outline-none"
+					class="bg-gray-850 appearance-none rounded-xl py-1.5 pr-7 pl-2.5 text-sm text-gray-200 outline-none"
 					bind:value={selectedTag}
 					aria-label="按标签筛选"
 				>
@@ -235,13 +237,13 @@
 			<!-- svelte-ignore a11y_click_events_have_key_events -->
 			<!-- svelte-ignore a11y_no_static_element_interactions -->
 			<div
-				class="flex w-full cursor-pointer space-x-4 rounded-2xl px-3 py-2.5 text-left transition hover:bg-gray-850/50"
+				class="hover:bg-gray-850/50 flex w-full cursor-pointer space-x-4 rounded-2xl px-3 py-2.5 text-left transition"
 				onclick={() => void goto(withParams(`/workspace/prompts/${encodeURIComponent(prompt.id)}`))}
 			>
 				<div class="flex w-full flex-1 cursor-pointer flex-col space-x-4 pl-1">
 					<div class="mb-0.5 flex w-full items-center justify-between">
 						<div class="flex min-w-0 items-center gap-2">
-							<div class="line-clamp-1 font-medium capitalize text-white">{prompt.title}</div>
+							<div class="line-clamp-1 font-medium text-white capitalize">{prompt.title}</div>
 							<div class="line-clamp-1 overflow-hidden text-xs text-ellipsis text-gray-500">
 								{displayCommand(prompt.command)}
 							</div>
@@ -267,7 +269,13 @@
 								reload();
 							}}
 						>
-							<svg class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+							<svg
+								class="size-4"
+								viewBox="0 0 24 24"
+								fill="none"
+								stroke="currentColor"
+								stroke-width="1.5"
+							>
 								<path
 									stroke-linecap="round"
 									stroke-linejoin="round"
@@ -283,11 +291,23 @@
 							onclick={() => void copyContent(prompt)}
 						>
 							{#if copiedId === prompt.id}
-								<svg class="size-4 text-green-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+								<svg
+									class="size-4 text-green-400"
+									viewBox="0 0 24 24"
+									fill="none"
+									stroke="currentColor"
+									stroke-width="1.5"
+								>
 									<path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5" />
 								</svg>
 							{:else}
-								<svg class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+								<svg
+									class="size-4"
+									viewBox="0 0 24 24"
+									fill="none"
+									stroke="currentColor"
+									stroke-width="1.5"
+								>
 									<path
 										stroke-linecap="round"
 										stroke-linejoin="round"
@@ -332,7 +352,7 @@
 		<div class="my-16">
 			<div class="mb-1 line-clamp-1 text-xl font-medium text-white">由 Open WebUI 社区开发</div>
 			<a
-				class="mb-2 flex w-full cursor-pointer items-center justify-between rounded-xl px-3.5 py-1.5 transition hover:bg-gray-850"
+				class="hover:bg-gray-850 mb-2 flex w-full cursor-pointer items-center justify-between rounded-xl px-3.5 py-1.5 transition"
 				href="https://openwebui.com/prompts"
 				target="_blank"
 				rel="noopener noreferrer"

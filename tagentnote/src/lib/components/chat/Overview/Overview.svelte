@@ -57,7 +57,9 @@
 				source,
 				target,
 				type: 'smoothstep',
-				animated: Boolean(focusId && (focusId === target || messages.slice(i).some((m) => m.id === focusId))),
+				animated: Boolean(
+					focusId && (focusId === target || messages.slice(i).some((m) => m.id === focusId))
+				),
 				selectable: false,
 				style: 'stroke: #9ca3af;'
 			});
@@ -77,7 +79,7 @@
 </script>
 
 <SvelteFlowProvider>
-	<div class="relative h-full w-full min-h-[280px]">
+	<div class="relative h-full min-h-[280px] w-full">
 		{#if messages.length === 0}
 			<div class="flex h-full items-center justify-center px-4 text-center text-sm text-gray-500">
 				暂无消息可展示

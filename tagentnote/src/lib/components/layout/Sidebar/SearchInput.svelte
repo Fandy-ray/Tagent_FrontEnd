@@ -53,10 +53,7 @@
 		await tick();
 
 		if (lastWord.startsWith('tag:')) {
-			filteredItems = [
-				...tags,
-				{ id: 'none', name: '无标签' }
-			]
+			filteredItems = [...tags, { id: 'none', name: '无标签' }]
 				.filter((tag) => {
 					const tagName = lastWord.slice(4);
 					if (tagName) {
@@ -228,7 +225,7 @@
 		>
 			<div class="px-3 py-2.5 text-xs">
 				{#if filteredItems.length > 0}
-					<div class="mb-1 px-1 font-medium capitalize text-gray-300">
+					<div class="mb-1 px-1 font-medium text-gray-300 capitalize">
 						{loading ? '…' : selectedOption}
 					</div>
 					<div class="max-h-60 overflow-auto">

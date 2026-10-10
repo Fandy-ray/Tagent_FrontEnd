@@ -67,9 +67,7 @@
 	);
 
 	const folderChats = $derived(
-		chats
-			.filter((c) => c.folderId === folder.id)
-			.sort((a, b) => b.updatedAt - a.updatedAt)
+		chats.filter((c) => c.folderId === folder.id).sort((a, b) => b.updatedAt - a.updatedAt)
 	);
 
 	const selected = $derived(selectedFolderId === folder.id);
@@ -264,7 +262,13 @@
 						onMoveChatOut(chat.id);
 					}}
 				>
-					<svg class="size-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+					<svg
+						class="size-3.5"
+						viewBox="0 0 24 24"
+						fill="none"
+						stroke="currentColor"
+						stroke-width="2"
+					>
 						<path stroke-linecap="round" d="M18 6 6 18M6 6l12 12"></path>
 					</svg>
 				</button>

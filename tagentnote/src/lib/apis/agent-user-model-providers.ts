@@ -94,17 +94,11 @@ export const updateAgentUserModelProvider = async (
 	);
 };
 
-export const deleteAgentUserModelProvider = async (
-	token: string,
-	id: string
-): Promise<void> => {
+export const deleteAgentUserModelProvider = async (token: string, id: string): Promise<void> => {
 	return request<void>(token, `${baseUrl()}/user-model-providers/${id}`, 'DELETE');
 };
 
-export const setAgentUserDefaultModel = async (
-	token: string,
-	modelId: string
-): Promise<void> => {
+export const setAgentUserDefaultModel = async (token: string, modelId: string): Promise<void> => {
 	return request<void>(token, `${baseUrl()}/user-model-providers/default`, 'POST', {
 		model_id: modelId
 	});

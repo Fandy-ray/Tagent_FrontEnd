@@ -103,9 +103,7 @@
 			mediaStream.getTracks().forEach((t) => t.stop());
 			video.pause();
 			video.srcObject = null;
-			const blob = await new Promise<Blob | null>((resolve) =>
-				canvas.toBlob(resolve, 'image/png')
-			);
+			const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, 'image/png'));
 			const name = `截图-${new Date().toLocaleTimeString()}.png`;
 			addAttachment({
 				id: `capture-${Date.now()}`,
@@ -174,7 +172,7 @@
 	<button
 		type="button"
 		id="input-menu-button"
-		class="flex size-8 items-center justify-center rounded-full text-white outline-none transition hover:bg-gray-800"
+		class="flex size-8 items-center justify-center rounded-full text-white transition outline-none hover:bg-gray-800"
 		title="更多"
 		aria-label="更多"
 		aria-expanded={open}
@@ -246,7 +244,7 @@
 	<div
 		bind:this={menuEl}
 		use:portal
-		class="fixed z-[120] max-h-72 overflow-x-hidden overflow-y-auto rounded-2xl border border-gray-800 bg-gray-850 px-1 py-1 text-sm text-white shadow-lg transition"
+		class="bg-gray-850 fixed z-[120] max-h-72 overflow-x-hidden overflow-y-auto rounded-2xl border border-gray-800 px-1 py-1 text-sm text-white shadow-lg transition"
 		style={menuStyle}
 		role="menu"
 		aria-label="更多"
@@ -255,7 +253,7 @@
 			<div>
 				<button
 					type="button"
-					class="flex w-full cursor-pointer select-none items-center gap-2 rounded-xl px-3 py-1.5 text-left hover:bg-gray-800/50"
+					class="flex w-full cursor-pointer items-center gap-2 rounded-xl px-3 py-1.5 text-left select-none hover:bg-gray-800/50"
 					onclick={() => fileInput?.click()}
 				>
 					<svg
@@ -277,7 +275,7 @@
 
 				<button
 					type="button"
-					class="flex w-full cursor-pointer select-none items-center gap-2 rounded-xl px-3 py-1.5 text-left hover:bg-gray-800/50"
+					class="flex w-full cursor-pointer items-center gap-2 rounded-xl px-3 py-1.5 text-left select-none hover:bg-gray-800/50"
 					onclick={() => void captureScreen()}
 				>
 					<svg
@@ -304,7 +302,7 @@
 
 				<button
 					type="button"
-					class="flex w-full cursor-pointer select-none items-center gap-2 rounded-xl px-3 py-1.5 text-left hover:bg-gray-800"
+					class="flex w-full cursor-pointer items-center gap-2 rounded-xl px-3 py-1.5 text-left select-none hover:bg-gray-800"
 					onclick={() => {
 						webpageUrls = '';
 						webpageOpen = true;
@@ -330,7 +328,7 @@
 
 				<button
 					type="button"
-					class="flex w-full cursor-pointer select-none items-center gap-2 rounded-xl px-3 py-1.5 text-left hover:bg-gray-800/50"
+					class="flex w-full cursor-pointer items-center gap-2 rounded-xl px-3 py-1.5 text-left select-none hover:bg-gray-800/50"
 					onclick={() => {
 						tab = 'notes';
 						selectedIdx = 0;
@@ -364,8 +362,15 @@
 					<div class="flex w-full items-center justify-between">
 						<div class="line-clamp-1">引用笔记</div>
 						<div class="text-gray-500">
-							<svg class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
-								<path stroke-linecap="round" stroke-linejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5"></path>
+							<svg
+								class="size-4"
+								viewBox="0 0 24 24"
+								fill="none"
+								stroke="currentColor"
+								stroke-width="1.8"
+							>
+								<path stroke-linecap="round" stroke-linejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5"
+								></path>
 							</svg>
 						</div>
 					</div>
@@ -394,8 +399,15 @@
 					<div class="flex w-full items-center justify-between">
 						<div class="line-clamp-1">引用知识库</div>
 						<div class="text-gray-500">
-							<svg class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
-								<path stroke-linecap="round" stroke-linejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5"></path>
+							<svg
+								class="size-4"
+								viewBox="0 0 24 24"
+								fill="none"
+								stroke="currentColor"
+								stroke-width="1.8"
+							>
+								<path stroke-linecap="round" stroke-linejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5"
+								></path>
 							</svg>
 						</div>
 					</div>
@@ -432,8 +444,15 @@
 					<div class="flex w-full items-center justify-between">
 						<div class="line-clamp-1">引用其他对话</div>
 						<div class="text-gray-500">
-							<svg class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
-								<path stroke-linecap="round" stroke-linejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5"></path>
+							<svg
+								class="size-4"
+								viewBox="0 0 24 24"
+								fill="none"
+								stroke="currentColor"
+								stroke-width="1.8"
+							>
+								<path stroke-linecap="round" stroke-linejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5"
+								></path>
 							</svg>
 						</div>
 					</div>
@@ -443,11 +462,18 @@
 			<div>
 				<button
 					type="button"
-					class="flex w-full cursor-pointer select-none items-center justify-between gap-2 rounded-xl px-3 py-1.5 text-left hover:bg-gray-800/50"
+					class="flex w-full cursor-pointer items-center justify-between gap-2 rounded-xl px-3 py-1.5 text-left select-none hover:bg-gray-800/50"
 					onclick={goMain}
 				>
-					<svg class="size-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
-						<path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5 8.25 12l7.5-7.5"></path>
+					<svg
+						class="size-4 shrink-0"
+						viewBox="0 0 24 24"
+						fill="none"
+						stroke="currentColor"
+						stroke-width="1.8"
+					>
+						<path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5 8.25 12l7.5-7.5"
+						></path>
 					</svg>
 					<div class="flex w-full items-center justify-between">
 						<div>笔记</div>
@@ -485,7 +511,8 @@
 											stroke-linejoin="round"
 											d="M20 12V5.74853C20 5.5894 19.9368 5.43679 19.8243 5.32426L16.6757 2.17574C16.5632 2.06321 16.4106 2 16.2515 2H4.6C4.26863 2 4 2.26863 4 2.6V21.4C4 21.7314 4.26863 22 4.6 22H11"
 										></path>
-										<path stroke-linecap="round" stroke-linejoin="round" d="M8 10H16M8 6H12M8 14H11"></path>
+										<path stroke-linecap="round" stroke-linejoin="round" d="M8 10H16M8 6H12M8 14H11"
+										></path>
 										<path
 											stroke-linecap="round"
 											stroke-linejoin="round"
@@ -508,11 +535,18 @@
 			<div>
 				<button
 					type="button"
-					class="flex w-full cursor-pointer select-none items-center justify-between gap-2 rounded-xl px-3 py-1.5 text-left hover:bg-gray-800/50"
+					class="flex w-full cursor-pointer items-center justify-between gap-2 rounded-xl px-3 py-1.5 text-left select-none hover:bg-gray-800/50"
 					onclick={goMain}
 				>
-					<svg class="size-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
-						<path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5 8.25 12l7.5-7.5"></path>
+					<svg
+						class="size-4 shrink-0"
+						viewBox="0 0 24 24"
+						fill="none"
+						stroke="currentColor"
+						stroke-width="1.8"
+					>
+						<path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5 8.25 12l7.5-7.5"
+						></path>
 					</svg>
 					<div class="flex w-full items-center justify-between">
 						<div>知识库</div>
@@ -564,11 +598,18 @@
 			<div>
 				<button
 					type="button"
-					class="flex w-full cursor-pointer select-none items-center justify-between gap-2 rounded-xl px-3 py-1.5 text-left hover:bg-gray-800/50"
+					class="flex w-full cursor-pointer items-center justify-between gap-2 rounded-xl px-3 py-1.5 text-left select-none hover:bg-gray-800/50"
 					onclick={goMain}
 				>
-					<svg class="size-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
-						<path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5 8.25 12l7.5-7.5"></path>
+					<svg
+						class="size-4 shrink-0"
+						viewBox="0 0 24 24"
+						fill="none"
+						stroke="currentColor"
+						stroke-width="1.8"
+					>
+						<path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5 8.25 12l7.5-7.5"
+						></path>
 					</svg>
 					<div class="flex w-full items-center justify-between">
 						<div>对话</div>
@@ -613,7 +654,7 @@
 		}}
 	>
 		<div
-			class="flex h-full max-h-[22rem] w-full max-w-sm flex-col rounded-2xl border border-gray-800 bg-gray-850 text-white shadow-2xl"
+			class="bg-gray-850 flex h-full max-h-[22rem] w-full max-w-sm flex-col rounded-2xl border border-gray-800 text-white shadow-2xl"
 			onclick={(e) => e.stopPropagation()}
 			role="dialog"
 			aria-modal="true"
@@ -629,7 +670,13 @@
 						webpageOpen = false;
 					}}
 				>
-					<svg class="size-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+					<svg
+						class="size-5"
+						viewBox="0 0 24 24"
+						fill="none"
+						stroke="currentColor"
+						stroke-width="1.8"
+					>
 						<path stroke-linecap="round" d="M6 6l12 12M18 6L6 18"></path>
 					</svg>
 				</button>
@@ -652,8 +699,7 @@
 					rows="3"
 					placeholder="https://example.com"
 					autocomplete="off"
-					required
-				></textarea>
+					required></textarea>
 				<div class="flex justify-end gap-2 bg-gray-900/50 pt-3">
 					<button
 						type="submit"

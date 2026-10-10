@@ -3,7 +3,12 @@
 	import { page } from '$app/stores';
 	import { onDestroy, onMount, tick } from 'svelte';
 
-	import { generateEssayTopic, getAgentModels, reviewEssay, streamAgentChat } from '$lib/apis/agent';
+	import {
+		generateEssayTopic,
+		getAgentModels,
+		reviewEssay,
+		streamAgentChat
+	} from '$lib/apis/agent';
 	import {
 		getSourceText,
 		listNotebookKnowledge,
@@ -124,9 +129,7 @@
 
 	// 两种助手模式使用独立的会话空间。旧数据没有 mode 时按课程答疑处理，
 	// 这样升级前已有的普通对话仍然可以正常显示。
-	const modeChats = $derived(
-		chats.filter((chat) => (chat.mode ?? 'qa') === assistMode)
-	);
+	const modeChats = $derived(chats.filter((chat) => (chat.mode ?? 'qa') === assistMode));
 
 	const sidebarChats = $derived(
 		modeChats
@@ -150,7 +153,6 @@
 			}))
 			.sort((a, b) => b.updatedAt - a.updatedAt)
 	);
-
 
 	const currentModelName = $derived(
 		modelOptions.find((model) => model.id === selectedModelId)?.name ?? selectedModelId
@@ -387,8 +389,7 @@
 				urlChat &&
 				stored.chats.some(
 					(chat) =>
-						chat.id === urlChat &&
-						(requestedMode === null || (chat.mode ?? 'qa') === requestedMode)
+						chat.id === urlChat && (requestedMode === null || (chat.mode ?? 'qa') === requestedMode)
 				)
 					? urlChat
 					: null;
@@ -1792,7 +1793,12 @@
 			return;
 		}
 
-		patchMessage(assistantId, { paperCard: next, content, streaming: false, model: selectedModelId });
+		patchMessage(assistantId, {
+			paperCard: next,
+			content,
+			streaming: false,
+			model: selectedModelId
+		});
 		generating = false;
 		commitActive();
 		void scrollToBottom();
@@ -2276,7 +2282,7 @@
 
 			{#if assistMode === 'paper'}
 				<div
-					class="min-h-0 max-h-[calc(100vh-4rem)] shrink-0 overflow-y-auto overscroll-contain border-b border-white/[0.06] bg-gray-900 px-3 py-2 md:px-5"
+					class="max-h-[calc(100vh-4rem)] min-h-0 shrink-0 overflow-y-auto overscroll-contain border-b border-white/[0.06] bg-gray-900 px-3 py-2 md:px-5"
 				>
 					<PaperTaskCard
 						bind:title={paperTitle}
@@ -2418,9 +2424,7 @@
 						</div>
 					{/if}
 
-				<div
-						class="relative z-10 shrink-0 px-4 pt-4 pb-2"
-					>
+					<div class="relative z-10 shrink-0 px-4 pt-4 pb-2">
 						<div
 							class={`mx-auto w-full ${userSettings.widescreenMode ? 'max-w-full' : 'max-w-3xl'}`}
 						>

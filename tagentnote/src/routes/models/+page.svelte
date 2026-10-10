@@ -301,14 +301,16 @@
 					答疑、出题、批改用的大模型在这里登记。登记一次，答疑、测评、笔记本都能用。
 				</p>
 			</div>
-			<a href={resolve('/agent-select')} class="text-sm text-gray-400 transition hover:text-white">返回</a>
+			<a href={resolve('/agent-select')} class="text-sm text-gray-400 transition hover:text-white"
+				>返回</a
+			>
 		</header>
 
 		<form class="mt-6 rounded-xl border border-white/10 bg-white/[0.03] p-4" onsubmit={connect}>
 			<label for="admin-token" class="block text-sm font-medium text-gray-200">管理口令</label>
 			<p class="mt-1 text-xs leading-5 text-gray-500">
-				在 <code class="text-gray-300">TAgent重写版/.env.runtime</code> 里，<code class="text-gray-300"
-					>AGENT_ADMIN_TOKEN=</code
+				在 <code class="text-gray-300">TAgent重写版/.env.runtime</code> 里，<code
+					class="text-gray-300">AGENT_ADMIN_TOKEN=</code
 				> 后面那一串（启动脚本会自动生成）。只留在这个页面里，不保存，刷新后要重新填。
 			</p>
 			<div class="mt-3 flex gap-2">
@@ -320,19 +322,29 @@
 					placeholder="粘贴管理口令"
 					bind:value={token}
 				/>
-				<button type="submit" class="shrink-0 rounded-lg bg-cyan-500 px-4 text-sm font-medium text-gray-950 transition hover:bg-cyan-400 disabled:opacity-50" disabled={busy}>
+				<button
+					type="submit"
+					class="shrink-0 rounded-lg bg-cyan-500 px-4 text-sm font-medium text-gray-950 transition hover:bg-cyan-400 disabled:opacity-50"
+					disabled={busy}
+				>
 					{connected ? '刷新' : '连接'}
 				</button>
 			</div>
 		</form>
 
 		{#if error}
-			<p class="mt-4 rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-200" role="alert">
+			<p
+				class="mt-4 rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-200"
+				role="alert"
+			>
 				{error}
 			</p>
 		{/if}
 		{#if notice}
-			<p class="mt-4 rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-sm text-emerald-200" role="status">
+			<p
+				class="mt-4 rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-sm text-emerald-200"
+				role="status"
+			>
 				{notice}
 			</p>
 		{/if}
@@ -344,12 +356,16 @@
 						已登记（{providers.length}）
 					</h2>
 					{#if editing === null}
-						<button type="button" class={buttonClass} onclick={() => startCreate()}>登记新模型</button>
+						<button type="button" class={buttonClass} onclick={() => startCreate()}
+							>登记新模型</button
+						>
 					{/if}
 				</div>
 
 				{#if providers.length === 0}
-					<p class="mt-3 text-sm text-gray-500">还没有登记任何模型，答疑和出题都用不了。点「登记新模型」。</p>
+					<p class="mt-3 text-sm text-gray-500">
+						还没有登记任何模型，答疑和出题都用不了。点「登记新模型」。
+					</p>
 				{/if}
 
 				<ul class="mt-3 space-y-3">
@@ -360,10 +376,14 @@
 								<span class="font-medium text-white">{provider.name}</span>
 								<span class="text-xs text-gray-500">{provider.served_model_id}</span>
 								{#if provider.served_model_id === defaultId}
-									<span class="rounded bg-cyan-400/15 px-1.5 py-0.5 text-[11px] text-cyan-200">默认</span>
+									<span class="rounded bg-cyan-400/15 px-1.5 py-0.5 text-[11px] text-cyan-200"
+										>默认</span
+									>
 								{/if}
 								{#if !provider.enabled}
-									<span class="rounded bg-gray-700 px-1.5 py-0.5 text-[11px] text-gray-300">已停用</span>
+									<span class="rounded bg-gray-700 px-1.5 py-0.5 text-[11px] text-gray-300"
+										>已停用</span
+									>
 								{/if}
 							</div>
 							<dl class="mt-2 grid grid-cols-[5.5rem_1fr] gap-x-2 gap-y-1 text-xs">
@@ -379,7 +399,9 @@
 								<dd class="text-gray-300">{provider.temperature}</dd>
 								{#if extraSummary(provider.extra_body)}
 									<dt class="text-gray-500">附加参数</dt>
-									<dd class="break-all font-mono text-gray-300">{extraSummary(provider.extra_body)}</dd>
+									<dd class="font-mono break-all text-gray-300">
+										{extraSummary(provider.extra_body)}
+									</dd>
 								{/if}
 							</dl>
 
@@ -392,15 +414,30 @@
 								>
 									{probeState === 'running' ? '正在试…' : '试一下'}
 								</button>
-								<button type="button" class={buttonClass} disabled={busy} onclick={() => startEdit(provider)}>
+								<button
+									type="button"
+									class={buttonClass}
+									disabled={busy}
+									onclick={() => startEdit(provider)}
+								>
 									修改
 								</button>
 								{#if provider.enabled && provider.served_model_id !== defaultId}
-									<button type="button" class={buttonClass} disabled={busy} onclick={() => makeDefault(provider)}>
+									<button
+										type="button"
+										class={buttonClass}
+										disabled={busy}
+										onclick={() => makeDefault(provider)}
+									>
 										设为默认
 									</button>
 								{/if}
-								<button type="button" class={buttonClass} disabled={busy} onclick={() => toggleEnabled(provider)}>
+								<button
+									type="button"
+									class={buttonClass}
+									disabled={busy}
+									onclick={() => toggleEnabled(provider)}
+								>
 									{provider.enabled ? '停用' : '启用'}
 								</button>
 								<button
@@ -417,7 +454,9 @@
 
 							{#if probeState && probeState !== 'running'}
 								<p
-									class="mt-3 text-xs leading-5 {probeState.ok ? 'text-emerald-300' : 'text-amber-200'}"
+									class="mt-3 text-xs leading-5 {probeState.ok
+										? 'text-emerald-300'
+										: 'text-amber-200'}"
 									role="status"
 								>
 									{probeState.ok
@@ -454,7 +493,12 @@
 					<div class="grid gap-4 sm:grid-cols-2">
 						<label class="block text-xs text-gray-400">
 							名称（页面上显示的）
-							<input class="{inputClass} mt-1" bind:value={form.name} placeholder="DeepSeek" required />
+							<input
+								class="{inputClass} mt-1"
+								bind:value={form.name}
+								placeholder="DeepSeek"
+								required
+							/>
 						</label>
 						<label class="block text-xs text-gray-400">
 							模型 ID（英文，登记后不能改）
@@ -468,11 +512,21 @@
 						</label>
 						<label class="block text-xs text-gray-400 sm:col-span-2">
 							接口地址（OpenAI 兼容的 base URL）
-							<input class="{inputClass} mt-1" bind:value={form.base_url} placeholder="https://api.deepseek.com" required />
+							<input
+								class="{inputClass} mt-1"
+								bind:value={form.base_url}
+								placeholder="https://api.deepseek.com"
+								required
+							/>
 						</label>
 						<label class="block text-xs text-gray-400">
 							上游模型名
-							<input class="{inputClass} mt-1" bind:value={form.upstream_model} placeholder="deepseek-chat" required />
+							<input
+								class="{inputClass} mt-1"
+								bind:value={form.upstream_model}
+								placeholder="deepseek-chat"
+								required
+							/>
 						</label>
 						<label class="block text-xs text-gray-400">
 							温度（0~2，出题批改建议 0.1）
@@ -504,20 +558,25 @@
 							<label for="extra-body" class="text-xs text-gray-400">附加参数（JSON，可不填）</label>
 							<div class="flex flex-wrap gap-1.5">
 								{#each THINKING_OFF as option (option.label)}
-									<button type="button" class={buttonClass} onclick={() => setThinkingOff(option.body)}>
+									<button
+										type="button"
+										class={buttonClass}
+										onclick={() => setThinkingOff(option.body)}
+									>
 										关闭思考：{option.label}
 									</button>
 								{/each}
-								<button type="button" class={buttonClass} onclick={() => (form.extra_body = '')}>清空</button>
+								<button type="button" class={buttonClass} onclick={() => (form.extra_body = '')}
+									>清空</button
+								>
 							</div>
 						</div>
 						<textarea
 							id="extra-body"
 							rows="3"
-							class="mt-1 w-full rounded-lg border border-white/15 bg-white/[0.04] px-3 py-2 font-mono text-xs text-gray-100 outline-none transition hover:border-white/25 focus:border-cyan-400 focus:ring-2 focus:ring-cyan-400/20"
+							class="mt-1 w-full rounded-lg border border-white/15 bg-white/[0.04] px-3 py-2 font-mono text-xs text-gray-100 transition outline-none hover:border-white/25 focus:border-cyan-400 focus:ring-2 focus:ring-cyan-400/20"
 							bind:value={form.extra_body}
-							placeholder={'{"thinking": {"type": "disabled"}}'}
-						></textarea>
+							placeholder={'{"thinking": {"type": "disabled"}}'}></textarea>
 						<p class="mt-1 text-xs leading-5 text-gray-500">
 							每次请求原样带给模型。常用来关闭「先思考再回答」：思考也算进输出额度，思考太长会把正文挤没。各家写法不同，以厂商文档为准。
 						</p>
@@ -529,7 +588,10 @@
 					</label>
 
 					{#if formError}
-						<p class="rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-200" role="alert">
+						<p
+							class="rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-200"
+							role="alert"
+						>
 							{formError}
 						</p>
 					{/if}

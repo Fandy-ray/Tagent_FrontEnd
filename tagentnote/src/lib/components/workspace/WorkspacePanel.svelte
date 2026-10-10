@@ -49,7 +49,7 @@
 			{#if secondaryAction}
 				<button
 					type="button"
-					class="rounded-xl bg-gray-850 px-3 py-1.5 text-xs font-medium text-gray-200 transition hover:bg-gray-800"
+					class="bg-gray-850 rounded-xl px-3 py-1.5 text-xs font-medium text-gray-200 transition hover:bg-gray-800"
 					onclick={onSecondary}
 				>
 					{secondaryAction}
@@ -68,7 +68,7 @@
 		</div>
 	</div>
 
-	<div class="mt-3 flex-1 overflow-y-auto rounded-3xl border border-gray-850/30 bg-gray-900">
+	<div class="border-gray-850/30 mt-3 flex-1 overflow-y-auto rounded-3xl border bg-gray-900">
 		<div class="flex items-center gap-2 border-b border-white/[0.04] px-3.5 py-2.5">
 			<svg
 				class="size-3.5 shrink-0 text-gray-500"
@@ -103,7 +103,7 @@
 		<div class="mt-10 mb-4">
 			<div class="mb-1 text-xl font-medium text-white">由 Open WebUI 社区开发</div>
 			<a
-				class="mb-2 flex w-full items-center justify-between rounded-xl px-3.5 py-1.5 transition hover:bg-gray-850"
+				class="hover:bg-gray-850 mb-2 flex w-full items-center justify-between rounded-xl px-3.5 py-1.5 transition"
 				href={footerHref || '#'}
 				target={footerHref ? '_blank' : undefined}
 				rel={footerHref ? 'noreferrer' : undefined}

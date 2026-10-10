@@ -34,9 +34,7 @@
 <Modal bind:show size="sm">
 	<div>
 		<div class="flex justify-between px-5 pt-4 pb-2 text-gray-200">
-			<div class="self-center text-lg font-medium">
-				新增记忆
-			</div>
+			<div class="self-center text-lg font-medium">新增记忆</div>
 			<button
 				class="self-center"
 				aria-label="关闭"
@@ -59,15 +57,14 @@
 				bind:value={content}
 				class="w-full resize-y rounded-xl border border-gray-800 bg-transparent p-3 text-sm outline-none"
 				rows="6"
-				placeholder="输入一段关于你自己的细节，供 LLM 在后续对话中调用"
-			></textarea>
+				placeholder="输入一段关于你自己的细节，供 LLM 在后续对话中调用"></textarea>
 			<div class="text-xs text-gray-500">
 				ⓘ 请使用第一人称「用户」来描述自己（例如：「用户正在学习西班牙语」）
 			</div>
 
 			<div class="mt-3 flex justify-end">
 				<button
-					class="flex items-center gap-2 whitespace-nowrap rounded-full bg-white px-3.5 py-1.5 text-sm font-medium text-black transition hover:bg-gray-100 disabled:cursor-not-allowed"
+					class="flex items-center gap-2 rounded-full bg-white px-3.5 py-1.5 text-sm font-medium whitespace-nowrap text-black transition hover:bg-gray-100 disabled:cursor-not-allowed"
 					type="submit"
 					disabled={loading}
 				>

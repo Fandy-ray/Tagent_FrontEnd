@@ -319,8 +319,7 @@
 									<div class="mb-0.5 flex justify-between">
 										<label for="enter-id" class="text-xs text-gray-500">
 											{$i18n.t('ID')}
-											{#if type !== 'mcp'}<span class="opacity-50"
-													>({$i18n.t('optional')})</span
+											{#if type !== 'mcp'}<span class="opacity-50">({$i18n.t('optional')})</span
 												>{/if}
 										</label>
 									</div>
@@ -339,7 +338,7 @@
 							{/if}
 						</div>
 
-						<div class="mb-1.5 mt-1 flex w-full flex-col">
+						<div class="mt-1 mb-1.5 flex w-full flex-col">
 							<label for="description" class="mb-0.5 text-xs text-gray-500">
 								{$i18n.t('Description')}
 							</label>
@@ -380,7 +379,7 @@
 										className="mr-1 flex shrink-0 items-center"
 									>
 										<button
-											class="self-center rounded-lg bg-transparent p-1 transition hover:bg-gray-100 dark:hover:bg-gray-850"
+											class="dark:hover:bg-gray-850 self-center rounded-lg bg-transparent p-1 transition hover:bg-gray-100"
 											onclick={() => {
 												verifyHandler();
 											}}
@@ -447,15 +446,11 @@
 											</div>
 										{:else if auth_type === 'session'}
 											<div class="self-center text-xs text-gray-500">
-												{$i18n.t(
-													'Forwards system user session credentials to authenticate'
-												)}
+												{$i18n.t('Forwards system user session credentials to authenticate')}
 											</div>
 										{:else if auth_type === 'system_oauth'}
 											<div class="self-center text-xs text-gray-500">
-												{$i18n.t(
-													'Forwards system user OAuth access token to authenticate'
-												)}
+												{$i18n.t('Forwards system user OAuth access token to authenticate')}
 											</div>
 										{/if}
 									</div>
@@ -536,8 +531,7 @@
 															placeholder={$i18n.t('JSON Spec')}
 															autocomplete="off"
 															required
-															rows="5"
-														></textarea>
+															rows="5"></textarea>
 													</div>
 												{/if}
 											</div>
@@ -585,10 +579,7 @@
 							<hr class="my-2.5 w-full border-gray-100/50 dark:border-gray-700/10" />
 
 							<div class="mt-2 flex w-full flex-col">
-								<label
-									for="function-name-filter-list"
-									class="mb-1 text-xs text-gray-500"
-								>
+								<label for="function-name-filter-list" class="mb-1 text-xs text-gray-500">
 									{$i18n.t('Function Name Filter List')}
 								</label>
 
@@ -598,9 +589,7 @@
 										class="w-full bg-transparent text-sm outline-hidden placeholder:text-gray-300 dark:placeholder:text-gray-700"
 										type="text"
 										bind:value={functionNameFilterList}
-										placeholder={$i18n.t(
-											'Enter function name filter list (e.g. func1, !func2)'
-										)}
+										placeholder={$i18n.t('Enter function name filter list (e.g. func1, !func2)')}
 										autocomplete="off"
 									/>
 								</div>
@@ -610,7 +599,7 @@
 
 					{#if type === 'mcp'}
 						<div
-							class="mb-2 mt-1 rounded-2xl bg-yellow-500/20 px-4 py-3 text-xs text-yellow-700 dark:text-yellow-200"
+							class="mt-1 mb-2 rounded-2xl bg-yellow-500/20 px-4 py-3 text-xs text-yellow-700 dark:text-yellow-200"
 						>
 							<span class="font-medium">
 								{$i18n.t('Warning')}:
@@ -643,7 +632,7 @@
 						</div>
 
 						<button
-							class={`flex items-center gap-2 whitespace-nowrap rounded-full bg-black px-3.5 py-1.5 text-sm font-medium text-white transition hover:bg-gray-900 dark:bg-white dark:text-black dark:hover:bg-gray-100 ${loading ? 'cursor-not-allowed' : ''}`}
+							class={`flex items-center gap-2 rounded-full bg-black px-3.5 py-1.5 text-sm font-medium whitespace-nowrap text-white transition hover:bg-gray-900 dark:bg-white dark:text-black dark:hover:bg-gray-100 ${loading ? 'cursor-not-allowed' : ''}`}
 							type="submit"
 							disabled={loading}
 						>

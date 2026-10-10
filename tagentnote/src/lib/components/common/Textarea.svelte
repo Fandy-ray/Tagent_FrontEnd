@@ -30,5 +30,4 @@
 	class={className}
 	bind:value
 	style:min-height={minHeight}
-	style:max-height={maxHeight}
-></textarea>
+	style:max-height={maxHeight}></textarea>

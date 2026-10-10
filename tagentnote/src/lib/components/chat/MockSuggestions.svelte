@@ -13,11 +13,7 @@
 		onSelect?: (content: string) => void;
 	};
 
-	let {
-		inputValue = '',
-		mode = 'qa',
-		onSelect = () => {}
-	}: Props = $props();
+	let { inputValue = '', mode = 'qa', onSelect = () => {} }: Props = $props();
 
 	// 开场引导语，不是知识内容：措辞对任何笔记本都成立。
 	const qaSuggestions: Suggestion[] = [

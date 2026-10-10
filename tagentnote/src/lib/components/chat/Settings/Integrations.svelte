@@ -116,13 +116,10 @@
 					</div>
 				</div>
 
-				<hr class="my-4 border-gray-100/50 dark:border-gray-850/50" />
+				<hr class="dark:border-gray-850/50 my-4 border-gray-100/50" />
 
 				<div class="pr-1.5">
-					<Terminals
-						bind:servers={terminalServerConfigs}
-						onChange={() => updateHandler()}
-					/>
+					<Terminals bind:servers={terminalServerConfigs} onChange={() => updateHandler()} />
 
 					<div class="mt-1.5">
 						<div class="text-xs text-gray-500">

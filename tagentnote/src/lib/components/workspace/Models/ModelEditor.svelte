@@ -5,11 +5,7 @@
 	import AdvancedParams from '$lib/components/chat/Settings/Advanced/AdvancedParams.svelte';
 	import Modal from '$lib/components/common/Modal.svelte';
 	import Textarea from '$lib/components/common/Textarea.svelte';
-	import {
-		listKnowledge,
-		slugify,
-		type WorkspaceModel
-	} from '$lib/data/workspaceResources';
+	import { listKnowledge, slugify, type WorkspaceModel } from '$lib/data/workspaceResources';
 
 	import BuiltinTools from './BuiltinTools.svelte';
 	import Capabilities from './Capabilities.svelte';
@@ -238,7 +234,11 @@
 		}
 		cleanedParams.system = system.trim() === '' ? null : system;
 		for (const key of Object.keys(cleanedParams)) {
-			if (cleanedParams[key] === '' || cleanedParams[key] === null || cleanedParams[key] === undefined) {
+			if (
+				cleanedParams[key] === '' ||
+				cleanedParams[key] === null ||
+				cleanedParams[key] === undefined
+			) {
 				delete cleanedParams[key];
 			}
 		}
@@ -292,7 +292,13 @@
 		<span>返回</span>
 	</button>
 
-	<input bind:this={fileInput} type="file" accept="image/*" class="hidden" onchange={onAvatarChange} />
+	<input
+		bind:this={fileInput}
+		type="file"
+		accept="image/*"
+		class="hidden"
+		onchange={onAvatarChange}
+	/>
 
 	<form
 		class="flex w-full flex-col gap-3 md:flex-row md:gap-6"
@@ -365,7 +371,7 @@
 
 				<div class="flex w-full flex-1 flex-col">
 					<div class="my-2 flex items-start justify-between gap-3">
-						<div class="flex min-w-0 w-full flex-col">
+						<div class="flex w-full min-w-0 flex-col">
 							<input
 								class="w-full bg-transparent text-3xl font-medium text-white outline-none placeholder:text-gray-500"
 								placeholder="模型名称"
@@ -388,7 +394,7 @@
 						</div>
 
 						<button
-							class="flex shrink-0 items-center gap-1 rounded-full bg-gray-850 px-2 py-1 text-white transition hover:bg-gray-800"
+							class="bg-gray-850 flex shrink-0 items-center gap-1 rounded-full px-2 py-1 text-white transition hover:bg-gray-800"
 							type="button"
 							onclick={() => {
 								showAccessModal = true;
@@ -468,7 +474,7 @@
 							{#each tags as tag}
 								<button
 									type="button"
-									class="rounded-full bg-gray-850 px-2 py-0.5 text-xs text-gray-300 hover:bg-gray-800"
+									class="bg-gray-850 rounded-full px-2 py-0.5 text-xs text-gray-300 hover:bg-gray-800"
 									onclick={() => {
 										tags = tags.filter((t) => t !== tag);
 									}}
@@ -529,7 +535,7 @@
 				</div>
 			</div>
 
-			<hr class="my-2 border-gray-850/30" />
+			<hr class="border-gray-850/30 my-2" />
 
 			<div class="my-2">
 				<div class="flex w-full items-center justify-between">
@@ -557,14 +563,10 @@
 			</div>
 
 			<div class="my-4">
-				<KnowledgeAttach
-					options={knowledgeOptions}
-					bind:knowledgeIds
-					bind:knowledgeFiles
-				/>
+				<KnowledgeAttach options={knowledgeOptions} bind:knowledgeIds bind:knowledgeFiles />
 			</div>
 
-			<hr class="my-4 border-gray-850/30" />
+			<hr class="border-gray-850/30 my-4" />
 
 			<div class="my-4">
 				<Capabilities bind:capabilities />
@@ -594,7 +596,7 @@
 				/>
 			</div>
 
-			<hr class="my-4 border-gray-850/30" />
+			<hr class="border-gray-850/30 my-4" />
 
 			{#if error}
 				<p class="mb-2 text-sm text-red-400">{error}</p>
@@ -632,8 +634,7 @@
 						rows="10"
 						value={JSON.stringify(previewInfo, null, 2)}
 						disabled
-						readonly
-					></textarea>
+						readonly></textarea>
 				{/if}
 			</div>
 		</div>

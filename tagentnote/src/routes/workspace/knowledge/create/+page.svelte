@@ -50,7 +50,6 @@
 		saving = false;
 		void goto(withParams(`/workspace/knowledge/${encodeURIComponent(id)}`));
 	};
-
 </script>
 
 <EditorShell

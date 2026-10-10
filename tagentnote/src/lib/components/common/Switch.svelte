@@ -5,7 +5,12 @@
 		ariaLabelledbyId?: string;
 		onChange?: (state: boolean) => void;
 	};
-	let { state = $bindable(true), id = '', ariaLabelledbyId = '', onChange = () => {} }: Props = $props();
+	let {
+		state = $bindable(true),
+		id = '',
+		ariaLabelledbyId = '',
+		onChange = () => {}
+	}: Props = $props();
 </script>
 
 <button
@@ -14,7 +19,7 @@
 	{id}
 	aria-labelledby={ariaLabelledbyId || undefined}
 	aria-checked={state}
-	class="flex h-[1.125rem] min-h-[1.125rem] w-8 shrink-0 cursor-pointer items-center rounded-full px-1 mx-[1px] transition outline outline-1 outline-gray-800 {state
+	class="mx-[1px] flex h-[1.125rem] min-h-[1.125rem] w-8 shrink-0 cursor-pointer items-center rounded-full px-1 outline outline-1 outline-gray-800 transition {state
 		? 'bg-emerald-700'
 		: 'bg-transparent'}"
 	onclick={() => {

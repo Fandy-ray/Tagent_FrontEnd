@@ -209,138 +209,115 @@
 			el.setSelectionRange(start + prefix.length, start + prefix.length + selected.length);
 		});
 	};
-
 </script>
 
 <div
 	id="message-input-container"
-	class="relative flex w-full flex-1 flex-col rounded-3xl border border-white/[0.08] bg-white/[0.035] px-1 text-gray-100 backdrop-blur-sm transition hover:border-white/[0.12] focus-within:border-white/[0.16]"
+	class="relative flex w-full flex-1 flex-col rounded-3xl border border-white/[0.08] bg-white/[0.035] px-1 text-gray-100 backdrop-blur-sm transition focus-within:border-white/[0.16] hover:border-white/[0.12]"
 >
 	{#if showFormattingToolbar && richTextInput}
-			<div class="flex items-center gap-1 border-b border-white/[0.06] px-2 pt-2 pb-1">
-				<button type="button" class="rounded px-1.5 py-0.5 text-xs text-gray-400 hover:bg-white/[0.06] hover:text-white" onclick={() => wrapSelection('**')} title="粗体">B</button>
-				<button type="button" class="rounded px-1.5 py-0.5 text-xs italic text-gray-400 hover:bg-white/[0.06] hover:text-white" onclick={() => wrapSelection('*')} title="斜体">I</button>
-				<button type="button" class="rounded px-1.5 py-0.5 text-xs text-gray-400 hover:bg-white/[0.06] hover:text-white" onclick={() => wrapSelection('`')} title="代码">`</button>
-				<button type="button" class="rounded px-1.5 py-0.5 text-xs text-gray-400 hover:bg-white/[0.06] hover:text-white" onclick={() => wrapSelection('[', '](url)')} title="链接">链接</button>
+		<div class="flex items-center gap-1 border-b border-white/[0.06] px-2 pt-2 pb-1">
+			<button
+				type="button"
+				class="rounded px-1.5 py-0.5 text-xs text-gray-400 hover:bg-white/[0.06] hover:text-white"
+				onclick={() => wrapSelection('**')}
+				title="粗体">B</button
+			>
+			<button
+				type="button"
+				class="rounded px-1.5 py-0.5 text-xs text-gray-400 italic hover:bg-white/[0.06] hover:text-white"
+				onclick={() => wrapSelection('*')}
+				title="斜体">I</button
+			>
+			<button
+				type="button"
+				class="rounded px-1.5 py-0.5 text-xs text-gray-400 hover:bg-white/[0.06] hover:text-white"
+				onclick={() => wrapSelection('`')}
+				title="代码">`</button
+			>
+			<button
+				type="button"
+				class="rounded px-1.5 py-0.5 text-xs text-gray-400 hover:bg-white/[0.06] hover:text-white"
+				onclick={() => wrapSelection('[', '](url)')}
+				title="链接">链接</button
+			>
+		</div>
+	{/if}
+
+	<div class="relative max-h-[18rem] min-h-[3rem] overflow-y-auto">
+		{#if slashCommands.length > 0}
+			<div
+				class="bg-gray-850 absolute bottom-full left-0 z-20 mb-2 max-h-56 w-full max-w-md overflow-y-auto rounded-xl border border-gray-800 py-1 shadow-lg"
+			>
+				<div class="px-3 py-1 text-xs text-gray-500">提示词</div>
+				{#each slashCommands as item, idx (item.id)}
+					<button
+						type="button"
+						class="flex w-full flex-col px-3 py-1.5 text-left transition {idx === commandIndex
+							? 'bg-gray-800'
+							: 'hover:bg-gray-800/70'}"
+						onclick={() => applySlashPrompt(item)}
+						onmousemove={() => {
+							commandIndex = idx;
+						}}
+					>
+						<div class="flex items-center gap-2 text-sm text-white">
+							<span class="font-medium">{item.title}</span>
+							<span class="text-xs text-gray-500">/{item.command.replace(/^\/+/, '')}</span>
+						</div>
+						{#if item.content}
+							<div class="line-clamp-1 text-xs text-gray-500">{item.content}</div>
+						{/if}
+					</button>
+				{/each}
 			</div>
 		{/if}
+		{#if autocompleteHint}
+			<div
+				class="pointer-events-none absolute top-3 right-3 left-3 truncate text-sm leading-6 text-gray-600"
+				aria-hidden="true"
+			>
+				<span class="invisible">{prompt}</span><span>{autocompleteHint.slice(prompt.length)}</span>
+			</div>
+		{/if}
+		<textarea
+			id="chat-input"
+			bind:this={textareaElement}
+			bind:value={prompt}
+			rows="1"
+			class="relative z-[1] block min-h-[52px] w-full resize-none bg-transparent px-3 pt-3 pb-1 text-sm leading-6 text-gray-100 outline-none placeholder:text-gray-500 disabled:cursor-not-allowed disabled:opacity-50"
+			{placeholder}
+			{disabled}
+			onkeydown={handleKeydown}
+			aria-label={placeholder}></textarea>
+	</div>
 
-		<div class="relative max-h-[18rem] min-h-[3rem] overflow-y-auto">
-			{#if slashCommands.length > 0}
-				<div
-					class="absolute bottom-full left-0 z-20 mb-2 max-h-56 w-full max-w-md overflow-y-auto rounded-xl border border-gray-800 bg-gray-850 py-1 shadow-lg"
-				>
-					<div class="px-3 py-1 text-xs text-gray-500">提示词</div>
-					{#each slashCommands as item, idx (item.id)}
-						<button
-							type="button"
-							class="flex w-full flex-col px-3 py-1.5 text-left transition {idx === commandIndex
-								? 'bg-gray-800'
-								: 'hover:bg-gray-800/70'}"
-							onclick={() => applySlashPrompt(item)}
-							onmousemove={() => {
-								commandIndex = idx;
-							}}
-						>
-							<div class="flex items-center gap-2 text-sm text-white">
-								<span class="font-medium">{item.title}</span>
-								<span class="text-xs text-gray-500">/{item.command.replace(/^\/+/, '')}</span>
-							</div>
-							{#if item.content}
-								<div class="line-clamp-1 text-xs text-gray-500">{item.content}</div>
-							{/if}
-						</button>
-					{/each}
-				</div>
+	<div class="mx-0.5 mt-0.5 mb-2.5 flex max-w-full items-end justify-between" dir="ltr">
+		<div class="ml-1 flex max-w-[80%] flex-1 items-center gap-0.5 self-end">
+			{#if canSendWhileGenerating}
+				<span class="ml-2 text-[11px] text-gray-500">生成中 · 发送将加入队列</span>
 			{/if}
-			{#if autocompleteHint}
-				<div class="pointer-events-none absolute top-3 left-3 right-3 truncate text-sm leading-6 text-gray-600" aria-hidden="true">
-					<span class="invisible">{prompt}</span><span>{autocompleteHint.slice(prompt.length)}</span>
-				</div>
-			{/if}
-			<textarea
-				id="chat-input"
-				bind:this={textareaElement}
-				bind:value={prompt}
-				rows="1"
-				class="relative z-[1] block min-h-[52px] w-full resize-none bg-transparent px-3 pt-3 pb-1 text-sm leading-6 text-gray-100 outline-none placeholder:text-gray-500 disabled:cursor-not-allowed disabled:opacity-50"
-				{placeholder}
-				{disabled}
-				onkeydown={handleKeydown}
-				aria-label={placeholder}
-			></textarea>
 		</div>
 
-		<div class="mx-0.5 mt-0.5 mb-2.5 flex max-w-full items-end justify-between" dir="ltr">
-			<div class="ml-1 flex max-w-[80%] flex-1 items-center gap-0.5 self-end">
-				{#if canSendWhileGenerating}
-					<span class="ml-2 text-[11px] text-gray-500">生成中 · 发送将加入队列</span>
-				{/if}
-			</div>
-
-			<div class="mr-1 flex shrink-0 items-center gap-1 self-end">
-				{#if generating}
+		<div class="mr-1 flex shrink-0 items-center gap-1 self-end">
+			{#if generating}
+				<button
+					type="button"
+					class="flex size-8 items-center justify-center rounded-full bg-white text-black transition hover:bg-gray-200"
+					onclick={onStop}
+					title="停止生成"
+					aria-label="停止生成"
+				>
+					<span class="size-2.5 rounded-[2px] bg-black"></span>
+				</button>
+				{#if enableMessageQueue && prompt.trim()}
 					<button
 						type="button"
-						class="flex size-8 items-center justify-center rounded-full bg-white text-black transition hover:bg-gray-200"
-						onclick={onStop}
-						title="停止生成"
-						aria-label="停止生成"
-					>
-						<span class="size-2.5 rounded-[2px] bg-black"></span>
-					</button>
-					{#if enableMessageQueue && prompt.trim()}
-						<button
-							type="button"
-							class="flex size-8 items-center justify-center rounded-full border border-white/20 text-white transition hover:bg-white/[0.08]"
-							onclick={submit}
-							disabled={disabled}
-							title="加入队列"
-							aria-label="加入队列"
-						>
-							<svg class="size-[18px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-								<path d="M12 19V5"></path>
-								<path d="m5 12 7-7 7 7"></path>
-							</svg>
-						</button>
-					{/if}
-				{:else}
-					{#if onReview}
-						{#if onFillSample && !prompt.trim()}
-							<button
-								type="button"
-								class="rounded-full px-2.5 py-1 text-xs text-gray-400 transition hover:bg-white/[0.06] hover:text-white"
-								onclick={onFillSample}
-								title="把本机的范例论文填进输入框，演示批改用"
-							>
-								填入范例
-							</button>
-						{/if}
-						{#if prompt.trim()}
-							<span
-								class={`text-[11px] tabular-nums ${reviewReady ? 'text-gray-500' : 'text-amber-300/80'}`}
-							>
-								{reviewChars.toLocaleString()} 字
-							</span>
-						{/if}
-						<button
-							type="button"
-							class="rounded-full border border-amber-300/40 px-3 py-1 text-xs font-medium text-amber-100 transition hover:bg-amber-300/10 disabled:cursor-not-allowed disabled:border-white/15 disabled:text-gray-500"
-							onclick={submitReview}
-							disabled={disabled || !reviewReady}
-							title={reviewTitle}
-						>
-							交稿批改
-						</button>
-					{/if}
-					<button
-						type="button"
-						id="send-message-button"
-						class="flex size-8 items-center justify-center rounded-full bg-white text-black transition hover:bg-gray-200 disabled:cursor-not-allowed disabled:opacity-30"
+						class="flex size-8 items-center justify-center rounded-full border border-white/20 text-white transition hover:bg-white/[0.08]"
 						onclick={submit}
-						disabled={disabled || !prompt.trim()}
-						title="发送消息"
-						aria-label="发送消息"
+						{disabled}
+						title="加入队列"
+						aria-label="加入队列"
 					>
 						<svg
 							class="size-[18px]"
@@ -357,6 +334,59 @@
 						</svg>
 					</button>
 				{/if}
-			</div>
+			{:else}
+				{#if onReview}
+					{#if onFillSample && !prompt.trim()}
+						<button
+							type="button"
+							class="rounded-full px-2.5 py-1 text-xs text-gray-400 transition hover:bg-white/[0.06] hover:text-white"
+							onclick={onFillSample}
+							title="把本机的范例论文填进输入框，演示批改用"
+						>
+							填入范例
+						</button>
+					{/if}
+					{#if prompt.trim()}
+						<span
+							class={`text-[11px] tabular-nums ${reviewReady ? 'text-gray-500' : 'text-amber-300/80'}`}
+						>
+							{reviewChars.toLocaleString()} 字
+						</span>
+					{/if}
+					<button
+						type="button"
+						class="rounded-full border border-amber-300/40 px-3 py-1 text-xs font-medium text-amber-100 transition hover:bg-amber-300/10 disabled:cursor-not-allowed disabled:border-white/15 disabled:text-gray-500"
+						onclick={submitReview}
+						disabled={disabled || !reviewReady}
+						title={reviewTitle}
+					>
+						交稿批改
+					</button>
+				{/if}
+				<button
+					type="button"
+					id="send-message-button"
+					class="flex size-8 items-center justify-center rounded-full bg-white text-black transition hover:bg-gray-200 disabled:cursor-not-allowed disabled:opacity-30"
+					onclick={submit}
+					disabled={disabled || !prompt.trim()}
+					title="发送消息"
+					aria-label="发送消息"
+				>
+					<svg
+						class="size-[18px]"
+						viewBox="0 0 24 24"
+						fill="none"
+						stroke="currentColor"
+						stroke-width="2"
+						stroke-linecap="round"
+						stroke-linejoin="round"
+						aria-hidden="true"
+					>
+						<path d="M12 19V5"></path>
+						<path d="m5 12 7-7 7 7"></path>
+					</svg>
+				</button>
+			{/if}
 		</div>
+	</div>
 </div>

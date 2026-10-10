@@ -72,7 +72,7 @@
 	<!-- svelte-ignore a11y_click_events_have_key_events -->
 	<!-- svelte-ignore a11y_no_static_element_interactions -->
 	<div
-		class="fixed inset-0 right-0 left-0 bottom-0 z-[99999999] flex h-screen max-h-[100dvh] w-full justify-center overflow-hidden overscroll-contain bg-black/60"
+		class="fixed inset-0 right-0 bottom-0 left-0 z-[99999999] flex h-screen max-h-[100dvh] w-full justify-center overflow-hidden overscroll-contain bg-black/60"
 		transition:fade={{ duration: 10 }}
 		onmousedown={() => {
 			show = false;
@@ -80,7 +80,7 @@
 		}}
 	>
 		<div
-			class="modal-content m-auto mx-2 w-[32rem] max-w-full rounded-4xl border border-white/10 bg-gray-950/95 shadow-3xl backdrop-blur-sm"
+			class="modal-content shadow-3xl m-auto mx-2 w-[32rem] max-w-full rounded-4xl border border-white/10 bg-gray-950/95 backdrop-blur-sm"
 			in:scaleFly
 			onmousedown={(e) => e.stopPropagation()}
 		>
@@ -90,7 +90,7 @@
 				<div class="mt-6 flex justify-between gap-1.5">
 					<button
 						type="button"
-						class="w-full rounded-3xl bg-gray-850 py-2 text-sm font-medium text-white transition hover:bg-gray-800"
+						class="bg-gray-850 w-full rounded-3xl py-2 text-sm font-medium text-white transition hover:bg-gray-800"
 						onclick={() => {
 							show = false;
 							onCancel();
