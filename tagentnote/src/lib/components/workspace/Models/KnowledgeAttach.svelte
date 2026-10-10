@@ -17,9 +17,7 @@
 	let showPicker = $state(false);
 	let fileInput: HTMLInputElement | null = $state(null);
 
-	const selectedKnowledge = $derived(
-		options.filter((item) => knowledgeIds.includes(item.id))
-	);
+	const selectedKnowledge = $derived(options.filter((item) => knowledgeIds.includes(item.id)));
 
 	const toggleKnowledge = (id: string) => {
 		if (knowledgeIds.includes(id)) {
@@ -96,7 +94,7 @@
 	<div class="relative flex flex-row flex-wrap gap-1 text-sm">
 		<button
 			type="button"
-			class="rounded-3xl px-3.5 py-1.5 font-medium outline outline-1 outline-gray-850 hover:bg-white/5"
+			class="outline-gray-850 rounded-3xl px-3.5 py-1.5 font-medium outline outline-1 hover:bg-white/5"
 			onclick={() => {
 				showPicker = !showPicker;
 			}}
@@ -105,7 +103,7 @@
 		</button>
 		<button
 			type="button"
-			class="rounded-3xl px-3.5 py-1.5 font-medium outline outline-1 outline-gray-850 hover:bg-white/5"
+			class="outline-gray-850 rounded-3xl px-3.5 py-1.5 font-medium outline outline-1 hover:bg-white/5"
 			onclick={() => fileInput?.click()}
 		>
 			上传文件
@@ -120,7 +118,7 @@
 				{:else}
 					{#each options as opt (opt.id)}
 						<label
-							class="flex cursor-pointer items-center gap-2 rounded-lg px-2 py-1.5 text-sm hover:bg-gray-850"
+							class="hover:bg-gray-850 flex cursor-pointer items-center gap-2 rounded-lg px-2 py-1.5 text-sm"
 						>
 							<input
 								type="checkbox"
@@ -133,7 +131,7 @@
 				{/if}
 				<button
 					type="button"
-					class="mt-1 w-full rounded-lg px-2 py-1 text-xs text-gray-400 hover:bg-gray-850"
+					class="hover:bg-gray-850 mt-1 w-full rounded-lg px-2 py-1 text-xs text-gray-400"
 					onclick={() => {
 						showPicker = false;
 					}}
@@ -146,7 +144,5 @@
 
 	<input bind:this={fileInput} type="file" class="hidden" multiple onchange={onUpload} />
 
-	<div class="mt-1 text-xs text-gray-600">
-		要在此处附加知识库，请先将它们添加到“知识库”工作区。
-	</div>
+	<div class="mt-1 text-xs text-gray-600">要在此处附加知识库，请先将它们添加到“知识库”工作区。</div>
 </div>

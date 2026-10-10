@@ -43,8 +43,9 @@
 		onclick={onClose}
 	>
 		<div
-			class="flex max-h-[80vh] w-full max-w-lg flex-col rounded-2xl border border-gray-800 bg-gray-850 text-white shadow-2xl"
+			class="bg-gray-850 flex max-h-[80vh] w-full max-w-lg flex-col rounded-2xl border border-gray-800 text-white shadow-2xl"
 			onclick={(event) => event.stopPropagation()}
+			tabindex="-1"
 			role="dialog"
 			aria-modal="true"
 			aria-label="已归档对话"
@@ -57,7 +58,13 @@
 					onclick={onClose}
 					aria-label="关闭"
 				>
-					<svg class="size-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+					<svg
+						class="size-5"
+						viewBox="0 0 24 24"
+						fill="none"
+						stroke="currentColor"
+						stroke-width="1.8"
+					>
 						<path stroke-linecap="round" d="M6 6l12 12M18 6L6 18"></path>
 					</svg>
 				</button>

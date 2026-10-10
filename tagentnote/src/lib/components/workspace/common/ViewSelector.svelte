@@ -19,21 +19,27 @@
 <div class="relative">
 	<button
 		type="button"
-		class="relative flex w-full items-center gap-0.5 rounded-xl bg-gray-850 px-2.5 py-1.5 text-sm text-gray-200"
+		class="bg-gray-850 relative flex w-full items-center gap-0.5 rounded-xl px-2.5 py-1.5 text-sm text-gray-200"
 		onclick={() => {
 			open = !open;
 		}}
 	>
 		<span class="inline-flex w-full truncate px-0.5">{selectedLabel}</span>
-		<svg class="size-3.5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+		<svg
+			class="size-3.5 shrink-0"
+			viewBox="0 0 24 24"
+			fill="none"
+			stroke="currentColor"
+			stroke-width="2.5"
+		>
 			<path stroke-linecap="round" stroke-linejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
 		</svg>
 	</button>
 	{#if open}
 		<div
-			class="absolute top-full left-0 z-30 mt-1 min-w-[10rem] overflow-hidden rounded-xl border border-gray-800 bg-gray-850 py-1 shadow-lg"
+			class="bg-gray-850 absolute top-full left-0 z-30 mt-1 min-w-[10rem] overflow-hidden rounded-xl border border-gray-800 py-1 shadow-lg"
 		>
-			{#each items as item}
+			{#each items as item (item.value)}
 				<button
 					type="button"
 					class="flex w-full items-center px-3 py-1.5 text-left text-sm hover:bg-gray-800 {value ===

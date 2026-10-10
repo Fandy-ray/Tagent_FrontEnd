@@ -1,5 +1,7 @@
 <script lang="ts">
+	import { SvelteURLSearchParams } from 'svelte/reactivity';
 	import { goto } from '$app/navigation';
+	import { resolve } from '$app/paths';
 	import { page } from '$app/stores';
 	import { onMount } from 'svelte';
 
@@ -21,7 +23,7 @@
 	] as const;
 
 	const withParams = (path: string, extra?: Record<string, string>) => {
-		const params = new URLSearchParams();
+		const params = new SvelteURLSearchParams();
 		if (modelId) params.set('model', modelId);
 		if (activeChatId) params.set('chat', activeChatId);
 		if (extra) {
@@ -49,14 +51,14 @@
 	});
 
 	const goQa = (opts?: { newChat?: boolean; chatId?: string }) => {
-		const params = new URLSearchParams();
+		const params = new SvelteURLSearchParams();
 		if (modelId) params.set('model', modelId);
 		if (!opts?.newChat) {
 			const chatId = opts?.chatId ?? activeChatId;
 			if (chatId) params.set('chat', chatId);
 		}
 		const search = params.toString();
-		void goto(search ? `/qa?${search}` : '/qa');
+		void goto(resolve(search ? `/qa?${search}` : '/qa'));
 	};
 </script>
 
@@ -70,13 +72,11 @@
 			{activeChatId}
 			{chats}
 			{searchChats}
-			{modelId}
 			activeNav="workspace"
-			onHome={() => goto('/agent-select')}
+			onHome={() => goto(resolve('/agent-select'))}
 			onNewChat={() => goQa({ newChat: true })}
 			onSelectChat={(chatId) => goQa({ chatId })}
-			onOpenNotes={() => goto(withParams('/notebook', { from: 'qa' }))}
-			onOpenWorkspace={() => goto(withParams('/workspace/models'))}
+			onOpenNotes={() => goto(resolve(withParams('/notebook', { from: 'qa' })))}
 			onClose={() => {
 				sidebarOpen = false;
 			}}
@@ -89,7 +89,7 @@
 				{#if !sidebarOpen}
 					<button
 						type="button"
-						class="mr-1 flex rounded-lg p-1.5 text-gray-400 transition hover:bg-gray-850 hover:text-white"
+						class="hover:bg-gray-850 mr-1 flex rounded-lg p-1.5 text-gray-400 transition hover:text-white"
 						onclick={() => {
 							sidebarOpen = true;
 						}}
@@ -110,18 +110,16 @@
 				{/if}
 
 				<div
-					class="flex w-fit touch-auto gap-1 overflow-x-auto rounded-full bg-transparent py-1 text-center text-sm font-medium scrollbar-none"
+					class="flex w-fit touch-auto scrollbar-none gap-1 overflow-x-auto rounded-full bg-transparent py-1 text-center text-sm font-medium"
 				>
 					{#each tabs as tab (tab.href)}
 						<a
 							draggable="false"
 							aria-current={isActiveTab(tab.href) ? 'page' : undefined}
 							class={`min-w-fit p-1.5 transition select-none ${
-								isActiveTab(tab.href)
-									? 'text-white'
-									: 'text-gray-600 hover:text-white'
+								isActiveTab(tab.href) ? 'text-white' : 'text-gray-600 hover:text-white'
 							}`}
-							href={withParams(tab.href)}
+							href={resolve(withParams(tab.href))}
 						>
 							{tab.label}
 						</a>

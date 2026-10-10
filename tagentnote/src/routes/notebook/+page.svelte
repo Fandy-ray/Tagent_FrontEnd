@@ -1,8 +1,10 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
+	import { resolve } from '$app/paths';
 	import { page } from '$app/stores';
 	import { env } from '$env/dynamic/public';
 	import { onMount } from 'svelte';
+	import { SvelteURLSearchParams } from 'svelte/reactivity';
 
 	import { listNotebookKnowledge } from '$lib/apis/opennotebook';
 	import { findCollection, type KnowledgeCollection } from '$lib/data/knowledge';
@@ -19,9 +21,7 @@
 		return raw.trim() || DEFAULT_NOTEBOOK_URL;
 	};
 
-	const openNotebookUrl = normalizeNotebookUrl(
-		env.PUBLIC_OPENNOTEBOOK_URL || DEFAULT_NOTEBOOK_URL
-	);
+	const openNotebookUrl = normalizeNotebookUrl(env.PUBLIC_OPENNOTEBOOK_URL || DEFAULT_NOTEBOOK_URL);
 
 	let iframeKey = $state(0);
 	let status = $state<'checking' | 'ready' | 'offline'>('checking');
@@ -34,8 +34,7 @@
 		findCollection($page.url.searchParams.get('collection') ?? '', collections)
 	);
 	const sourceFileTitle = $derived(
-		sourceCollection?.files.find((file) => file.id === sourceFile)?.title ??
-			sourceFile
+		sourceCollection?.files.find((file) => file.id === sourceFile)?.title ?? sourceFile
 	);
 
 	const returnPath = $derived.by(() => {
@@ -46,7 +45,7 @@
 		const mode = $page.url.searchParams.get('mode') ?? '';
 
 		if (from === 'qa') {
-			const params = new URLSearchParams();
+			const params = new SvelteURLSearchParams();
 			if (model) params.set('model', model);
 			if (notebook) params.set('notebook', notebook);
 			if (chat) params.set('chat', chat);
@@ -56,7 +55,7 @@
 		}
 
 		if (from === 'workspace') {
-			const params = new URLSearchParams();
+			const params = new SvelteURLSearchParams();
 			if (model) params.set('model', model);
 			if (chat) params.set('chat', chat);
 			const search = params.toString();
@@ -101,7 +100,7 @@
 	};
 
 	const returnToSource = () => {
-		void goto(returnPath);
+		void goto(resolve(returnPath));
 	};
 
 	onMount(() => {
@@ -115,6 +114,8 @@
 			});
 	});
 </script>
+
+<!-- eslint-disable svelte/no-navigation-without-resolve -- OpenNoteBook is an external configured service. -->
 
 <svelte:head>
 	<title>知识笔记本 | TAgent</title>
@@ -149,16 +150,13 @@
 	{#if status !== 'ready'}
 		<div class="absolute inset-0 z-40 flex items-center justify-center bg-gray-950/92 px-6">
 			<div class="w-full max-w-lg rounded-2xl border border-white/10 bg-gray-950 p-6 text-gray-200">
-				<p class="text-xs font-medium uppercase tracking-[0.18em] text-cyan-400">
-					笔记本
-				</p>
+				<p class="text-xs font-medium tracking-[0.18em] text-cyan-400 uppercase">笔记本</p>
 				<h1 class="mt-2 text-xl font-semibold text-white">
 					{status === 'checking' ? '正在连接 OpenNoteBook…' : '未检测到 OpenNoteBook'}
 				</h1>
 				<p class="mt-3 text-sm leading-6 text-gray-400">
 					笔记本页通过 iframe 嵌入外部服务，默认地址为
-					<code class="text-cyan-200">{openNotebookUrl}</code>。
-					请先启动 OpenNoteBook，再刷新本页。
+					<code class="text-cyan-200">{openNotebookUrl}</code>。 请先启动 OpenNoteBook，再刷新本页。
 				</p>
 				<p class="mt-2 text-sm leading-6 text-gray-500">
 					本地部署见
@@ -190,7 +188,7 @@
 	{/if}
 
 	<div
-		class="fixed bottom-5 right-5 z-50 flex items-center overflow-hidden rounded-xl border border-white/15 bg-gray-950/95 shadow-2xl shadow-black/50 backdrop-blur-xl"
+		class="fixed right-5 bottom-5 z-50 flex items-center overflow-hidden rounded-xl border border-white/15 bg-gray-950/95 shadow-2xl shadow-black/50 backdrop-blur-xl"
 	>
 		<button
 			type="button"
@@ -235,6 +233,8 @@
 			<span>刷新</span>
 		</button>
 
+		<!-- OpenNoteBook is a configured external service URL. -->
+		<!-- eslint-disable-next-line svelte/no-navigation-without-resolve -->
 		<a
 			href={openNotebookUrl}
 			target="_blank"

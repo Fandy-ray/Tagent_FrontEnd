@@ -47,7 +47,9 @@
 
 	const showChangelog = () => {
 		// mock：可绑定到一个简单 toast
-		alert('变更日志：\n• 答疑页设置面板对齐 Open WebUI 布局\n• 账号/关于/数据面板补全\n• 教学前端 mock 数据接入');
+		alert(
+			'变更日志：\n• 答疑页设置面板对齐 Open WebUI 布局\n• 账号/关于/数据面板补全\n• 教学前端 mock 数据接入'
+		);
 	};
 </script>
 
@@ -87,7 +89,7 @@
 				</div>
 
 				<button
-					class="rounded-lg bg-gray-850 px-3 py-1.5 text-xs font-medium transition hover:bg-gray-800"
+					class="bg-gray-850 rounded-lg px-3 py-1.5 text-xs font-medium transition hover:bg-gray-800"
 					type="button"
 					onclick={checkForVersionUpdates}
 				>
@@ -142,9 +144,8 @@
 
 		<div class="mt-2 text-xs text-gray-500">
 			Emoji graphics provided by
-			<a href="https://github.com/jdecked/twemoji" target="_blank" rel="noreferrer"
-				>Twemoji</a
-			>, licensed under
+			<a href="https://github.com/jdecked/twemoji" target="_blank" rel="noreferrer">Twemoji</a>,
+			licensed under
 			<a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noreferrer"
 				>CC-BY 4.0</a
 			>.

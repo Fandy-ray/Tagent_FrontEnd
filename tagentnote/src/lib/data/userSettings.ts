@@ -3,7 +3,7 @@ import { browser } from '$app/environment';
 export type DirectConnection = {
 	url: string;
 	key: string;
-	enabled: boolean;
+	enabled?: boolean;
 };
 
 export type ToolServer = {
@@ -12,7 +12,7 @@ export type ToolServer = {
 	url: string;
 	key: string;
 	path: string;
-	enabled: boolean;
+	enabled?: boolean;
 	spec?: string;
 	spec_type?: 'url' | 'json';
 	auth_type?: 'none' | 'bearer' | 'session' | 'system_oauth' | 'oauth_2.1' | 'oauth_2.1_static';
@@ -21,6 +21,7 @@ export type ToolServer = {
 	name?: string;
 	description?: string;
 	info?: { id?: string; name?: string; description?: string };
+	config?: { enable?: boolean; function_name_filter_list?: string };
 	connection?: {
 		type?: string;
 		url?: string;
@@ -39,6 +40,7 @@ export type TerminalServer = {
 	enabled: boolean;
 	path: string;
 	auth_type?: string;
+	enable?: boolean;
 };
 
 export type MemoryItem = {
@@ -52,7 +54,7 @@ export type UserSettings = {
 	language: string;
 	notificationEnabled: boolean;
 	system: string;
-	params: Record<string, any>;
+	params: Record<string, unknown>;
 	displayName: string;
 	avatarText: string;
 	statusEmoji: string;
@@ -301,9 +303,7 @@ export function applyTheme(theme: UserSettings['theme']) {
 export function applyTextScale(scale: number | null) {
 	if (!browser) return;
 	const safe =
-		typeof scale === 'number' && Number.isFinite(scale)
-			? Math.min(1.5, Math.max(1, scale))
-			: null;
+		typeof scale === 'number' && Number.isFinite(scale) ? Math.min(1.5, Math.max(1, scale)) : null;
 	const effective = safe && safe !== 1 ? safe : null;
 	document.documentElement.style.setProperty(
 		'--app-text-scale',
@@ -320,7 +320,11 @@ export function applyHighContrast(enabled: boolean) {
 export function playNotificationSound() {
 	if (!browser) return;
 	try {
-		const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
+		const AudioContextCtor =
+			window.AudioContext ??
+			(window as Window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+		if (!AudioContextCtor) return;
+		const ctx = new AudioContextCtor();
 		const osc = ctx.createOscillator();
 		const gain = ctx.createGain();
 		osc.type = 'sine';

@@ -25,12 +25,19 @@
 		}}
 	>
 		<div
-			class="w-full max-w-sm rounded-2xl border border-gray-800 bg-gray-850 p-4 text-sm shadow-2xl"
+			class="bg-gray-850 w-full max-w-sm rounded-2xl border border-gray-800 p-4 text-sm shadow-2xl"
 			onclick={(e) => e.stopPropagation()}
 		>
 			<div class="mb-3 flex items-center justify-between">
 				<div class="text-lg font-medium">管理</div>
-				<button type="button" class="text-gray-500" onclick={() => { show = false; onClose(); }}>关闭</button>
+				<button
+					type="button"
+					class="text-gray-500"
+					onclick={() => {
+						show = false;
+						onClose();
+					}}>关闭</button
+				>
 			</div>
 
 			<div class="mb-2 text-xs">图像最大压缩尺寸</div>

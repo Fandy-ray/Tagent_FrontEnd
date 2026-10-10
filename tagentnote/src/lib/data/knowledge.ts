@@ -4,11 +4,14 @@
 // （见 $lib/apis/opennotebook.ts），所以每个函数都要求调用方把 collections 传进来。
 
 export type SourceKind = 'file' | 'note' | 'web' | 'paper';
+export type SourceStatus = 'ready' | 'processing' | 'failed';
 
 export type KnowledgeFile = {
 	id: string;
 	title: string;
 	kind: SourceKind;
+	/** OpenNoteBook 远程来源可能下载或解析失败，不能把它伪装成可用材料。 */
+	status?: SourceStatus;
 };
 
 export type KnowledgeCollection = {
@@ -44,10 +47,7 @@ export const KIND_LABEL: Record<SourceKind, string> = {
 	paper: '论文'
 };
 
-export function findFileInCollections(
-	fileId: string,
-	collections: KnowledgeCollection[]
-) {
+export function findFileInCollections(fileId: string, collections: KnowledgeCollection[]) {
 	if (!fileId) {
 		return null;
 	}
@@ -70,9 +70,7 @@ export function toCitation(
 	extra?: Partial<Pick<Citation, 'chapter' | 'page' | 'locator' | 'snippet'>>
 ): Citation {
 	const locator =
-		extra?.locator ||
-		[extra?.chapter, extra?.page].filter(Boolean).join(' · ') ||
-		undefined;
+		extra?.locator || [extra?.chapter, extra?.page].filter(Boolean).join(' · ') || undefined;
 
 	return {
 		id: `${collection.id}:${file.id}${locator ? `:${locator}` : ''}`,
@@ -126,8 +124,7 @@ export function findCollection(idOrName: string, collections: KnowledgeCollectio
 
 	return (
 		collections.find(
-			(collection) =>
-				collection.id === idOrName.trim() || collection.name.toLowerCase() === key
+			(collection) => collection.id === idOrName.trim() || collection.name.toLowerCase() === key
 		) ?? null
 	);
 }
@@ -149,10 +146,7 @@ export function findSource(key: string, collections: KnowledgeCollection[]) {
 	return { collection, file };
 }
 
-export function sourceKeysForCollection(
-	collectionId: string,
-	collections: KnowledgeCollection[]
-) {
+export function sourceKeysForCollection(collectionId: string, collections: KnowledgeCollection[]) {
 	const collection = findCollection(collectionId, collections);
 
 	return collection?.files.map((file) => sourceKey(collection.id, file.id)) ?? [];

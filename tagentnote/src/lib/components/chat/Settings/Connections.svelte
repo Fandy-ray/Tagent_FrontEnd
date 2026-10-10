@@ -10,6 +10,13 @@
 	import Plus from '$lib/components/icons/Plus.svelte';
 	import Star from '$lib/components/icons/Star.svelte';
 	import XMark from '$lib/components/icons/XMark.svelte';
+	import type { UserSettings, DirectConnection } from '$lib/data/userSettings';
+
+	type LegacyConnectionSettings = {
+		OPENAI_API_BASE_URLS?: string[];
+		OPENAI_API_KEYS?: string[];
+		OPENAI_API_CONFIGS?: Array<Record<string, string | number | boolean>>;
+	};
 
 	const i18n = getI18nContext();
 
@@ -26,8 +33,8 @@
 	};
 
 	type Props = {
-		settings: any;
-		saveSettings: (updated: any) => Promise<void> | void;
+		settings: UserSettings;
+		saveSettings: (updated: Partial<UserSettings>) => Promise<void> | void;
 		onSave?: () => void;
 	};
 
@@ -61,31 +68,41 @@
 		loading = true;
 		error = '';
 		try {
-			const stored: any = settings?.directConnections;
+			const stored = settings?.directConnections as unknown as
+				DirectConnection[] | LegacyConnectionSettings | undefined;
 			if (Array.isArray(stored)) {
-				providers = stored as Provider[];
+				providers = stored.map((connection, idx) => ({
+					id: `connection-${idx}`,
+					name: `Connection ${idx + 1}`,
+					base_url: connection.url,
+					upstream_model: '',
+					auth_mode: 'bearer' as const,
+					temperature: 0.1,
+					enabled: connection.enabled ?? true
+				}));
 			} else if (stored && typeof stored === 'object') {
 				// Migrate from old OPENAI_API_BASE_URLS/KEYS/CONFIGS format to array
-				const urls: any[] = stored.OPENAI_API_BASE_URLS ?? [];
-				const keys: any[] = stored.OPENAI_API_KEYS ?? [];
-				const configs: any = stored.OPENAI_API_CONFIGS ?? {};
-				providers = urls.map((url: any, idx: number) => ({
+				const urls = stored.OPENAI_API_BASE_URLS ?? [];
+				const keys = stored.OPENAI_API_KEYS ?? [];
+				const configs = stored.OPENAI_API_CONFIGS ?? [];
+				providers = urls.map((url: string, idx: number) => ({
 					id: `migrated-${idx}-${Date.now()}`,
-					name: configs?.[idx]?.name || `Connection ${idx + 1}`,
+					name: String(configs?.[idx]?.name || `Connection ${idx + 1}`),
 					base_url: url,
-					upstream_model: configs?.[idx]?.upstream_model || '',
+					upstream_model: String(configs?.[idx]?.upstream_model || ''),
 					auth_mode: 'bearer',
 					api_key_masked: keys[idx]
 						? `${String(keys[idx]).slice(0, 4)}${'*'.repeat(Math.max(4, String(keys[idx]).length - 4))}`
 						: undefined,
-					model_id: configs?.[idx]?.model_id,
-					temperature: configs?.[idx]?.temperature ?? 0.1,
-					enabled: configs?.[idx]?.enable ?? true
+					model_id: configs?.[idx]?.model_id ? String(configs[idx].model_id) : undefined,
+					temperature: Number(configs?.[idx]?.temperature ?? 0.1),
+					enabled: Boolean(configs?.[idx]?.enable ?? true)
 				}));
 			} else {
 				providers = [];
 			}
-			defaultModelId = settings?.defaultAgentModelId ?? '';
+			defaultModelId =
+				(settings as UserSettings & { defaultAgentModelId?: string }).defaultAgentModelId ?? '';
 		} catch (exception) {
 			error = exception instanceof Error ? exception.message : 'Unable to load models.';
 		} finally {
@@ -95,9 +112,13 @@
 
 	const persist = async () => {
 		await saveSettings({
-			directConnections: providers,
-			defaultAgentModelId: defaultModelId
-		});
+			defaultAgentModelId: defaultModelId,
+			directConnections: providers.map((provider) => ({
+				url: provider.base_url,
+				key: '',
+				enabled: provider.enabled
+			}))
+		} as Partial<UserSettings>);
 		onSave();
 	};
 
@@ -218,7 +239,7 @@
 />
 
 <section
-	class="mb-5 border-b border-gray-100 pb-5 dark:border-gray-850"
+	class="dark:border-gray-850 mb-5 border-b border-gray-100 pb-5"
 	aria-labelledby="private-models-title"
 >
 	<div class="mb-2 flex items-center justify-between">
@@ -233,7 +254,7 @@
 		<Tooltip content={$i18n.t('Add model')}>
 			<button
 				type="button"
-				class="rounded-lg p-1 hover:bg-gray-100 dark:hover:bg-gray-850"
+				class="dark:hover:bg-gray-850 rounded-lg p-1 hover:bg-gray-100"
 				aria-label={$i18n.t('Add model')}
 				onclick={startCreate}
 			>
@@ -257,26 +278,25 @@
 			{#each providers as provider (provider.id)}
 				<div
 					class:opacity-60={!provider.enabled}
-					class="flex min-w-0 items-center gap-2 rounded-lg border border-gray-100 px-2.5 py-2 dark:border-gray-850"
+					class="dark:border-gray-850 flex min-w-0 items-center gap-2 rounded-lg border border-gray-100 px-2.5 py-2"
 				>
 					<div class="min-w-0 flex-1">
 						<div class="flex items-center gap-1.5">
 							<span class="truncate font-medium">{provider.name}</span>
 							{#if provider.model_id === defaultModelId}
-								<span class="rounded bg-gray-100 px-1.5 py-0.5 text-[10px] dark:bg-gray-850">
+								<span class="dark:bg-gray-850 rounded bg-gray-100 px-1.5 py-0.5 text-[10px]">
 									{$i18n.t('Default')}
 								</span>
 							{/if}
 						</div>
 						<div class="truncate text-xs text-gray-500">
-							{provider.upstream_model} · {provider.api_key_masked ||
-								$i18n.t('No authentication')}
+							{provider.upstream_model} · {provider.api_key_masked || $i18n.t('No authentication')}
 						</div>
 					</div>
 					<Tooltip content={$i18n.t('Set as default')}>
 						<button
 							type="button"
-							class="rounded p-1 hover:bg-gray-100 dark:hover:bg-gray-850"
+							class="dark:hover:bg-gray-850 rounded p-1 hover:bg-gray-100"
 							aria-label={$i18n.t('Set as default')}
 							onclick={() => setDefault(provider)}
 						>
@@ -286,25 +306,20 @@
 					<Tooltip content={$i18n.t('Edit')}>
 						<button
 							type="button"
-							class="rounded p-1 hover:bg-gray-100 dark:hover:bg-gray-850"
+							class="dark:hover:bg-gray-850 rounded p-1 hover:bg-gray-100"
 							aria-label={$i18n.t('Edit')}
 							onclick={() => startEdit(provider)}
 						>
 							<Pencil className="size-4" />
 						</button>
 					</Tooltip>
-					<Tooltip
-						content={provider.enabled ? $i18n.t('Enabled') : $i18n.t('Disabled')}
-					>
-						<Switch
-							state={provider.enabled}
-							onChange={(value) => requestToggle(provider, value)}
-						/>
+					<Tooltip content={provider.enabled ? $i18n.t('Enabled') : $i18n.t('Disabled')}>
+						<Switch state={provider.enabled} onChange={(value) => requestToggle(provider, value)} />
 					</Tooltip>
 					<Tooltip content={$i18n.t('Delete')}>
 						<button
 							type="button"
-							class="rounded p-1 hover:bg-gray-100 dark:hover:bg-gray-850"
+							class="dark:hover:bg-gray-850 rounded p-1 hover:bg-gray-100"
 							aria-label={$i18n.t('Delete')}
 							onclick={() => requestDelete(provider)}
 						>
@@ -317,7 +332,9 @@
 	{/if}
 
 	{#if showForm}
-		<div class="mt-3 grid grid-cols-1 gap-2 rounded-lg bg-gray-50 p-3 dark:bg-gray-900 sm:grid-cols-2">
+		<div
+			class="mt-3 grid grid-cols-1 gap-2 rounded-lg bg-gray-50 p-3 sm:grid-cols-2 dark:bg-gray-900"
+		>
 			<label class="flex flex-col gap-1">
 				<span class="text-xs text-gray-500">{$i18n.t('Configuration name')}</span>
 				<input
@@ -407,8 +424,10 @@
 </section>
 
 <div
-	class="flex flex-col gap-1 border-t border-gray-100 pt-3 text-xs text-gray-500 dark:border-gray-850"
+	class="dark:border-gray-850 flex flex-col gap-1 border-t border-gray-100 pt-3 text-xs text-gray-500"
 >
 	<div>{$i18n.t('Connect to your own OpenAI compatible API endpoints.')}</div>
-	<div>{$i18n.t('CORS must be properly configured by the provider to allow requests from Open WebUI.')}</div>
+	<div>
+		{$i18n.t('CORS must be properly configured by the provider to allow requests from Open WebUI.')}
+	</div>
 </div>

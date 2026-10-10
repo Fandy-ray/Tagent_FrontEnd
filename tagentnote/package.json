@@ -3,6 +3,13 @@
 	"private": true,
 	"version": "0.0.1",
 	"type": "module",
+	"overrides": {
+		"brace-expansion": "^5.0.12",
+		"devalue": "^5.9.3",
+		"dompurify": "^3.4.16",
+		"postcss-selector-parser": "^7.1.6",
+		"source-map-js": "^1.2.2"
+	},
 	"scripts": {
 		"dev": "vite dev",
 		"build": "vite build",
@@ -11,6 +18,7 @@
 		"check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
 		"check:watch": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --watch",
 		"lint": "prettier --check . && eslint .",
+		"test": "node --experimental-strip-types --test scripts/exam-persistence.test.mjs",
 		"format": "prettier --write ."
 	},
 	"devDependencies": {
@@ -36,12 +44,11 @@
 	},
 	"dependencies": {
 		"@xyflow/svelte": "^1.6.6",
-		"dompurify": "^3.4.14",
+		"dompurify": "^3.4.16",
 		"i18next": "^26.4.2",
 		"i18next-browser-languagedetector": "^8.2.1",
 		"i18next-resources-to-backend": "^1.2.3",
 		"katex": "^0.18.9",
-		"marked": "^18.0.11",
-		"xlsx": "^0.18.5"
+		"marked": "^18.0.11"
 	}
 }

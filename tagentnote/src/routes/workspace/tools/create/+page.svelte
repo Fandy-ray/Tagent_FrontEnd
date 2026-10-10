@@ -1,5 +1,7 @@
 <script lang="ts">
+	import { SvelteURLSearchParams } from 'svelte/reactivity';
 	import { goto } from '$app/navigation';
+	import { resolve } from '$app/paths';
 	import { page } from '$app/stores';
 	import { onMount } from 'svelte';
 
@@ -17,7 +19,7 @@
 	let clonedManifest = $state<Record<string, unknown> | null>(null);
 
 	const withParams = (path: string) => {
-		const params = new URLSearchParams();
+		const params = new SvelteURLSearchParams();
 		const model = $page.url.searchParams.get('model');
 		const chat = $page.url.searchParams.get('chat');
 		if (model) params.set('model', model);
@@ -64,7 +66,7 @@
 			updatedAt: Date.now()
 		});
 		saving = false;
-		void goto(withParams('/workspace/tools'));
+		void goto(resolve(withParams('/workspace/tools')));
 	};
 </script>
 
@@ -73,7 +75,7 @@
 	subtitle="Python 工具脚本"
 	{saving}
 	saveLabel="保存并创建"
-	onBack={() => void goto(withParams('/workspace/tools'))}
+	onBack={() => void goto(resolve(withParams('/workspace/tools')))}
 	{onSave}
 >
 	<div>
@@ -102,8 +104,11 @@
 	</div>
 	<div>
 		<label class={label} for="tool-desc">描述</label>
-		<textarea id="tool-desc" class="{field} min-h-[3.5rem] resize-y" bind:value={description} rows="2"
-		></textarea>
+		<textarea
+			id="tool-desc"
+			class="{field} min-h-[3.5rem] resize-y"
+			bind:value={description}
+			rows="2"></textarea>
 	</div>
 	<div>
 		<label class={label} for="tool-content">内容（Python）</label>
@@ -111,7 +116,6 @@
 			id="tool-content"
 			class="{field} min-h-[12rem] resize-y font-mono text-xs"
 			bind:value={content}
-			rows="12"
-		></textarea>
+			rows="12"></textarea>
 	</div>
 </EditorShell>

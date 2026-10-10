@@ -1,5 +1,7 @@
 <script lang="ts">
+	import { SvelteURLSearchParams } from 'svelte/reactivity';
 	import { goto } from '$app/navigation';
+	import { resolve } from '$app/paths';
 	import { page } from '$app/stores';
 
 	import { createNotebook } from '$lib/apis/opennotebook';
@@ -11,7 +13,7 @@
 	let description = $state('');
 
 	const withParams = (path: string) => {
-		const params = new URLSearchParams();
+		const params = new SvelteURLSearchParams();
 		const model = $page.url.searchParams.get('model');
 		const chat = $page.url.searchParams.get('chat');
 		if (model) params.set('model', model);
@@ -48,9 +50,8 @@
 			updatedAt: t
 		});
 		saving = false;
-		void goto(withParams(`/workspace/knowledge/${encodeURIComponent(id)}`));
+		void goto(resolve(withParams(`/workspace/knowledge/${encodeURIComponent(id)}`)));
 	};
-
 </script>
 
 <EditorShell
@@ -58,7 +59,7 @@
 	subtitle="本地集合，可绑定 OpenNoteBook"
 	{saving}
 	saveLabel="保存并创建"
-	onBack={() => void goto(withParams('/workspace/knowledge'))}
+	onBack={() => void goto(resolve(withParams('/workspace/knowledge')))}
 	onSave={() => void onSave()}
 >
 	<div>

@@ -111,7 +111,7 @@
 <div class="relative" bind:this={rootEl}>
 	<button
 		type="button"
-		class="flex cursor-pointer rounded-xl px-2 py-2 text-gray-400 transition hover:bg-gray-850 hover:text-white"
+		class="hover:bg-gray-850 flex cursor-pointer rounded-xl px-2 py-2 text-gray-400 transition hover:text-white"
 		aria-expanded={open}
 		aria-haspopup="menu"
 		title="更多"
@@ -130,10 +130,12 @@
 	<div
 		bind:this={menuEl}
 		use:portal
-		class="rounded-2xl border border-gray-800 bg-gray-850 px-1 py-1 text-white shadow-lg shadow-black/40"
+		class="bg-gray-850 rounded-2xl border border-gray-800 px-1 py-1 text-white shadow-lg shadow-black/40"
 		style={menuStyle}
+		tabindex="-1"
 		role="menu"
 		onclick={(event) => event.stopPropagation()}
+		onkeydown={(event) => event.stopPropagation()}
 	>
 		<button
 			type="button"

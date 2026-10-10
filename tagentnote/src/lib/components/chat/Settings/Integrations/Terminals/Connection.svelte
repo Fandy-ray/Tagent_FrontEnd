@@ -8,16 +8,9 @@
 	import ConfirmDialog from '$lib/components/common/ConfirmDialog.svelte';
 	import AddTerminalServerModal from './AddTerminalServerModal.svelte';
 	import Cloud from '$lib/components/icons/Cloud.svelte';
+	import type { TerminalServer } from '$lib/data/userSettings';
 
-	type Connection = {
-		url: string;
-		key: string;
-		name: string;
-		path: string;
-		enabled: boolean;
-		auth_type?: string;
-		[key: string]: any;
-	};
+	type Connection = TerminalServer;
 
 	type Props = {
 		connection?: Connection;
@@ -40,14 +33,13 @@
 </script>
 
 <AddTerminalServerModal
-	direct
 	edit
 	bind:show={showConfigModal}
 	{connection}
 	onDelete={() => {
 		showDeleteConfirmDialog = true;
 	}}
-	onSubmit={(c: any) => {
+	onSubmit={(c: TerminalServer) => {
 		connection = c;
 		onSubmit(c);
 	}}
@@ -62,11 +54,9 @@
 />
 
 <div class="flex w-full items-center gap-2">
-	<Tooltip className="w-full relative" content={''} placement="top-start">
+	<Tooltip className="w-full relative" content="" placement="top-start">
 		<div class="flex w-full">
-			<div
-				class={`flex flex-1 items-center gap-1.5 ${!connection?.enabled ? 'opacity-50' : ''}`}
-			>
+			<div class={`flex flex-1 items-center gap-1.5 ${!connection?.enabled ? 'opacity-50' : ''}`}>
 				<Tooltip content={$i18n.t('Terminal')}>
 					<Cloud className="size-4" strokeWidth="1.5" />
 				</Tooltip>
@@ -81,7 +71,7 @@
 	<div class="flex items-center gap-1">
 		<Tooltip content={$i18n.t('Configure')}>
 			<button
-				class="self-center rounded-lg bg-transparent p-1 transition hover:bg-gray-100 dark:hover:bg-gray-850"
+				class="dark:hover:bg-gray-850 self-center rounded-lg bg-transparent p-1 transition hover:bg-gray-100"
 				onclick={() => {
 					showConfigModal = true;
 				}}

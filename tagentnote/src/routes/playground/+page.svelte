@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
+	import { resolve } from '$app/paths';
 </script>
 
 <svelte:head>
@@ -7,7 +8,7 @@
 </svelte:head>
 
 <main class="flex min-h-screen items-center justify-center bg-gray-900 px-4 text-white">
-	<div class="w-full max-w-md rounded-2xl border border-gray-800 bg-gray-850 p-6 text-center">
+	<div class="bg-gray-850 w-full max-w-md rounded-2xl border border-gray-800 p-6 text-center">
 		<h1 class="text-xl font-medium">AI 对话探索区</h1>
 		<p class="mt-3 text-sm leading-6 text-gray-400">
 			对应 Open WebUI 的 Playground。教学前端暂提供入口占位，后续可接入提示词 / 补全试验台。
@@ -15,7 +16,7 @@
 		<button
 			type="button"
 			class="mt-6 rounded-xl bg-gray-800 px-4 py-2 text-sm transition hover:bg-gray-700"
-			onclick={() => goto('/qa')}
+			onclick={() => goto(resolve('/qa'))}
 		>
 			返回答疑
 		</button>

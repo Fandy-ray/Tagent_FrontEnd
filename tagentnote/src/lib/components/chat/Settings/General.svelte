@@ -1,4 +1,6 @@
 <script lang="ts">
+	import type { Component } from 'svelte';
+
 	import { applyTheme, type UserSettings } from '$lib/data/userSettings';
 	import { getI18nContext } from '$lib/i18n';
 
@@ -12,8 +14,7 @@
 
 	let { settings, saveSettings, onSave = () => {} }: Props = $props();
 
-
-	const buildParams = (source: Record<string, any> = {}) => {
+	const buildParams = (source: Record<string, unknown> = {}) => {
 		const next = { ...source };
 		const stopRaw = next.stop;
 		const customParams = { ...(next.custom_params ?? {}) };
@@ -50,15 +51,23 @@
 		};
 	};
 
-	let selectedTheme = $state(settings.theme);
-	let lang = $state(settings.language);
-	let notificationEnabled = $state(settings.notificationEnabled);
-	let system = $state(settings.system);
+	let selectedTheme = $state<UserSettings['theme']>('system');
+	let lang = $state('');
+	let notificationEnabled = $state(false);
+	let system = $state('');
 	let showAdvanced = $state(false);
-	let params = $state<Record<string, any>>(buildParams(settings.params ?? {}));
+	let params = $state<Record<string, unknown>>(buildParams());
 	let advancedLoading = $state(false);
 
-	let AdvancedParamsComp = $state<any>(null);
+	let AdvancedParamsComp = $state<Component | null>(null);
+
+	$effect(() => {
+		selectedTheme = settings.theme;
+		lang = settings.language;
+		notificationEnabled = settings.notificationEnabled;
+		system = settings.system;
+		params = buildParams(settings.params ?? {});
+	});
 
 	const themeChangeHandler = async (theme: UserSettings['theme']) => {
 		selectedTheme = theme;
@@ -111,7 +120,11 @@
 					params.stream_delta_chunk_size !== null ? params.stream_delta_chunk_size : undefined,
 				function_calling: params.function_calling !== null ? params.function_calling : undefined,
 				seed: params.seed !== null ? params.seed : undefined,
-				stop: params.stop ? String(params.stop).split(',').filter((e: string) => e) : undefined,
+				stop: params.stop
+					? String(params.stop)
+							.split(',')
+							.filter((e: string) => e)
+					: undefined,
 				temperature: params.temperature !== null ? params.temperature : undefined,
 				reasoning_effort: params.reasoning_effort !== null ? params.reasoning_effort : undefined,
 				logit_bias: params.logit_bias !== null ? params.logit_bias : undefined,
@@ -182,7 +195,7 @@
 			</div>
 		</div>
 
-		<hr class="my-3 border-gray-850/30" />
+		<hr class="border-gray-850/30 my-3" />
 
 		<div>
 			<div class="my-2.5 text-sm font-medium">{$i18n.t('System Prompt')}</div>
@@ -190,8 +203,7 @@
 				bind:value={system}
 				class="w-full resize-y bg-transparent text-sm text-gray-300 outline-none"
 				rows="4"
-				placeholder={$i18n.t('System Prompt Placeholder')}
-			></textarea>
+				placeholder={$i18n.t('System Prompt Placeholder')}></textarea>
 		</div>
 
 		<div class="mt-2 space-y-3 pr-1.5">

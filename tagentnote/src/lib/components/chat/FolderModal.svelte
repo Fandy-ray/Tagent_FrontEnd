@@ -93,10 +93,7 @@
 
 	const addKnowledge = (option: KnowledgeOption) => {
 		if (knowledgeItems.some((item) => item.id === option.id)) return;
-		knowledgeItems = [
-			...knowledgeItems,
-			{ id: option.id, name: option.name, type: 'collection' }
-		];
+		knowledgeItems = [...knowledgeItems, { id: option.id, name: option.name, type: 'collection' }];
 		showKnowledgePicker = false;
 	};
 
@@ -110,10 +107,7 @@
 		for (const file of files) {
 			if (file.type.startsWith('image/')) continue;
 			const id = `local-file-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
-			knowledgeItems = [
-				...knowledgeItems,
-				{ id, name: file.name, type: 'file' }
-			];
+			knowledgeItems = [...knowledgeItems, { id, name: file.name, type: 'file' }];
 		}
 		input.value = '';
 	};
@@ -127,8 +121,9 @@
 		onclick={onClose}
 	>
 		<div
-			class="max-h-[90vh] w-full max-w-xl overflow-y-auto rounded-2xl border border-gray-800 bg-gray-850 text-gray-100 shadow-2xl"
+			class="bg-gray-850 max-h-[90vh] w-full max-w-xl overflow-y-auto rounded-2xl border border-gray-800 text-gray-100 shadow-2xl"
 			onclick={(e) => e.stopPropagation()}
+			tabindex="-1"
 			role="dialog"
 			aria-modal="true"
 			aria-label={title}
@@ -136,7 +131,13 @@
 			<div class="flex justify-between px-5 pt-3 pb-1 text-gray-300">
 				<div class="self-center text-base font-medium">{title}</div>
 				<button type="button" class="self-center" onclick={onClose} aria-label="关闭">
-					<svg class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+					<svg
+						class="size-4"
+						viewBox="0 0 24 24"
+						fill="none"
+						stroke="currentColor"
+						stroke-width="1.8"
+					>
 						<path stroke-linecap="round" d="M6 6l12 12M18 6L6 18"></path>
 					</svg>
 				</button>
@@ -198,9 +199,8 @@
 					<div class="mb-1 text-[11px] text-gray-500">系统提示词</div>
 					<textarea
 						class="max-h-[180px] min-h-[72px] w-full resize-y bg-transparent text-sm outline-none placeholder:text-gray-600"
-						placeholder={`请在此填写模型的系统提示词\n例如：你是《超级马里奥兄弟》中的马里奥（Mario），扮演助理的角色。`}
-						bind:value={systemPrompt}
-					></textarea>
+						placeholder="请在此填写模型的系统提示词\n例如：你是《超级马里奥兄弟》中的马里奥（Mario），扮演助理的角色。"
+						bind:value={systemPrompt}></textarea>
 				</div>
 
 				<div>

@@ -69,8 +69,9 @@
 		}}
 	>
 		<div
-			class="w-full max-w-sm rounded-2xl border border-gray-800 bg-gray-850 text-gray-100 shadow-2xl"
+			class="bg-gray-850 w-full max-w-sm rounded-2xl border border-gray-800 text-gray-100 shadow-2xl"
 			onclick={(e) => e.stopPropagation()}
+			tabindex="-1"
 			role="dialog"
 			aria-modal="true"
 			aria-label="设置您的状态"
@@ -84,7 +85,13 @@
 					aria-label="关闭"
 					disabled={loading}
 				>
-					<svg class="size-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+					<svg
+						class="size-5"
+						viewBox="0 0 24 24"
+						fill="none"
+						stroke="currentColor"
+						stroke-width="1.8"
+					>
 						<path stroke-linecap="round" d="M6 6l12 12M18 6L6 18"></path>
 					</svg>
 				</button>
@@ -101,9 +108,7 @@
 					<div>
 						<div class="mb-1.5 text-xs text-gray-500">状态</div>
 
-						<div
-							class="flex items-center gap-3 rounded-xl border border-gray-800/80 px-2.5 py-2"
-						>
+						<div class="flex items-center gap-3 rounded-xl border border-gray-800/80 px-2.5 py-2">
 							<EmojiPicker
 								selected={emoji}
 								onSubmit={(value) => {
@@ -151,7 +156,13 @@
 									message = '';
 								}}
 							>
-								<svg class="size-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+								<svg
+									class="size-5"
+									viewBox="0 0 24 24"
+									fill="none"
+									stroke="currentColor"
+									stroke-width="1.8"
+								>
 									<path stroke-linecap="round" d="M6 6l12 12M18 6L6 18"></path>
 								</svg>
 							</button>

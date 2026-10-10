@@ -9,20 +9,19 @@
 	import Spinner from '$lib/components/common/Spinner.svelte';
 	import XMark from '$lib/components/icons/XMark.svelte';
 	import ConfirmDialog from '$lib/components/common/ConfirmDialog.svelte';
+	import type { TerminalServer } from '$lib/data/userSettings';
 
 	type Props = {
 		show?: boolean;
 		edit?: boolean;
-		direct?: boolean;
-		connection?: any;
-		onSubmit?: (c: any) => void;
+		connection?: TerminalServer | null;
+		onSubmit?: (c: TerminalServer) => void;
 		onDelete?: () => void;
 	};
 
 	let {
 		show = $bindable(false),
 		edit = false,
-		direct = false,
 		connection = null,
 		onSubmit = () => {},
 		onDelete = () => {}
@@ -101,7 +100,7 @@
 					show = false;
 				}}
 			>
-				<XMark className={'size-5'} />
+				<XMark className="size-5" />
 			</button>
 		</div>
 
@@ -209,7 +208,7 @@
 					</div>
 
 					<button
-						class={`flex items-center gap-2 whitespace-nowrap rounded-full bg-black px-3.5 py-1.5 text-sm font-medium text-white transition hover:bg-gray-900 dark:bg-white dark:text-black dark:hover:bg-gray-100 ${loading ? 'cursor-not-allowed' : ''}`}
+						class={`flex items-center gap-2 rounded-full bg-black px-3.5 py-1.5 text-sm font-medium whitespace-nowrap text-white transition hover:bg-gray-900 dark:bg-white dark:text-black dark:hover:bg-gray-100 ${loading ? 'cursor-not-allowed' : ''}`}
 						type="submit"
 						disabled={loading}
 					>

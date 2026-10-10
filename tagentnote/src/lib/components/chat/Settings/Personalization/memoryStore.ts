@@ -94,12 +94,14 @@ export const updateMemoryById = async (_token: unknown, id: string, content: str
 };
 
 export const deleteMemoryById = async (_token: unknown, id: string) => {
+	void _token;
 	memories.update((list) => list.filter((m) => m.id !== id));
 	await new Promise((r) => setTimeout(r, 80));
 	return { id };
 };
 
 export const deleteMemoriesByUserId = async (_token: unknown) => {
+	void _token;
 	const count = get(memories).length;
 	memories.set([]);
 	await new Promise((r) => setTimeout(r, 80));

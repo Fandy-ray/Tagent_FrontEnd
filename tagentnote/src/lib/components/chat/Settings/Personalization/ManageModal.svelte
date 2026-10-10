@@ -131,7 +131,7 @@
 		<div class="flex w-full flex-col px-5 pb-4 text-gray-200">
 			<!-- Search -->
 			<div class="mb-1 flex w-full flex-1 items-center">
-				<div class="ml-1 mr-3 self-center">
+				<div class="mr-3 ml-1 self-center">
 					<Search className="size-3.5" />
 				</div>
 				<input
@@ -173,7 +173,7 @@
 						{#if sortedMemories.length > 0}
 							<div class="mb-1 flex text-xs font-medium">
 								<button
-									class="basis-3/5 cursor-pointer select-none px-1.5 py-1 text-left"
+									class="basis-3/5 cursor-pointer px-1.5 py-1 text-left select-none"
 									onclick={() => setSortKey('content')}
 								>
 									<div class="flex items-center gap-1.5">
@@ -194,7 +194,7 @@
 									</div>
 								</button>
 								<button
-									class="hidden basis-2/5 cursor-pointer select-none justify-end px-1.5 py-1 sm:flex"
+									class="hidden basis-2/5 cursor-pointer justify-end px-1.5 py-1 select-none sm:flex"
 									onclick={() => setSortKey('updated_at')}
 								>
 									<div class="flex items-center gap-1.5">
@@ -219,8 +219,6 @@
 
 						<div class="max-h-[28rem] w-full overflow-y-auto text-left text-sm">
 							{#each sortedMemories as memory (memory.id)}
-								<!-- svelte-ignore a11y_click_events_have_key_events -->
-								<!-- svelte-ignore a11y_no_static_element_interactions -->
 								<div
 									role="button"
 									tabindex="0"
@@ -245,7 +243,7 @@
 									</div>
 
 									<div class="flex shrink-0 items-center">
-										<div class="mr-2 hidden whitespace-nowrap text-xs text-gray-400 sm:flex">
+										<div class="mr-2 hidden text-xs whitespace-nowrap text-gray-400 sm:flex">
 											{new Date(memory.updatedAt * 1000).toLocaleTimeString([], {
 												hour: '2-digit',
 												minute: '2-digit'

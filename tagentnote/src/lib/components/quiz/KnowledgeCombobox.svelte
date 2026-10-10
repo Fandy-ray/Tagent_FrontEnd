@@ -84,6 +84,10 @@
 	};
 
 	const toggleSource = (collection: KnowledgeCollection, file: KnowledgeFile) => {
+		if (file.status === 'failed') {
+			return;
+		}
+
 		const key = sourceKey(collection.id, file.id);
 
 		selectedKeys = isSelected(key)
@@ -219,7 +223,8 @@
 	{#if open}
 		<div
 			id="knowledge-combobox-list"
-			class="absolute inset-x-0 top-[calc(100%+6px)] z-20 max-h-72 overflow-y-auto rounded-xl border border-white/10 bg-gray-850 py-1 shadow-lg"
+			class="bg-gray-850 absolute inset-x-0 top-[calc(100%+6px)] z-20 max-h-72 overflow-y-auto rounded-xl border border-white/10 py-1 shadow-lg"
+			tabindex="-1"
 			role="tree"
 			onmousedown={keepMenu}
 		>
@@ -300,6 +305,10 @@
 										class="flex w-full items-center gap-2 py-1.5 pr-3 pl-9 text-left transition hover:bg-white/[0.06]"
 										role="treeitem"
 										aria-selected={checked}
+										disabled={file.status === 'failed'}
+										title={file.status === 'failed'
+											? '该来源下载失败，无法作为本次材料；请在 OpenNoteBook 中重试'
+											: undefined}
 										onclick={() => toggleSource(group.collection, file)}
 									>
 										<span
@@ -314,8 +323,10 @@
 											<span class="block truncate text-sm text-gray-200">
 												{file.title}
 											</span>
-											<span class="text-[11px] text-gray-500">
-												{KIND_LABEL[file.kind]}
+											<span
+												class={`text-[11px] ${file.status === 'failed' ? 'text-red-400' : 'text-gray-500'}`}
+											>
+												{file.status === 'failed' ? '下载失败' : KIND_LABEL[file.kind]}
 											</span>
 										</span>
 									</button>

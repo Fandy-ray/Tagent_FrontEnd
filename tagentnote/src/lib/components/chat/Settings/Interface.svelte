@@ -3,11 +3,7 @@
 	import Minus from '$lib/components/icons/Minus.svelte';
 	import Plus from '$lib/components/icons/Plus.svelte';
 	import ManageFloatingActionButtonsModal from './Interface/ManageFloatingActionButtonsModal.svelte';
-	import {
-		applyHighContrast,
-		applyTextScale,
-		type UserSettings
-	} from '$lib/data/userSettings';
+	import { applyHighContrast, applyTextScale, type UserSettings } from '$lib/data/userSettings';
 
 	type Props = {
 		settings: UserSettings;
@@ -17,45 +13,86 @@
 
 	let { settings, saveSettings, onSave = () => {} }: Props = $props();
 
-	let textScale = $state<number | null>(settings.textScale);
-	let highContrastMode = $state(settings.highContrastMode);
-	let showChatTitleInTab = $state(settings.showChatTitleInTab);
-	let notificationSound = $state(settings.notificationSound);
-	let notificationSoundAlways = $state(settings.notificationSoundAlways);
-	let hapticFeedback = $state(settings.hapticFeedback);
-	let copyFormatted = $state(settings.copyFormatted);
-	let enableMessageQueue = $state(settings.enableMessageQueue);
-	let chatDirection = $state(settings.chatDirection);
-	let landingPageMode = $state(settings.landingPageMode);
-	let backgroundImageUrl = $state<string | null>(settings.backgroundImageUrl);
-	let chatBubble = $state(settings.chatBubble);
-	let showUsername = $state(settings.showUsername);
-	let widescreenMode = $state(settings.widescreenMode);
-	let temporaryChatByDefault = $state(settings.temporaryChatByDefault);
-	let chatFadeStreamingText = $state(settings.chatFadeStreamingText);
-	let titleAutoGenerate = $state(settings.titleAutoGenerate);
-	let autoFollowUps = $state(settings.autoFollowUps);
-	let autoTags = $state(settings.autoTags);
-	let responseAutoCopy = $state(settings.responseAutoCopy);
-	let insertSuggestionPrompt = $state(settings.insertSuggestionPrompt);
-	let keepFollowUpPrompts = $state(settings.keepFollowUpPrompts);
-	let insertFollowUpPrompt = $state(settings.insertFollowUpPrompt);
-	let regenerateMenu = $state(settings.regenerateMenu);
-	let collapseCodeBlocks = $state(settings.collapseCodeBlocks);
-	let expandDetails = $state(settings.expandDetails);
-	let stylizedPdfExport = $state(settings.stylizedPdfExport);
-	let showFloatingActionButtons = $state(settings.showFloatingActionButtons);
-	let floatingActionButtons = $state(settings.floatingActionButtons);
-	let ctrlEnterToSend = $state(settings.ctrlEnterToSend);
-	let richTextInput = $state(settings.richTextInput);
-	let promptAutocomplete = $state(settings.promptAutocomplete);
-	let showFormattingToolbar = $state(settings.showFormattingToolbar);
-	let detectArtifacts = $state(settings.detectArtifacts);
-	let iframeSandboxAllowSameOrigin = $state(settings.iframeSandboxAllowSameOrigin);
-	let iframeSandboxAllowForms = $state(settings.iframeSandboxAllowForms);
+	let textScale = $state<number | null>(null);
+	let highContrastMode = $state(false);
+	let showChatTitleInTab = $state(false);
+	let notificationSound = $state(false);
+	let notificationSoundAlways = $state(false);
+	let hapticFeedback = $state(false);
+	let copyFormatted = $state(false);
+	let enableMessageQueue = $state(false);
+	let chatDirection = $state<UserSettings['chatDirection']>('auto');
+	let landingPageMode = $state<UserSettings['landingPageMode']>('');
+	let backgroundImageUrl = $state<string | null>(null);
+	let chatBubble = $state(false);
+	let showUsername = $state(false);
+	let widescreenMode = $state(false);
+	let temporaryChatByDefault = $state(false);
+	let chatFadeStreamingText = $state(false);
+	let titleAutoGenerate = $state(false);
+	let autoFollowUps = $state(false);
+	let autoTags = $state(false);
+	let responseAutoCopy = $state(false);
+	let insertSuggestionPrompt = $state(false);
+	let keepFollowUpPrompts = $state(false);
+	let insertFollowUpPrompt = $state(false);
+	let regenerateMenu = $state(false);
+	let collapseCodeBlocks = $state(false);
+	let expandDetails = $state(false);
+	let stylizedPdfExport = $state(false);
+	let showFloatingActionButtons = $state(false);
+	let floatingActionButtons = $state<NonNullable<UserSettings['floatingActionButtons']> | null>(
+		null
+	);
+	let ctrlEnterToSend = $state(false);
+	let richTextInput = $state(false);
+	let promptAutocomplete = $state(false);
+	let showFormattingToolbar = $state(false);
+	let detectArtifacts = $state(false);
+	let iframeSandboxAllowSameOrigin = $state(false);
+	let iframeSandboxAllowForms = $state(false);
 
 	let filesInputElement: HTMLInputElement | null = $state(null);
 	let showManageFloating = $state(false);
+
+	$effect(() => {
+		textScale = settings.textScale;
+		highContrastMode = settings.highContrastMode;
+		showChatTitleInTab = settings.showChatTitleInTab;
+		notificationSound = settings.notificationSound;
+		notificationSoundAlways = settings.notificationSoundAlways;
+		hapticFeedback = settings.hapticFeedback;
+		copyFormatted = settings.copyFormatted;
+		enableMessageQueue = settings.enableMessageQueue;
+		chatDirection = settings.chatDirection;
+		landingPageMode = settings.landingPageMode;
+		backgroundImageUrl = settings.backgroundImageUrl;
+		chatBubble = settings.chatBubble;
+		showUsername = settings.showUsername;
+		widescreenMode = settings.widescreenMode;
+		temporaryChatByDefault = settings.temporaryChatByDefault;
+		chatFadeStreamingText = settings.chatFadeStreamingText;
+		titleAutoGenerate = settings.titleAutoGenerate;
+		autoFollowUps = settings.autoFollowUps;
+		autoTags = settings.autoTags;
+		responseAutoCopy = settings.responseAutoCopy;
+		insertSuggestionPrompt = settings.insertSuggestionPrompt;
+		keepFollowUpPrompts = settings.keepFollowUpPrompts;
+		insertFollowUpPrompt = settings.insertFollowUpPrompt;
+		regenerateMenu = settings.regenerateMenu;
+		collapseCodeBlocks = settings.collapseCodeBlocks;
+		expandDetails = settings.expandDetails;
+		stylizedPdfExport = settings.stylizedPdfExport;
+		showFloatingActionButtons = settings.showFloatingActionButtons;
+		floatingActionButtons = settings.floatingActionButtons;
+		ctrlEnterToSend = settings.ctrlEnterToSend;
+		richTextInput = settings.richTextInput;
+		promptAutocomplete = settings.promptAutocomplete;
+		showFormattingToolbar = settings.showFormattingToolbar;
+		detectArtifacts = settings.detectArtifacts;
+		iframeSandboxAllowSameOrigin = settings.iframeSandboxAllowSameOrigin;
+		iframeSandboxAllowForms = settings.iframeSandboxAllowForms;
+	});
 
 	const setTextScaleHandler = (scale: number | null) => {
 		textScale = scale === 1 ? null : scale;
@@ -150,11 +187,28 @@
 		</div>
 		{#if textScale !== null}
 			<div class="flex items-center gap-2 px-1 pb-1">
-				<button type="button" class="rounded-lg p-1 hover:bg-gray-800" onclick={() => setTextScaleHandler(Math.max(1, +(textScale! - 0.1).toFixed(2)))}>
+				<button
+					type="button"
+					class="rounded-lg p-1 hover:bg-gray-800"
+					onclick={() => setTextScaleHandler(Math.max(1, +(textScale! - 0.1).toFixed(2)))}
+				>
 					<Minus className="h-3.5 w-3.5" />
 				</button>
-				<input id="ui-scale-slider" class="w-full" type="range" min="1" max="1.5" step="0.01" bind:value={textScale} onchange={() => setTextScaleHandler(textScale)} />
-				<button type="button" class="rounded-lg p-1 hover:bg-gray-800" onclick={() => setTextScaleHandler(Math.min(1.5, +(textScale! + 0.1).toFixed(2)))}>
+				<input
+					id="ui-scale-slider"
+					class="w-full"
+					type="range"
+					min="1"
+					max="1.5"
+					step="0.01"
+					bind:value={textScale}
+					onchange={() => setTextScaleHandler(textScale)}
+				/>
+				<button
+					type="button"
+					class="rounded-lg p-1 hover:bg-gray-800"
+					onclick={() => setTextScaleHandler(Math.min(1.5, +(textScale! + 0.1).toFixed(2)))}
+				>
 					<Plus className="h-3.5 w-3.5" />
 				</button>
 			</div>
@@ -162,11 +216,20 @@
 
 		<div class="flex w-full justify-between py-0.5">
 			<div class="self-center text-xs">高对比度模式（Beta）</div>
-			<Switch bind:state={highContrastMode} onChange={() => { applyHighContrast(highContrastMode); saveSettings({ highContrastMode }); }} />
+			<Switch
+				bind:state={highContrastMode}
+				onChange={() => {
+					applyHighContrast(highContrastMode);
+					saveSettings({ highContrastMode });
+				}}
+			/>
 		</div>
 		<div class="flex w-full justify-between py-0.5">
 			<div class="self-center text-xs">在标签页中显示对话标题</div>
-			<Switch bind:state={showChatTitleInTab} onChange={() => saveSettings({ showChatTitleInTab })} />
+			<Switch
+				bind:state={showChatTitleInTab}
+				onChange={() => saveSettings({ showChatTitleInTab })}
+			/>
 		</div>
 		<div class="flex w-full justify-between py-0.5">
 			<div class="self-center text-xs">通知提示音</div>
@@ -175,7 +238,10 @@
 		{#if notificationSound}
 			<div class="flex w-full justify-between py-0.5">
 				<div class="self-center text-xs">始终播放通知提示音</div>
-				<Switch bind:state={notificationSoundAlways} onChange={() => saveSettings({ notificationSoundAlways })} />
+				<Switch
+					bind:state={notificationSoundAlways}
+					onChange={() => saveSettings({ notificationSoundAlways })}
+				/>
 			</div>
 		{/if}
 		<div class="flex w-full justify-between py-0.5">
@@ -190,7 +256,10 @@
 
 		<div class="flex w-full justify-between py-0.5">
 			<div class="self-center text-xs">启用消息队列</div>
-			<Switch bind:state={enableMessageQueue} onChange={() => saveSettings({ enableMessageQueue })} />
+			<Switch
+				bind:state={enableMessageQueue}
+				onChange={() => saveSettings({ enableMessageQueue })}
+			/>
 		</div>
 		<div class="flex w-full justify-between py-0.5">
 			<div class="self-center text-xs">对话方向</div>
@@ -233,11 +302,17 @@
 		</div>
 		<div class="flex w-full justify-between py-0.5">
 			<div class="self-center text-xs">默认使用临时对话</div>
-			<Switch bind:state={temporaryChatByDefault} onChange={() => saveSettings({ temporaryChatByDefault })} />
+			<Switch
+				bind:state={temporaryChatByDefault}
+				onChange={() => saveSettings({ temporaryChatByDefault })}
+			/>
 		</div>
 		<div class="flex w-full justify-between py-0.5">
 			<div class="self-center text-xs">流式输出内容时启用动态渐显效果</div>
-			<Switch bind:state={chatFadeStreamingText} onChange={() => saveSettings({ chatFadeStreamingText })} />
+			<Switch
+				bind:state={chatFadeStreamingText}
+				onChange={() => saveSettings({ chatFadeStreamingText })}
+			/>
 		</div>
 		<div class="flex w-full justify-between py-0.5">
 			<div class="self-center text-xs">自动生成标题</div>
@@ -257,15 +332,24 @@
 		</div>
 		<div class="flex w-full justify-between py-0.5">
 			<div class="self-center text-xs">回填推荐提示词到输入框</div>
-			<Switch bind:state={insertSuggestionPrompt} onChange={() => saveSettings({ insertSuggestionPrompt })} />
+			<Switch
+				bind:state={insertSuggestionPrompt}
+				onChange={() => saveSettings({ insertSuggestionPrompt })}
+			/>
 		</div>
 		<div class="flex w-full justify-between py-0.5">
 			<div class="self-center text-xs">在对话中保留追问提示词</div>
-			<Switch bind:state={keepFollowUpPrompts} onChange={() => saveSettings({ keepFollowUpPrompts })} />
+			<Switch
+				bind:state={keepFollowUpPrompts}
+				onChange={() => saveSettings({ keepFollowUpPrompts })}
+			/>
 		</div>
 		<div class="flex w-full justify-between py-0.5">
 			<div class="self-center text-xs">回填追问提示词到输入框</div>
-			<Switch bind:state={insertFollowUpPrompt} onChange={() => saveSettings({ insertFollowUpPrompt })} />
+			<Switch
+				bind:state={insertFollowUpPrompt}
+				onChange={() => saveSettings({ insertFollowUpPrompt })}
+			/>
 		</div>
 		<div class="flex w-full justify-between py-0.5">
 			<div class="self-center text-xs">显示重新生成选项菜单</div>
@@ -273,7 +357,10 @@
 		</div>
 		<div class="flex w-full justify-between py-0.5">
 			<div class="self-center text-xs">始终折叠代码块</div>
-			<Switch bind:state={collapseCodeBlocks} onChange={() => saveSettings({ collapseCodeBlocks })} />
+			<Switch
+				bind:state={collapseCodeBlocks}
+				onChange={() => saveSettings({ collapseCodeBlocks })}
+			/>
 		</div>
 		<div class="flex w-full justify-between py-0.5">
 			<div class="self-center text-xs">始终展开详细信息</div>
@@ -287,9 +374,18 @@
 			<div class="self-center text-xs">快捷操作浮窗</div>
 			<div class="flex items-center gap-3 p-1">
 				{#if showFloatingActionButtons}
-					<button class="text-xs text-gray-400 underline" type="button" onclick={() => { showManageFloating = true; }}>管理</button>
+					<button
+						class="text-xs text-gray-400 underline"
+						type="button"
+						onclick={() => {
+							showManageFloating = true;
+						}}>管理</button
+					>
 				{/if}
-				<Switch bind:state={showFloatingActionButtons} onChange={() => saveSettings({ showFloatingActionButtons })} />
+				<Switch
+					bind:state={showFloatingActionButtons}
+					onChange={() => saveSettings({ showFloatingActionButtons })}
+				/>
 			</div>
 		</div>
 		<div class="my-2 text-sm font-medium">输入</div>
@@ -307,11 +403,17 @@
 		{#if richTextInput}
 			<div class="flex w-full justify-between py-0.5">
 				<div class="self-center text-xs">自动补全提示词</div>
-				<Switch bind:state={promptAutocomplete} onChange={() => saveSettings({ promptAutocomplete })} />
+				<Switch
+					bind:state={promptAutocomplete}
+					onChange={() => saveSettings({ promptAutocomplete })}
+				/>
 			</div>
 			<div class="flex w-full justify-between py-0.5">
 				<div class="self-center text-xs">显示格式工具栏</div>
-				<Switch bind:state={showFormattingToolbar} onChange={() => saveSettings({ showFormattingToolbar })} />
+				<Switch
+					bind:state={showFormattingToolbar}
+					onChange={() => saveSettings({ showFormattingToolbar })}
+				/>
 			</div>
 		{/if}
 		<div class="my-2 text-sm font-medium">产物</div>
@@ -322,13 +424,18 @@
 		</div>
 		<div class="flex w-full justify-between py-0.5">
 			<div class="self-center text-xs">iframe 沙盒允许同源访问</div>
-			<Switch bind:state={iframeSandboxAllowSameOrigin} onChange={() => saveSettings({ iframeSandboxAllowSameOrigin })} />
+			<Switch
+				bind:state={iframeSandboxAllowSameOrigin}
+				onChange={() => saveSettings({ iframeSandboxAllowSameOrigin })}
+			/>
 		</div>
 		<div class="flex w-full justify-between py-0.5">
 			<div class="self-center text-xs">iframe 沙盒允许表单提交</div>
-			<Switch bind:state={iframeSandboxAllowForms} onChange={() => saveSettings({ iframeSandboxAllowForms })} />
+			<Switch
+				bind:state={iframeSandboxAllowForms}
+				onChange={() => saveSettings({ iframeSandboxAllowForms })}
+			/>
 		</div>
-
 	</div>
 
 	<div class="flex shrink-0 justify-end pt-2 text-sm font-medium">

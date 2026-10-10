@@ -35,9 +35,7 @@
 		userName?: string;
 		avatarText?: string;
 		onOpenSidebar?: () => void;
-		onNewChat?: () => void;
 		onOpenExam?: () => void;
-		onHome?: () => void;
 		onModelChange?: () => void;
 		onCollectionChange?: (collectionId: string) => void;
 		onAssistModeChange?: (mode: AssistMode) => void;
@@ -74,9 +72,7 @@
 		userName = 'Tagent',
 		avatarText = 'T',
 		onOpenSidebar = () => {},
-		onNewChat = () => {},
 		onOpenExam = () => {},
-		onHome = () => {},
 		onModelChange = () => {},
 		onCollectionChange = () => {},
 		onAssistModeChange = () => {},
@@ -136,11 +132,7 @@
 		};
 	};
 
-	const placeMenu = (
-		trigger: HTMLElement | null,
-		align: 'start' | 'end',
-		minWidth = 208
-	) => {
+	const placeMenu = (trigger: HTMLElement | null, align: 'start' | 'end', minWidth = 208) => {
 		if (!trigger) return '';
 		const rect = trigger.getBoundingClientRect();
 		let left = align === 'end' ? rect.right - minWidth : rect.left;
@@ -225,10 +217,12 @@
 		<div class="mx-auto flex w-full max-w-full bg-transparent px-1.5 pt-0.5 md:px-2">
 			<div class="flex w-full max-w-full items-center">
 				{#if !sidebarOpen}
-					<div class="mr-1 mt-1 flex flex-none -translate-x-0.5 self-start items-center text-gray-400">
+					<div
+						class="mt-1 mr-1 flex flex-none -translate-x-0.5 items-center self-start text-gray-400"
+					>
 						<button
 							type="button"
-							class="flex cursor-pointer rounded-lg transition hover:bg-gray-850"
+							class="hover:bg-gray-850 flex cursor-pointer rounded-lg transition"
 							onclick={onOpenSidebar}
 							title={$i18n.t('Open Sidebar')}
 							aria-label={$i18n.t('Open Sidebar')}
@@ -260,7 +254,7 @@
 									<button
 										type="button"
 										id="model-selector-0-button"
-										class="flex max-w-[240px] items-center gap-1 rounded-lg px-1.5 py-1 text-left text-sm text-gray-200 transition hover:bg-gray-850"
+										class="hover:bg-gray-850 flex max-w-[240px] items-center gap-1 rounded-lg px-1.5 py-1 text-left text-sm text-gray-200 transition"
 										onclick={toggleModelMenu}
 										aria-expanded={modelMenuOpen}
 										aria-haspopup="listbox"
@@ -290,7 +284,7 @@
 				<div class="flex min-w-0 flex-none items-center self-start text-gray-400">
 					{#if !controlsOpen}
 						<div
-							class="mr-1 mt-1 inline-flex rounded-full border border-white/10 bg-white/[0.03] p-0.5 text-[11px]"
+							class="mt-1 mr-1 inline-flex rounded-full border border-white/10 bg-white/[0.03] p-0.5 text-[11px]"
 							role="group"
 							aria-label={$i18n.t('Assist Mode')}
 						>
@@ -334,7 +328,9 @@
 									stroke-width="1.8"
 									aria-hidden="true"
 								>
-									<path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
+									<path
+										d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"
+									></path>
 								</svg>
 								<span class="truncate">{currentCollection.name}</span>
 							</button>
@@ -344,7 +340,7 @@
 					{#if temporaryChat && hasMessages}
 						<button
 							type="button"
-							class="flex cursor-pointer rounded-xl px-2 py-2 text-gray-400 transition hover:bg-gray-850 hover:text-white"
+							class="hover:bg-gray-850 flex cursor-pointer rounded-xl px-2 py-2 text-gray-400 transition hover:text-white"
 							onclick={onSaveTemporaryChat}
 							title={$i18n.t('Save Temporary Chat')}
 							aria-label={$i18n.t('Save Temporary Chat')}
@@ -369,12 +365,14 @@
 					{:else if !hasMessages || temporaryChat}
 						<button
 							type="button"
-							class={`flex cursor-pointer rounded-xl px-2 py-2 transition hover:bg-gray-850 ${
+							class={`hover:bg-gray-850 flex cursor-pointer rounded-xl px-2 py-2 transition ${
 								temporaryChat ? 'text-amber-200' : 'text-gray-400 hover:text-white'
 							}`}
 							onclick={onToggleTemporaryChat}
 							title={temporaryChat ? $i18n.t('Close Temporary Chat') : $i18n.t('Temporary Chat')}
-							aria-label={temporaryChat ? $i18n.t('Close Temporary Chat') : $i18n.t('Temporary Chat')}
+							aria-label={temporaryChat
+								? $i18n.t('Close Temporary Chat')
+								: $i18n.t('Temporary Chat')}
 							aria-pressed={temporaryChat}
 							id="temporary-chat-button"
 						>
@@ -411,7 +409,7 @@
 
 					<button
 						type="button"
-						class="flex cursor-pointer rounded-xl px-2 py-2 transition hover:bg-gray-850"
+						class="hover:bg-gray-850 flex cursor-pointer rounded-xl px-2 py-2 transition"
 						onclick={onOpenExam}
 						title={$i18n.t('Smart Assessment')}
 						aria-label={$i18n.t('Smart Assessment')}
@@ -434,7 +432,7 @@
 
 					<button
 						type="button"
-						class={`flex cursor-pointer rounded-xl px-2 py-2 transition hover:bg-gray-850 ${
+						class={`hover:bg-gray-850 flex cursor-pointer rounded-xl px-2 py-2 transition ${
 							controlsOpen ? 'text-white' : 'text-gray-400 hover:text-white'
 						}`}
 						onclick={onToggleControls}
@@ -461,7 +459,7 @@
 
 					<button
 						type="button"
-						class="flex cursor-pointer rounded-xl px-2 py-2 text-gray-400 transition hover:bg-gray-850 hover:text-white"
+						class="hover:bg-gray-850 flex cursor-pointer rounded-xl px-2 py-2 text-gray-400 transition hover:text-white"
 						onclick={onOpenData}
 						title="数据"
 						aria-label="数据"
@@ -488,16 +486,16 @@
 						userRole="admin"
 						showPlayground={false}
 						showAdmin={false}
-						userName={userName}
-						avatarText={avatarText}
+						{userName}
+						{avatarText}
 						align="end"
 						placement="bottom"
-						onSettings={onSettings}
-						onArchivedChats={onArchivedChats}
-						onPlayground={onPlayground}
-						onAdmin={onAdmin}
-						onShortcuts={onShortcuts}
-						onSignOut={onSignOut}
+						{onSettings}
+						{onArchivedChats}
+						{onPlayground}
+						{onAdmin}
+						{onShortcuts}
+						{onSignOut}
 					/>
 				</div>
 			</div>
@@ -515,7 +513,9 @@
 		aria-label={$i18n.t('Select Model')}
 	>
 		{#if models.length === 0}
-			<p class="px-3 py-2 text-xs text-gray-500">{$i18n.t('No models available from basic-agent.')}</p>
+			<p class="px-3 py-2 text-xs text-gray-500">
+				{$i18n.t('No models available from basic-agent.')}
+			</p>
 		{/if}
 		{#each models as model (model.id)}
 			<button
@@ -579,7 +579,9 @@
 				>
 					<span class="text-sm">{collection.name}</span>
 					<span class="text-[11px] text-gray-500">
-						{collection.id ? $i18n.t('{{count}} notes', { count: collection.noteCount ?? 0 }) : $i18n.t('No restriction')}
+						{collection.id
+							? $i18n.t('{{count}} notes', { count: collection.noteCount ?? 0 })
+							: $i18n.t('No restriction')}
 					</span>
 				</button>
 			{/each}

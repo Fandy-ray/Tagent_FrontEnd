@@ -46,9 +46,7 @@
 	const selectedHistory = $derived(
 		history.find((h) => h.id === selectedHistoryId) ?? history[0] ?? null
 	);
-	const shownContent = $derived(
-		edit ? (selectedHistory?.content ?? content) : content
-	);
+	const shownContent = $derived(edit ? (selectedHistory?.content ?? content) : content);
 
 	$effect(() => {
 		if (!edit && !hasManualEdit && hydrated) {
@@ -182,9 +180,7 @@
 		if (!edit || !id) return;
 		const cmd = normalizeCommand(command);
 		if (!name.trim() || !validateCommand(cmd)) return;
-		const conflict = listPrompts().some(
-			(p) => normalizeCommand(p.command) === cmd && p.id !== id
-		);
+		const conflict = listPrompts().some((p) => normalizeCommand(p.command) === cmd && p.id !== id);
 		if (conflict) {
 			error = '该命令已存在，请换一个';
 			return;
@@ -230,13 +226,15 @@
 	</button>
 
 	{#if error}
-		<div class="mb-3 rounded-xl border border-red-900/50 bg-red-950/40 px-3 py-2 text-sm text-red-300">
+		<div
+			class="mb-3 rounded-xl border border-red-900/50 bg-red-950/40 px-3 py-2 text-sm text-red-300"
+		>
 			{error}
 		</div>
 	{/if}
 
 	{#if edit}
-		<div class="flex w-full max-h-[100dvh] flex-col">
+		<div class="flex max-h-[100dvh] w-full flex-col">
 			<div class="flex shrink-0 items-start justify-between gap-4">
 				<div class="min-w-0 flex-1">
 					<input
@@ -271,7 +269,7 @@
 							编辑
 						</button>
 						<button
-							class="flex items-center gap-1.5 rounded-full border border-gray-800 bg-gray-850 px-2.5 py-1 text-sm text-white transition hover:bg-gray-800"
+							class="bg-gray-850 flex items-center gap-1.5 rounded-full border border-gray-800 px-2.5 py-1 text-sm text-white transition hover:bg-gray-800"
 							type="button"
 							onclick={() => {
 								showAccessModal = true;
@@ -308,11 +306,11 @@
 				</div>
 			</div>
 
-			<div class="mb-2 mt-2 flex flex-wrap gap-1.5">
-				{#each tags as tag}
+			<div class="mt-2 mb-2 flex flex-wrap gap-1.5">
+				{#each tags as tag (tag)}
 					<button
 						type="button"
-						class="rounded-full bg-gray-850 px-2 py-0.5 text-xs text-gray-300 hover:bg-gray-800"
+						class="bg-gray-850 rounded-full px-2 py-0.5 text-xs text-gray-300 hover:bg-gray-800"
 						onclick={() => {
 							tags = tags.filter((t) => t !== tag);
 							saveMeta();
@@ -339,7 +337,7 @@
 				<div class="hidden w-72 shrink-0 overflow-hidden md:flex md:flex-col">
 					<div class="mb-2 shrink-0 text-xs text-gray-500">历史记录</div>
 					<div class="flex-1 space-y-0 overflow-y-auto">
-						{#each history as entry}
+						{#each history as entry (entry.id)}
 							<button
 								type="button"
 								class="mb-1 w-full rounded-2xl px-3.5 py-2 text-left transition {selectedHistoryId ===
@@ -387,27 +385,48 @@
 								onclick={() => void copyText(shownContent, 'content')}
 							>
 								{#if contentCopied}
-									<svg class="size-4 text-green-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-										<path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5" />
+									<svg
+										class="size-4 text-green-500"
+										viewBox="0 0 24 24"
+										fill="none"
+										stroke="currentColor"
+										stroke-width="1.5"
+									>
+										<path
+											stroke-linecap="round"
+											stroke-linejoin="round"
+											d="m4.5 12.75 6 6 9-13.5"
+										/>
 									</svg>
 								{:else}
-									<svg class="size-4 text-gray-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-										<path stroke-linecap="round" stroke-linejoin="round" d="M15.666 3.888A2.25 2.25 0 0 0 13.5 2.25h-3c-1.03 0-1.9.693-2.166 1.638m7.332 0c.055.194.084.4.084.612v0a.75.75 0 0 1-.75.75H9.75a.75.75 0 0 1-.75-.75v0c0-.212.03-.418.084-.612m7.332 0c.646.049 1.288.11 1.927.184 1.1.128 1.907 1.077 1.907 2.185V19.5a2.25 2.25 0 0 1-2.25 2.25H6.75A2.25 2.25 0 0 1 4.5 19.5V6.257c0-1.108.806-2.057 1.907-2.185a48.208 48.208 0 0 1 1.927-.184" />
+									<svg
+										class="size-4 text-gray-500"
+										viewBox="0 0 24 24"
+										fill="none"
+										stroke="currentColor"
+										stroke-width="1.5"
+									>
+										<path
+											stroke-linecap="round"
+											stroke-linejoin="round"
+											d="M15.666 3.888A2.25 2.25 0 0 0 13.5 2.25h-3c-1.03 0-1.9.693-2.166 1.638m7.332 0c.055.194.084.4.084.612v0a.75.75 0 0 1-.75.75H9.75a.75.75 0 0 1-.75-.75v0c0-.212.03-.418.084-.612m7.332 0c.646.049 1.288.11 1.927.184 1.1.128 1.907 1.077 1.907 2.185V19.5a2.25 2.25 0 0 1-2.25 2.25H6.75A2.25 2.25 0 0 1 4.5 19.5V6.257c0-1.108.806-2.057 1.907-2.185a48.208 48.208 0 0 1 1.927-.184"
+										/>
 									</svg>
 								{/if}
 							</button>
 						</div>
 						<div
-							class="h-full min-h-[16rem] overflow-y-auto rounded-xl border border-gray-850/50 bg-gray-900 px-4 py-3"
+							class="border-gray-850/50 h-full min-h-[16rem] overflow-y-auto rounded-xl border bg-gray-900 px-4 py-3"
 						>
-							<pre class="pr-8 font-mono text-xs whitespace-pre-wrap text-gray-200">{shownContent}</pre>
+							<pre
+								class="pr-8 font-mono text-xs whitespace-pre-wrap text-gray-200">{shownContent}</pre>
 						</div>
 					</div>
 				</div>
 			</div>
 		</div>
 	{:else}
-		<div class="flex w-full max-h-full justify-center">
+		<div class="flex max-h-full w-full justify-center">
 			<form
 				class="mb-10 flex w-full flex-col"
 				onsubmit={(e) => {
@@ -416,7 +435,10 @@
 				}}
 			>
 				<div class="mb-2">
-					<div class="flex w-full flex-col" title={`只允许使用英文字母，数字 (0-9) 以及连字符 (-) - 在对话框中输入 "/${displayCommand || 'COMMAND'}" 激活此命令`}>
+					<div
+						class="flex w-full flex-col"
+						title={`只允许使用英文字母，数字 (0-9) 以及连字符 (-) - 在对话框中输入 "/${displayCommand || 'COMMAND'}" 激活此命令`}
+					>
 						<div class="flex items-center">
 							<input
 								class="w-full bg-transparent text-2xl text-white outline-none placeholder:text-gray-500"
@@ -426,7 +448,7 @@
 							/>
 							<div class="shrink-0 self-center">
 								<button
-									class="flex items-center gap-1 rounded-full bg-gray-850 px-2 py-1 text-white transition hover:bg-gray-800"
+									class="bg-gray-850 flex items-center gap-1 rounded-full px-2 py-1 text-white transition hover:bg-gray-800"
 									type="button"
 									onclick={() => {
 										showAccessModal = true;
@@ -465,10 +487,10 @@
 						</div>
 
 						<div class="mt-2 flex flex-wrap gap-1.5">
-							{#each tags as tag}
+							{#each tags as tag (tag)}
 								<button
 									type="button"
-									class="rounded-full bg-gray-850 px-2 py-0.5 text-xs text-gray-300 hover:bg-gray-800"
+									class="bg-gray-850 rounded-full px-2 py-0.5 text-xs text-gray-300 hover:bg-gray-800"
 									onclick={() => {
 										tags = tags.filter((t) => t !== tag);
 									}}

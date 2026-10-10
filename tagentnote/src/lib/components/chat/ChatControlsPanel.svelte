@@ -7,11 +7,11 @@
 
 	type Props = {
 		open?: boolean;
-		params?: Record<string, any>;
+		params?: Record<string, unknown>;
 		messages?: MockMessage[];
 		modelName?: string;
 		onClose?: () => void;
-		onChange?: (params: Record<string, any>) => void;
+		onChange?: (params: Record<string, unknown>) => void;
 		onSelectMessage?: (messageId: string) => void;
 	};
 
@@ -37,11 +37,11 @@
 
 {#if open}
 	<aside
-		class="relative z-30 flex h-full w-[min(100%,420px)] shrink-0 flex-col border-l border-white/5 bg-gray-850 shadow-[ -8px_0_24px_rgba(0,0,0,0.35)]"
+		class="bg-gray-850 shadow-[ -8px_0_24px_rgba(0,0,0,0.35)] relative z-30 flex h-full w-[min(100%,420px)] shrink-0 flex-col border-l border-white/5"
 		id="controls-container"
 		aria-label={$i18n.t('Chat Advanced Settings')}
 	>
-		<div class="flex h-full min-h-0 flex-col bg-gray-850">
+		<div class="bg-gray-850 flex h-full min-h-0 flex-col">
 			<div class="flex shrink-0 items-center justify-between gap-2 px-2 pt-2 pb-2">
 				<div class="flex min-w-0 flex-1 gap-1 overflow-x-auto">
 					<button
@@ -93,7 +93,7 @@
 			</div>
 
 			<div
-				class={`min-h-0 flex-1 bg-gray-850 ${
+				class={`bg-gray-850 min-h-0 flex-1 ${
 					activeTab === 'controls' ? 'overflow-y-auto px-3 pt-1 pb-4' : 'overflow-hidden'
 				}`}
 			>
@@ -108,7 +108,7 @@
 						/>
 					{/await}
 				{:else}
-					<Controls embed={true} bind:params onClose={onClose} onChange={onChange} />
+					<Controls embed={true} bind:params {onClose} {onChange} />
 				{/if}
 			</div>
 		</div>

@@ -1,4 +1,6 @@
 <script lang="ts">
+	import { resolve } from '$app/paths';
+
 	import DataControls from '$lib/components/chat/Settings/DataControls.svelte';
 	import General from '$lib/components/chat/Settings/General.svelte';
 	import AppNotification from '$lib/components/icons/AppNotification.svelte';
@@ -21,12 +23,7 @@
 
 	const i18n = getI18nContext();
 
-	type TabId =
-		| 'general'
-		| 'interface'
-		| 'audio'
-		| 'data_controls'
-		| 'account';
+	type TabId = 'general' | 'interface' | 'audio' | 'data_controls' | 'account';
 
 	type Props = {
 		open?: boolean;
@@ -37,7 +34,6 @@
 		onExportChats?: () => void;
 		onArchiveAllChats?: () => void;
 		onDeleteAllChats?: () => void;
-		onOpenArchived?: () => void;
 		onToast?: (message: string) => void;
 		/** 当前版本暂不提供管理员面板入口。 */
 		showAdminPanel?: boolean;
@@ -54,7 +50,6 @@
 		onExportChats = () => {},
 		onArchiveAllChats = () => {},
 		onDeleteAllChats = () => {},
-		onOpenArchived = () => {},
 		onToast = () => {},
 		showAdminPanel = false,
 		initialTab = 'general'
@@ -66,19 +61,46 @@
 	let searchDebounce: ReturnType<typeof setTimeout> | null = null;
 	let prevOpen = false;
 	let tabLoading = $state(false);
-	let lazyTabs = $state<Partial<Record<TabId, Component<any>>>>({});
+	let lazyTabs = $state<Partial<Record<TabId, Component<Record<string, unknown>>>>>({});
 
 	const allTabs: { id: TabId; title: string; keywords: string[] }[] = [
-		{ id: 'general', title: 'General', keywords: ['general', 'theme', 'language', 'notification', 'system prompt', 'advanced params', '通用', '主题', '语言', '通知', '系统提示', '高级参数'] },
-		{ id: 'interface', title: 'Interface', keywords: ['interface', 'wide', 'bubble', 'zoom', '界面', '宽屏', '气泡', '缩放'] },
+		{
+			id: 'general',
+			title: 'General',
+			keywords: [
+				'general',
+				'theme',
+				'language',
+				'notification',
+				'system prompt',
+				'advanced params',
+				'通用',
+				'主题',
+				'语言',
+				'通知',
+				'系统提示',
+				'高级参数'
+			]
+		},
+		{
+			id: 'interface',
+			title: 'Interface',
+			keywords: ['interface', 'wide', 'bubble', 'zoom', '界面', '宽屏', '气泡', '缩放']
+		},
 		{ id: 'audio', title: 'Audio', keywords: ['audio', 'voice', 'stt', 'tts', '语音'] },
-		{ id: 'data_controls', title: 'Data', keywords: ['data', 'import', 'export', 'archive', '数据', '导入', '导出', '归档'] },
-		{ id: 'account', title: 'Account', keywords: ['account', 'name', 'avatar', '账号', '名称', '头像'] }
+		{
+			id: 'data_controls',
+			title: 'Data',
+			keywords: ['data', 'import', 'export', 'archive', '数据', '导入', '导出', '归档']
+		},
+		{
+			id: 'account',
+			title: 'Account',
+			keywords: ['account', 'name', 'avatar', '账号', '名称', '头像']
+		}
 	];
 
-	let filteredIds = $state<TabId[]>(
-		allTabs.filter((t) => t.id !== 'audio').map((t) => t.id)
-	);
+	let filteredIds = $state<TabId[]>(allTabs.filter((t) => t.id !== 'audio').map((t) => t.id));
 
 	// Tab titles with i18n
 	const tabTitles: Record<TabId, string> = $derived({
@@ -89,7 +111,7 @@
 		account: $i18n.t('Account')
 	});
 
-	const tabLoaders: Partial<Record<TabId, () => Promise<{ default: Component<any> }>>> = {
+	const tabLoaders = {
 		interface: () => import('$lib/components/chat/Settings/Interface.svelte'),
 		audio: () => import('$lib/components/chat/Settings/Audio.svelte'),
 		account: () => import('$lib/components/chat/Settings/Account.svelte')
@@ -102,7 +124,10 @@
 		tabLoading = true;
 		try {
 			const mod = await loader();
-			lazyTabs = { ...lazyTabs, [id]: mod.default };
+			lazyTabs = {
+				...lazyTabs,
+				[id]: mod.default as unknown as Component<Record<string, unknown>>
+			};
 		} finally {
 			tabLoading = false;
 		}
@@ -206,7 +231,7 @@
 		onclick={onClose}
 	>
 		<div
-			class="mx-1 w-full max-w-5xl overflow-hidden rounded-2xl border border-gray-800 bg-gray-850 text-gray-100 shadow-2xl"
+			class="bg-gray-850 mx-1 w-full max-w-5xl overflow-hidden rounded-2xl border border-gray-800 text-gray-100 shadow-2xl"
 			onclick={(event) => event.stopPropagation()}
 			role="dialog"
 			tabindex="-1"
@@ -215,21 +240,16 @@
 		>
 			<div class="flex justify-between px-4 pt-4.5 pb-0.5 text-gray-300 md:px-4.5 md:pb-2.5">
 				<div class="self-center text-lg font-medium">{$i18n.t('Settings')}</div>
-				<button
-					type="button"
-					class="self-center"
-					aria-label={$i18n.t('Close')}
-					onclick={onClose}
-				>
+				<button type="button" class="self-center" aria-label={$i18n.t('Close')} onclick={onClose}>
 					<XMark className="h-5 w-5" />
 				</button>
 			</div>
 
-			<div class="flex w-full flex-col pb-4 pt-1 md:flex-row">
+			<div class="flex w-full flex-col pt-1 pb-4 md:flex-row">
 				<div
 					role="tablist"
 					id="settings-tabs-container"
-					class="tabs mx-3 mb-1 flex flex-1 -translate-y-1 flex-row gap-2.5 overflow-x-auto text-left text-sm text-gray-200 md:mb-0 md:w-[12.5rem] md:min-h-[42rem] md:max-h-[42rem] md:flex-none md:flex-col md:gap-1 md:pr-4"
+					class="tabs mx-3 mb-1 flex flex-1 -translate-y-1 flex-row gap-2.5 overflow-x-auto text-left text-sm text-gray-200 md:mb-0 md:max-h-[42rem] md:min-h-[42rem] md:w-[12.5rem] md:flex-none md:flex-col md:gap-1 md:pr-4"
 				>
 					<div
 						class="my-1 mb-1.5 hidden w-full gap-2 rounded-full bg-gray-900/80 px-2.5 backdrop-blur-2xl md:flex"
@@ -256,7 +276,9 @@
 									role="tab"
 									aria-selected={selectedTab === 'general'}
 									class={tabClass('general')}
-									onclick={() => { void selectTab('general'); }}
+									onclick={() => {
+										void selectTab('general');
+									}}
 								>
 									<div class="mr-2 self-center"><SettingsAlt strokeWidth="2" /></div>
 									<div class="self-center">{tabTitles.general}</div>
@@ -267,7 +289,9 @@
 									role="tab"
 									aria-selected={selectedTab === 'interface'}
 									class={tabClass('interface')}
-									onclick={() => { void selectTab('interface'); }}
+									onclick={() => {
+										void selectTab('interface');
+									}}
 								>
 									<div class="mr-2 self-center"><AppNotification strokeWidth="2" /></div>
 									<div class="self-center">{tabTitles.interface}</div>
@@ -278,7 +302,9 @@
 									role="tab"
 									aria-selected={selectedTab === 'audio'}
 									class={tabClass('audio')}
-									onclick={() => { void selectTab('audio'); }}
+									onclick={() => {
+										void selectTab('audio');
+									}}
 								>
 									<div class="mr-2 self-center"><SoundHigh strokeWidth="2" /></div>
 									<div class="self-center">{tabTitles.audio}</div>
@@ -289,7 +315,9 @@
 									role="tab"
 									aria-selected={selectedTab === 'data_controls'}
 									class={tabClass('data_controls')}
-									onclick={() => { void selectTab('data_controls'); }}
+									onclick={() => {
+										void selectTab('data_controls');
+									}}
 								>
 									<div class="mr-2 self-center"><DatabaseSettings strokeWidth="2" /></div>
 									<div class="self-center">{tabTitles.data_controls}</div>
@@ -300,7 +328,9 @@
 									role="tab"
 									aria-selected={selectedTab === 'account'}
 									class={tabClass('account')}
-									onclick={() => { void selectTab('account'); }}
+									onclick={() => {
+										void selectTab('account');
+									}}
 								>
 									<div class="mr-2 self-center"><UserCircle strokeWidth="2" /></div>
 									<div class="self-center">{tabTitles.account}</div>
@@ -313,8 +343,8 @@
 
 					{#if userRole === 'admin' && showAdminPanel}
 						<a
-							href="/admin"
-							class="mt-0 flex min-w-fit flex-1 select-none rounded-xl px-0.5 py-1 text-left transition md:mt-auto md:flex-none md:px-2.5 {settings.highContrastMode
+							href={resolve('/admin')}
+							class="mt-0 flex min-w-fit flex-1 rounded-xl px-0.5 py-1 text-left transition select-none md:mt-auto md:flex-none md:px-2.5 {settings.highContrastMode
 								? 'hover:bg-gray-800'
 								: 'text-gray-600 hover:text-white'}"
 							onclick={(e) => {
@@ -330,7 +360,7 @@
 				</div>
 
 				<div
-					class="flex h-[min(42rem,calc(90vh-5rem))] min-h-0 flex-1 flex-col overflow-hidden px-3.5 md:pl-0 md:pr-4.5"
+					class="flex h-[min(42rem,calc(90vh-5rem))] min-h-0 flex-1 flex-col overflow-hidden px-3.5 md:pr-4.5 md:pl-0"
 				>
 					{#if selectedTab === 'general'}
 						<General {settings} {saveSettings} onSave={notifySaved} />

@@ -1,4 +1,20 @@
 <script lang="ts">
+	type SpeechRecognitionResultLike = { [index: number]: { transcript: string } };
+	type SpeechRecognitionEventLike = { results: ArrayLike<SpeechRecognitionResultLike> };
+	type SpeechRecognitionLike = {
+		lang: string;
+		continuous: boolean;
+		interimResults: boolean;
+		onresult: ((event: SpeechRecognitionEventLike) => void) | null;
+		onerror: (() => void) | null;
+		start: () => void;
+		stop: () => void;
+	};
+	type SpeechRecognitionConstructor = new () => SpeechRecognitionLike;
+	type SpeechWindow = Window & {
+		SpeechRecognition?: SpeechRecognitionConstructor;
+		webkitSpeechRecognition?: SpeechRecognitionConstructor;
+	};
 	type Props = {
 		recording?: boolean;
 		speechAutoSend?: boolean;
@@ -17,8 +33,7 @@
 	let durationSeconds = $state(0);
 	let transcription = $state('');
 	let visualizerData = $state<number[]>(Array(40).fill(0.08));
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any
-	let recognition: any = null;
+	let recognition: SpeechRecognitionLike | null = null;
 	let durationTimer: number | null = null;
 	let visualizerTimer: number | null = null;
 
@@ -58,8 +73,9 @@
 			visualizerData = Array.from({ length: 40 }, () => 0.08 + Math.random() * 0.7);
 		}, 120);
 
+		const speechWindow = window as SpeechWindow;
 		const SpeechRecognitionCtor =
-			(window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+			speechWindow.SpeechRecognition ?? speechWindow.webkitSpeechRecognition;
 
 		if (!SpeechRecognitionCtor) {
 			transcription = '（浏览器不支持语音识别，确认后将插入演示文本）';
@@ -70,7 +86,7 @@
 		recognition.lang = 'zh-CN';
 		recognition.continuous = true;
 		recognition.interimResults = true;
-		recognition.onresult = (event: any) => {
+		recognition.onresult = (event: SpeechRecognitionEventLike) => {
 			let text = '';
 			for (let i = 0; i < event.results.length; i += 1) {
 				text += event.results[i][0].transcript;
@@ -96,9 +112,7 @@
 	const confirm = async () => {
 		loading = true;
 		stopRecognition();
-		const text =
-			transcription.trim() ||
-			`语音输入演示 ${new Date().toLocaleTimeString()}`;
+		const text = transcription.trim() || `语音输入演示 ${new Date().toLocaleTimeString()}`;
 		onConfirm(text);
 		recording = false;
 		loading = false;
@@ -153,11 +167,16 @@
 			disabled={loading}
 		>
 			{#if loading}
-				<span
-					class="size-3.5 animate-spin rounded-full border-2 border-black/20 border-t-black"
+				<span class="size-3.5 animate-spin rounded-full border-2 border-black/20 border-t-black"
 				></span>
 			{:else}
-				<svg class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+				<svg
+					class="size-4"
+					viewBox="0 0 24 24"
+					fill="none"
+					stroke="currentColor"
+					stroke-width="2.2"
+				>
 					<path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5"></path>
 				</svg>
 			{/if}

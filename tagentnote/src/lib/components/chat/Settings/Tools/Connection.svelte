@@ -8,16 +8,21 @@
 	import ConfirmDialog from '$lib/components/common/ConfirmDialog.svelte';
 	import AddToolServerModal from './AddToolServerModal.svelte';
 	import WrenchAlt from '$lib/components/icons/WrenchAlt.svelte';
+	import type { ToolServer } from '$lib/data/userSettings';
 
 	type Props = {
-		connection?: any;
+		connection?: ToolServer;
 		direct?: boolean;
-		onSubmit?: (c: any) => void;
+		onSubmit?: (c: ToolServer) => void;
 		onDelete?: () => void;
 	};
 
-	let { connection = $bindable(null), direct = false, onSubmit = () => {}, onDelete = () => {} }: Props =
-		$props();
+	let {
+		connection = $bindable({ url: '', key: '', path: '', enabled: true }),
+		direct = false,
+		onSubmit = () => {},
+		onDelete = () => {}
+	}: Props = $props();
 
 	let showConfigModal = $state(false);
 	let showDeleteConfirmDialog = $state(false);
@@ -31,7 +36,7 @@
 	onDelete={() => {
 		showDeleteConfirmDialog = true;
 	}}
-	onSubmit={(c: any) => {
+	onSubmit={(c: ToolServer) => {
 		connection = c;
 		onSubmit(c);
 	}}
@@ -46,7 +51,7 @@
 />
 
 <div class="flex w-full items-center gap-2">
-	<Tooltip className="w-full relative" content={''} placement="top-start">
+	<Tooltip className="w-full relative" content="" placement="top-start">
 		<div class="flex w-full">
 			<div
 				class={`flex flex-1 items-center gap-1.5 ${!(connection?.config?.enable ?? true) ? 'opacity-50' : ''}`}
@@ -72,7 +77,7 @@
 	<div class="flex items-center gap-1">
 		<Tooltip content={$i18n.t('Configure')} className="self-start">
 			<button
-				class="self-center rounded-lg bg-transparent p-1 transition hover:bg-gray-100 dark:hover:bg-gray-850"
+				class="dark:hover:bg-gray-850 self-center rounded-lg bg-transparent p-1 transition hover:bg-gray-100"
 				onclick={() => {
 					showConfigModal = true;
 				}}
@@ -89,7 +94,7 @@
 				state={connection?.config?.enable ?? true}
 				onChange={() => {
 					if (!connection.config) connection.config = {};
-					connection.config.enable = !(connection?.config?.enable ?? true);
+					connection.config.enable = !(connection.config.enable ?? true);
 					onSubmit(connection);
 				}}
 			/>

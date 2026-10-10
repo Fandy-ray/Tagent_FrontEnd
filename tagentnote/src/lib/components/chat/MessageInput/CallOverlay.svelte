@@ -65,10 +65,14 @@
 {#if open}
 	<!-- svelte-ignore a11y_click_events_have_key_events -->
 	<!-- svelte-ignore a11y_no_static_element_interactions -->
-	<div class="fixed inset-0 z-[140] flex items-center justify-center bg-black/70 px-4" onclick={close}>
+	<div
+		class="fixed inset-0 z-[140] flex items-center justify-center bg-black/70 px-4"
+		onclick={close}
+	>
 		<div
 			class="relative w-full max-w-md rounded-3xl border border-gray-800 bg-gray-900 px-6 py-8 text-center text-white shadow-2xl"
 			onclick={(e) => e.stopPropagation()}
+			tabindex="-1"
 			role="dialog"
 			aria-modal="true"
 			aria-label="语音模式"
@@ -79,7 +83,13 @@
 				onclick={close}
 				aria-label="关闭语音模式"
 			>
-				<svg class="size-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+				<svg
+					class="size-5"
+					viewBox="0 0 24 24"
+					fill="none"
+					stroke="currentColor"
+					stroke-width="1.8"
+				>
 					<path stroke-linecap="round" d="M6 6l12 12M18 6L6 18"></path>
 				</svg>
 			</button>
@@ -113,7 +123,13 @@
 				}}
 				aria-label="语音通话"
 			>
-				<svg class="size-10" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="2.5">
+				<svg
+					class="size-10"
+					viewBox="0 0 24 24"
+					fill="currentColor"
+					stroke="currentColor"
+					stroke-width="2.5"
+				>
 					<path d="M12 4L12 20" stroke-linecap="round"></path>
 					<path d="M8 9L8 15" stroke-linecap="round"></path>
 					<path d="M20 10L20 14" stroke-linecap="round"></path>

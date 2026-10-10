@@ -1,9 +1,31 @@
 <script lang="ts">
+	import { SvelteSet, SvelteURLSearchParams } from 'svelte/reactivity';
+	type SpeechRecognitionResultLike = { [index: number]: { transcript: string } };
+	type SpeechRecognitionEventLike = { results: ArrayLike<SpeechRecognitionResultLike> };
+	type SpeechRecognitionLike = {
+		lang: string;
+		interimResults: boolean;
+		onresult: ((event: SpeechRecognitionEventLike) => void) | null;
+		onerror: (() => void) | null;
+		onend: (() => void) | null;
+		start: () => void;
+	};
+	type SpeechRecognitionConstructor = new () => SpeechRecognitionLike;
+	type SpeechWindow = Window & {
+		SpeechRecognition?: SpeechRecognitionConstructor;
+		webkitSpeechRecognition?: SpeechRecognitionConstructor;
+	};
 	import { goto } from '$app/navigation';
+	import { resolve } from '$app/paths';
 	import { page } from '$app/stores';
 	import { onDestroy, onMount, tick } from 'svelte';
 
-	import { generateEssayTopic, getAgentModels, reviewEssay, streamAgentChat } from '$lib/apis/agent';
+	import {
+		generateEssayTopic,
+		getAgentModels,
+		reviewEssay,
+		streamAgentChat
+	} from '$lib/apis/agent';
 	import {
 		getSourceText,
 		listNotebookKnowledge,
@@ -124,9 +146,7 @@
 
 	// 两种助手模式使用独立的会话空间。旧数据没有 mode 时按课程答疑处理，
 	// 这样升级前已有的普通对话仍然可以正常显示。
-	const modeChats = $derived(
-		chats.filter((chat) => (chat.mode ?? 'qa') === assistMode)
-	);
+	const modeChats = $derived(chats.filter((chat) => (chat.mode ?? 'qa') === assistMode));
 
 	const sidebarChats = $derived(
 		modeChats
@@ -150,7 +170,6 @@
 			}))
 			.sort((a, b) => b.updatedAt - a.updatedAt)
 	);
-
 
 	const currentModelName = $derived(
 		modelOptions.find((model) => model.id === selectedModelId)?.name ?? selectedModelId
@@ -315,8 +334,9 @@
 		dictationEnabled = !dictationEnabled;
 		toast(dictationEnabled ? '听写模式已开启（需浏览器语音权限）' : '听写模式已关闭');
 		if (!dictationEnabled) return;
+		const speechWindow = window as SpeechWindow;
 		const SpeechRecognition =
-			(window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+			speechWindow.SpeechRecognition ?? speechWindow.webkitSpeechRecognition;
 		if (!SpeechRecognition) {
 			toast('当前浏览器不支持语音听写');
 			dictationEnabled = false;
@@ -326,7 +346,7 @@
 			const recognition = new SpeechRecognition();
 			recognition.lang = 'zh-CN';
 			recognition.interimResults = false;
-			recognition.onresult = (event: any) => {
+			recognition.onresult = (event: SpeechRecognitionEventLike) => {
 				const text = event.results?.[0]?.[0]?.transcript ?? '';
 				if (text) {
 					prompt = `${prompt}${prompt ? ' ' : ''}${text}`;
@@ -346,7 +366,7 @@
 		}
 	};
 
-	const buildFollowUps = (question: string, _answer: string): string[] => {
+	const buildFollowUps = (question: string): string[] => {
 		const base = question.replace(/\s+/g, ' ').slice(0, 24);
 		return [`请更详细地解释「${base}」`, '用例子说明一下', '相关还有哪些知识点？'].filter(Boolean);
 	};
@@ -387,8 +407,7 @@
 				urlChat &&
 				stored.chats.some(
 					(chat) =>
-						chat.id === urlChat &&
-						(requestedMode === null || (chat.mode ?? 'qa') === requestedMode)
+						chat.id === urlChat && (requestedMode === null || (chat.mode ?? 'qa') === requestedMode)
 				)
 					? urlChat
 					: null;
@@ -716,7 +735,7 @@
 	};
 
 	const syncUrl = () => {
-		const params = new URLSearchParams();
+		const params = new SvelteURLSearchParams();
 
 		if (selectedModelId) {
 			params.set('model', selectedModelId);
@@ -748,7 +767,7 @@
 			return;
 		}
 
-		void goto(next, {
+		void goto(resolve(next), {
 			replaceState: true,
 			keepFocus: true,
 			noScroll: true
@@ -808,7 +827,7 @@
 		bumpGeneration();
 		generating = false;
 		commitActive();
-		void goto('/agent-select');
+		void goto(resolve('/agent-select'));
 	};
 
 	const openSettings = () => {
@@ -872,7 +891,7 @@
 				...incoming.map((chat) => ({ ...chat, archived: chat.archived ?? false })),
 				...chats
 			];
-			const seen = new Set<string>();
+			const seen = new SvelteSet<string>();
 			chats = merged.filter((chat) => {
 				if (!chat?.id || seen.has(chat.id)) return false;
 				seen.add(chat.id);
@@ -931,18 +950,18 @@
 	};
 
 	const openPlayground = () => {
-		void goto('/playground');
+		void goto(resolve('/playground'));
 	};
 
 	const openAdmin = () => {
-		void goto('/admin');
+		void goto(resolve('/admin'));
 	};
 
 	const signOut = () => {
 		bumpGeneration();
 		generating = false;
 		commitActive();
-		void goto('/welcome');
+		void goto(resolve('/welcome'));
 	};
 
 	const unarchiveChat = (chatId: string) => {
@@ -1169,13 +1188,15 @@
 
 	const openExam = () => {
 		void goto(
-			`/exam?model=${encodeURIComponent(selectedModelId)}&from=qa&topic=${encodeURIComponent(collectionId)}`
+			resolve(
+				`/exam?model=${encodeURIComponent(selectedModelId)}&from=qa&topic=${encodeURIComponent(collectionId)}`
+			)
 		);
 	};
 
 	const openNotes = () => {
 		commitActive();
-		const params = new URLSearchParams();
+		const params = new SvelteURLSearchParams();
 		params.set('from', 'qa');
 		if (selectedModelId) params.set('model', selectedModelId);
 		if (collectionId) {
@@ -1183,16 +1204,7 @@
 			params.set('collection', collectionId);
 		}
 		if (activeChatId) params.set('chat', activeChatId);
-		void goto(`/notebook?${params.toString()}`);
-	};
-
-	const openWorkspace = () => {
-		commitActive();
-		const params = new URLSearchParams();
-		if (selectedModelId) params.set('model', selectedModelId);
-		if (activeChatId) params.set('chat', activeChatId);
-		const search = params.toString();
-		void goto(search ? `/workspace/models?${search}` : '/workspace/models');
+		void goto(resolve(`/notebook?${params.toString()}`));
 	};
 
 	const chatPlainText = () =>
@@ -1553,9 +1565,7 @@
 								...message,
 								model: result.model || selectedModelId,
 								citations,
-								followUps: userSettings.autoFollowUps
-									? buildFollowUps(question, result.content)
-									: undefined,
+								followUps: userSettings.autoFollowUps ? buildFollowUps(question) : undefined,
 								tags: userSettings.autoTags ? buildTags(question) : undefined
 							}
 						: message
@@ -1792,7 +1802,12 @@
 			return;
 		}
 
-		patchMessage(assistantId, { paperCard: next, content, streaming: false, model: selectedModelId });
+		patchMessage(assistantId, {
+			paperCard: next,
+			content,
+			streaming: false,
+			model: selectedModelId
+		});
 		generating = false;
 		commitActive();
 		void scrollToBottom();
@@ -2172,7 +2187,6 @@
 			chats={sidebarChats}
 			searchChats={modeChats}
 			{folders}
-			modelId={selectedModelId}
 			userName={userSettings.displayName}
 			avatarText={userSettings.avatarText}
 			statusEmoji={userSettings.statusEmoji}
@@ -2183,7 +2197,6 @@
 			onSelectChat={selectChat}
 			onSelectFolder={handleSelectFolder}
 			onOpenNotes={openNotes}
-			onOpenWorkspace={openWorkspace}
 			onSettings={openSettings}
 			onArchivedChats={openArchivedChats}
 			onPlayground={openPlayground}
@@ -2208,7 +2221,7 @@
 			onExportFolder={handleExportFolder}
 			knowledgeOptions={notebooks.map((item) => ({ id: item.id, name: item.name }))}
 			onOpenWorkspaceKnowledge={() => {
-				void goto('/workspace/knowledge');
+				void goto(resolve('/workspace/knowledge'));
 			}}
 			onClose={() => {
 				sidebarOpen = false;
@@ -2234,9 +2247,7 @@
 				onOpenSidebar={() => {
 					sidebarOpen = true;
 				}}
-				onNewChat={createEmptyChat}
 				onOpenExam={openExam}
-				onHome={returnToSelect}
 				onModelChange={syncUrl}
 				onCollectionChange={(id) => {
 					collectionId = id;
@@ -2276,7 +2287,7 @@
 
 			{#if assistMode === 'paper'}
 				<div
-					class="min-h-0 max-h-[calc(100vh-4rem)] shrink-0 overflow-y-auto overscroll-contain border-b border-white/[0.06] bg-gray-900 px-3 py-2 md:px-5"
+					class="max-h-[calc(100vh-4rem)] min-h-0 shrink-0 overflow-y-auto overscroll-contain border-b border-white/[0.06] bg-gray-900 px-3 py-2 md:px-5"
 				>
 					<PaperTaskCard
 						bind:title={paperTitle}
@@ -2418,9 +2429,7 @@
 						</div>
 					{/if}
 
-				<div
-						class="relative z-10 shrink-0 px-4 pt-4 pb-2"
-					>
+					<div class="relative z-10 shrink-0 px-4 pt-4 pb-2">
 						<div
 							class={`mx-auto w-full ${userSettings.widescreenMode ? 'max-w-full' : 'max-w-3xl'}`}
 						>
@@ -2508,7 +2517,6 @@
 			onExportChats={exportAllChats}
 			onArchiveAllChats={archiveAllChats}
 			onDeleteAllChats={deleteAllChats}
-			onOpenArchived={openArchivedChats}
 			onToast={(message) => {
 				saveToast = message;
 				window.setTimeout(() => {

@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { onDestroy, tick, untrack } from 'svelte';
+	import { SvelteDate, SvelteMap, SvelteSet } from 'svelte/reactivity';
 	import Modal from '$lib/components/common/Modal.svelte';
 	import Spinner from '$lib/components/common/Spinner.svelte';
 	import SearchInput from '$lib/components/layout/Sidebar/SearchInput.svelte';
@@ -56,8 +57,8 @@
 	];
 
 	const getTimeRange = (updatedAt: number) => {
-		const now = new Date();
-		const date = new Date(updatedAt);
+		const now = new SvelteDate();
+		const date = new SvelteDate(updatedAt);
 		const diffDays = (now.getTime() - date.getTime()) / (1000 * 3600 * 24);
 
 		if (
@@ -81,11 +82,11 @@
 	};
 
 	const formatCalendar = (updatedAt: number) => {
-		const now = new Date();
-		const date = new Date(updatedAt);
-		const startToday = new Date(now);
+		const now = new SvelteDate();
+		const date = new SvelteDate(updatedAt);
+		const startToday = new SvelteDate(now);
 		startToday.setHours(0, 0, 0, 0);
-		const startDate = new Date(date);
+		const startDate = new SvelteDate(date);
 		startDate.setHours(0, 0, 0, 0);
 		const dayDiff = Math.round((startToday.getTime() - startDate.getTime()) / 86400000);
 
@@ -98,7 +99,7 @@
 	};
 
 	const collectTags = (list: QaChat[]) => {
-		const map = new Map<string, string>();
+		const map = new SvelteMap<string, string>();
 		for (const chat of list) {
 			for (const tag of chat.tags ?? []) {
 				const id = tag.replaceAll(' ', '_').toLowerCase();
@@ -147,7 +148,7 @@
 		);
 		const text = textWords.join(' ');
 
-		const folderIds = new Set<string>();
+		const folderIds = new SvelteSet<string>();
 		for (const key of folderKeys) {
 			const needle = key.replaceAll(' ', '_').toLowerCase();
 			for (const folder of folders) {
@@ -173,18 +174,14 @@
 
 		if (tagIds.includes('none')) {
 			filtered = filtered.filter((c) => {
-				const chatTags = [
-					...(c.tags ?? []),
-					...c.messages.flatMap((m) => m.tags ?? [])
-				];
+				const chatTags = [...(c.tags ?? []), ...c.messages.flatMap((m) => m.tags ?? [])];
 				return chatTags.length === 0;
 			});
 		} else if (tagIds.length > 0) {
 			filtered = filtered.filter((c) => {
-				const chatTags = [
-					...(c.tags ?? []),
-					...c.messages.flatMap((m) => m.tags ?? [])
-				].map((t) => t.replaceAll(' ', '_').toLowerCase());
+				const chatTags = [...(c.tags ?? []), ...c.messages.flatMap((m) => m.tags ?? [])].map((t) =>
+					t.replaceAll(' ', '_').toLowerCase()
+				);
 				return tagIds.every((id) => chatTags.includes(id));
 			});
 		}
@@ -286,7 +283,7 @@
 		chatListLoading = true;
 		page += 1;
 		const list = searchChats(query, page);
-		const existing = new Set(chatList.map((c) => c.id));
+		const existing = new SvelteSet(chatList.map((c) => c.id));
 		const unique = list.filter((c) => !existing.has(c.id));
 		allChatsLoaded = unique.length === 0;
 		chatList = [...chatList, ...unique];
@@ -402,7 +399,7 @@
 				{#each actions as action, idx (action.label)}
 					<button
 						type="button"
-						class="flex w-full items-center rounded-xl px-3 py-2 text-sm hover:bg-gray-850 {selectedIdx ===
+						class="hover:bg-gray-850 flex w-full items-center rounded-xl px-3 py-2 text-sm {selectedIdx ===
 						idx
 							? 'bg-gray-850'
 							: ''}"
@@ -429,7 +426,7 @@
 				{/each}
 
 				{#if chatList}
-					<hr class="my-3 border-gray-850/30" />
+					<hr class="border-gray-850/30 my-3" />
 
 					{#if chatList.length === 0}
 						<div class="px-5 py-4 text-center text-xs text-gray-400">未找到结果</div>
@@ -438,9 +435,7 @@
 					{#each chatList as chat, idx (chat.id)}
 						{#if idx === 0 || (idx > 0 && chat.time_range !== chatList[idx - 1].time_range)}
 							<div
-								class="w-full px-2 pb-2 text-xs font-medium text-gray-500 {idx === 0
-									? ''
-									: 'pt-5'}"
+								class="w-full px-2 pb-2 text-xs font-medium text-gray-500 {idx === 0 ? '' : 'pt-5'}"
 							>
 								{chat.time_range}
 							</div>
@@ -448,7 +443,7 @@
 
 						<button
 							type="button"
-							class="flex w-full items-center justify-between rounded-xl px-3 py-2 text-sm hover:bg-gray-850 {selectedIdx ===
+							class="hover:bg-gray-850 flex w-full items-center justify-between rounded-xl px-3 py-2 text-sm {selectedIdx ===
 							idx + actions.length
 								? 'bg-gray-850'
 								: ''}"
@@ -464,7 +459,7 @@
 							}}
 						>
 							<div class="flex-1">
-								<div class="line-clamp-1 w-full text-ellipsis text-left">{chat.title}</div>
+								<div class="line-clamp-1 w-full text-left text-ellipsis">{chat.title}</div>
 							</div>
 							<div class="shrink-0 pl-3 text-xs text-gray-400">
 								{formatCalendar(chat.updatedAt)}
@@ -509,7 +504,9 @@
 					<div class="flex h-full w-full flex-col gap-4 px-3 pt-4 pb-8">
 						{#each previewMessages as message (message.id)}
 							{#if message.role === 'user'}
-								<div class="ml-auto max-w-[85%] rounded-3xl bg-gray-800 px-4 py-2 text-sm text-gray-100">
+								<div
+									class="ml-auto max-w-[85%] rounded-3xl bg-gray-800 px-4 py-2 text-sm text-gray-100"
+								>
 									<p class="whitespace-pre-wrap">{message.content}</p>
 								</div>
 							{:else}

@@ -32,11 +32,23 @@
 				<div class="text-sm">{title}</div>
 				<div class="flex translate-y-[1px] self-center text-gray-500">
 					{#if open}
-						<svg class="size-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.5">
+						<svg
+							class="size-3.5"
+							viewBox="0 0 24 24"
+							fill="none"
+							stroke="currentColor"
+							stroke-width="3.5"
+						>
 							<path stroke-linecap="round" stroke-linejoin="round" d="m18 15-6-6-6 6"></path>
 						</svg>
 					{:else}
-						<svg class="size-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.5">
+						<svg
+							class="size-3.5"
+							viewBox="0 0 24 24"
+							fill="none"
+							stroke="currentColor"
+							stroke-width="3.5"
+						>
 							<path stroke-linecap="round" stroke-linejoin="round" d="m6 9 6 6 6-6"></path>
 						</svg>
 					{/if}

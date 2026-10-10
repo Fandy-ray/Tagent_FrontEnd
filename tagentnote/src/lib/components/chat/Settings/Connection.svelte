@@ -2,9 +2,9 @@
 	import { getI18nContext } from '$lib/i18n';
 	import Tooltip from '$lib/components/common/Tooltip.svelte';
 	import Switch from '$lib/components/common/Switch.svelte';
-	import SensitiveInput from '$lib/components/common/SensitiveInput.svelte';
 	import Cog6 from '$lib/components/icons/Cog6.svelte';
 	import AddConnectionModal from './AddConnectionModal.svelte';
+	import type { ConnectionDraft, ConnectionConfig } from './AddConnectionModal.svelte';
 	import ConfirmDialog from '$lib/components/common/ConfirmDialog.svelte';
 
 	const i18n = getI18nContext();
@@ -12,9 +12,9 @@
 	type Props = {
 		url?: string;
 		key?: string;
-		config?: Record<string, any>;
+		config?: ConnectionConfig;
 		highContrastMode?: boolean;
-		onSubmit?: (connection: any) => void;
+		onSubmit?: (connection: ConnectionDraft) => void;
 		onDelete?: () => void;
 	};
 
@@ -42,7 +42,7 @@
 	onDelete={() => {
 		showDeleteConfirmDialog = true;
 	}}
-	onSubmit={(connection: any) => {
+	onSubmit={(connection: ConnectionDraft) => {
 		url = connection.url;
 		key = connection.key;
 		config = connection.config;
@@ -67,9 +67,7 @@
 		placement="top-start"
 	>
 		{#if !(config?.enable ?? true)}
-			<div
-				class="absolute inset-0 z-10 bg-white opacity-60 dark:bg-gray-900"
-			></div>
+			<div class="absolute inset-0 z-10 bg-white opacity-60 dark:bg-gray-900"></div>
 		{/if}
 		<div class="flex w-full gap-2">
 			<div class="relative flex-1">
@@ -87,7 +85,7 @@
 		<Tooltip content={$i18n.t('Configure')}>
 			<button
 				aria-label={$i18n.t('Open modal to configure connection')}
-				class="self-center rounded-lg bg-transparent p-1 transition hover:bg-gray-100 dark:hover:bg-gray-850"
+				class="dark:hover:bg-gray-850 self-center rounded-lg bg-transparent p-1 transition hover:bg-gray-100"
 				onclick={() => {
 					showConfigModal = true;
 				}}

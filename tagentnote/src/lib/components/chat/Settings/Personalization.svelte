@@ -12,7 +12,7 @@
 
 	let { settings, saveSettings, onSave = () => {} }: Props = $props();
 
-	let enableMemory = $state(settings.memory);
+	let enableMemory = $state(false);
 	let showManageModal = $state(false);
 	let seeded = false;
 
@@ -40,7 +40,7 @@
 			<div class="flex items-center gap-2 text-sm font-medium">
 				记忆
 				<span
-					class="rounded-full bg-gray-800 px-1.5 py-0.5 text-[0.65rem] font-medium uppercase text-gray-400"
+					class="rounded-full bg-gray-800 px-1.5 py-0.5 text-[0.65rem] font-medium text-gray-400 uppercase"
 					>实验性</span
 				>
 			</div>
@@ -56,7 +56,7 @@
 			你可以通过下方「管理」按钮添加记忆，让模型交互更贴合你。
 		</div>
 
-		<div class="mb-1 ml-1 mt-3">
+		<div class="mt-3 mb-1 ml-1">
 			<button
 				type="button"
 				class="rounded-3xl px-3.5 py-1.5 font-medium outline outline-1 outline-gray-800 hover:bg-white/5"

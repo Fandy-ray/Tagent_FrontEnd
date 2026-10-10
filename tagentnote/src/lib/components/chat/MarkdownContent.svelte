@@ -81,6 +81,8 @@
 		streaming && fadeStreaming ? 'fade-stream' : ''
 	}`}
 >
+	<!-- Markdown is sanitized with DOMPurify above before it reaches the HTML sink. -->
+	<!-- eslint-disable-next-line svelte/no-at-html-tags -->
 	{@html html}{#if streaming}<span
 			class="streaming-caret ml-0.5 inline-block h-[1em] w-[2px] translate-y-[2px] bg-gray-200"
 		></span>{/if}
@@ -88,7 +90,9 @@
 
 {#if artifactPreview}
 	<div class="mt-3 overflow-hidden rounded-xl border border-white/10 bg-black/40">
-		<div class="border-b border-white/10 px-3 py-1.5 text-[11px] uppercase tracking-wide text-gray-400">
+		<div
+			class="border-b border-white/10 px-3 py-1.5 text-[11px] tracking-wide text-gray-400 uppercase"
+		>
 			产物 · {artifactPreview.lang}
 		</div>
 		{#if artifactPreview.lang === 'html' || artifactPreview.lang === 'svg'}

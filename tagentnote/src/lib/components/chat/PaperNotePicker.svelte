@@ -24,7 +24,9 @@
 			.map((collection) => ({
 				collection,
 				notes: collection.files.filter(
-					(file) => file.kind === 'note' && (!query.trim() || file.title.toLowerCase().includes(query.trim().toLowerCase()))
+					(file) =>
+						file.kind === 'note' &&
+						(!query.trim() || file.title.toLowerCase().includes(query.trim().toLowerCase()))
 				)
 			}))
 			.filter((group) => group.notes.length > 0)
@@ -33,7 +35,10 @@
 	const noteKey = (notebookId: string, noteId: string) => `${notebookId}||${noteId}`;
 	const isSelected = (key: string) => selected.some((note) => note.key === key);
 
-	const toggleNote = (collection: KnowledgeCollection, note: KnowledgeCollection['files'][number]) => {
+	const toggleNote = (
+		collection: KnowledgeCollection,
+		note: KnowledgeCollection['files'][number]
+	) => {
 		const key = noteKey(collection.id, note.id);
 		if (isSelected(key)) {
 			selected = selected.filter((item) => item.key !== key);
@@ -93,7 +98,7 @@
 
 	{#if open}
 		<div
-			class={`absolute left-0 z-40 w-full min-w-64 max-w-lg rounded-xl border border-white/10 bg-gray-850 p-2 shadow-2xl ${openUp ? 'bottom-[calc(100%+6px)]' : 'top-[calc(100%+6px)]'}`}
+			class={`bg-gray-850 absolute left-0 z-40 w-full max-w-lg min-w-64 rounded-xl border border-white/10 p-2 shadow-2xl ${openUp ? 'bottom-[calc(100%+6px)]' : 'top-[calc(100%+6px)]'}`}
 		>
 			<div class="mb-2 flex items-center gap-2">
 				<input

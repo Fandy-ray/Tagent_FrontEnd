@@ -1,6 +1,6 @@
 import { browser } from '$app/environment';
 
-export type ChatControlParams = Record<string, any>;
+export type ChatControlParams = Record<string, unknown>;
 
 const STORAGE_KEY = 'tagentnote.qa.controls.v1';
 
@@ -51,8 +51,17 @@ export function loadChatControls(): ChatControlParams {
 		if (!raw) {
 			return defaults;
 		}
-		const parsed = JSON.parse(raw) as Partial<ChatControlParams>;
-		return { ...defaults, ...parsed, custom_params: { ...defaults.custom_params, ...(parsed.custom_params ?? {}) } };
+		const parsed = JSON.parse(raw) as Record<string, unknown> & {
+			custom_params?: Record<string, unknown>;
+		};
+		return {
+			...defaults,
+			...(parsed as Record<string, unknown>),
+			custom_params: {
+				...(defaults.custom_params as Record<string, unknown>),
+				...(parsed.custom_params ?? {})
+			}
+		};
 	} catch {
 		return defaults;
 	}

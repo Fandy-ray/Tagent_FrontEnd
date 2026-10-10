@@ -56,13 +56,13 @@
 	}
 
 	input[type='checkbox'] {
-		@apply appearance-none size-3.5 align-middle bg-white border border-gray-300 rounded transition cursor-pointer focus:ring-2 focus:ring-blue-500 focus:outline-none dark:bg-gray-800 dark:border-gray-600 self-center;
+		@apply size-3.5 cursor-pointer appearance-none self-center rounded border border-gray-300 bg-white align-middle transition focus:ring-2 focus:ring-blue-500 focus:outline-none dark:border-gray-600 dark:bg-gray-800;
 		display: inline-block;
 		position: relative;
 	}
 
 	input[type='checkbox']:checked {
-		@apply bg-blue-600 border-blue-600;
+		@apply border-blue-600 bg-blue-600;
 	}
 
 	input[type='checkbox']:after {
@@ -89,8 +89,15 @@
 
 :root {
 	font-family:
-		Inter, "Microsoft YaHei", "PingFang SC", ui-sans-serif, system-ui, -apple-system,
-		BlinkMacSystemFont, "Segoe UI", sans-serif;
+		Inter,
+		'Microsoft YaHei',
+		'PingFang SC',
+		ui-sans-serif,
+		system-ui,
+		-apple-system,
+		BlinkMacSystemFont,
+		'Segoe UI',
+		sans-serif;
 	font-synthesis: none;
 	text-rendering: optimizeLegibility;
 	color-scheme: dark;
@@ -202,12 +209,12 @@ html.light .rounded-full {
 /* ========== 系统主题 ========== */
 html.system body,
 html.system html {
-	background: #AEB8C4;
+	background: #aeb8c4;
 	color: #1a1a1a;
 }
 
 html.system .bg-gray-900 {
-	background-color: #3C4A5E !important;
+	background-color: #3c4a5e !important;
 }
 
 html.system .bg-gray-850 {
@@ -219,7 +226,7 @@ html.system .bg-gray-800 {
 }
 
 html.system .bg-gray-950 {
-	background-color: #AEB8C4 !important;
+	background-color: #aeb8c4 !important;
 }
 
 html.system .bg-gray-900\/90 {
@@ -227,7 +234,7 @@ html.system .bg-gray-900\/90 {
 }
 
 html.system .text-white {
-	color: #AEB8C4 !important;
+	color: #aeb8c4 !important;
 }
 
 html.system .text-gray-100 {
@@ -267,7 +274,7 @@ html.system .hover\:bg-gray-900:hover {
 }
 
 html.system .hover\:bg-gray-800:hover {
-	background-color: #3C4A5E !important;
+	background-color: #3c4a5e !important;
 }
 
 /* ========== 纯黑主题 ========== */

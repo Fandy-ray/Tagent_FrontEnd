@@ -12,12 +12,12 @@
 
 	let { settings, saveSettings, onSave = () => {} }: Props = $props();
 
-	let name = $state(settings.displayName);
-	let bio = $state(settings.bio || settings.userBio);
-	let gender = $state(settings.gender);
-	let genderSelect = $state(settings.gender);
-	let dateOfBirth = $state(settings.dateOfBirth);
-	let profileImageUrl = $state(settings.profileImageUrl ?? '');
+	let name = $state('');
+	let bio = $state('');
+	let gender = $state('');
+	let genderSelect = $state('');
+	let dateOfBirth = $state('');
+	let profileImageUrl = $state('');
 
 	$effect(() => {
 		name = settings.displayName;

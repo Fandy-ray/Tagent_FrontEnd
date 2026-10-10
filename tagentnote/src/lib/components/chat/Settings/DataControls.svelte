@@ -31,7 +31,6 @@
 			importFiles = null;
 		}
 	});
-
 </script>
 
 <ConfirmDialog
@@ -132,6 +131,5 @@
 				</div>
 			</div>
 		</div>
-
 	</div>
 </div>

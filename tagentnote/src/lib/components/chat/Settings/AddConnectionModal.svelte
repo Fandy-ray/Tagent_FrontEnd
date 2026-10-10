@@ -13,6 +13,18 @@
 	import Spinner from '$lib/components/common/Spinner.svelte';
 	import XMark from '$lib/components/icons/XMark.svelte';
 	import Textarea from '$lib/components/common/Textarea.svelte';
+	export type ConnectionConfig = {
+		auth_type?: string;
+		headers?: string | Record<string, string>;
+		enable?: boolean;
+		tags?: Array<{ name: string }>;
+		prefix_id?: string;
+		model_ids?: string[];
+		connection_type?: string;
+		azure?: boolean;
+		api_version?: string;
+	};
+	export type ConnectionDraft = { url: string; key: string; config: ConnectionConfig };
 
 	const showToast = (message: string, type: 'success' | 'error' = 'success') => {
 		const toast = document.createElement('div');
@@ -26,8 +38,8 @@
 		show?: boolean;
 		edit?: boolean;
 		direct?: boolean;
-		connection?: any;
-		onSubmit?: (connection: any) => void;
+		connection?: ConnectionDraft | null;
+		onSubmit?: (connection: ConnectionDraft) => void;
 		onDelete?: () => void;
 	};
 
@@ -49,17 +61,11 @@
 	let prefixId = $state('');
 	let enable = $state(true);
 	let headers = $state('');
-	let tags: any[] = $state([]);
+	let tags: Array<{ name: string }> = $state([]);
 	let modelId = $state('');
-	let modelIds: any[] = $state([]);
+	let modelIds: string[] = $state([]);
 	let loading = $state(false);
 	let showDeleteConfirmDialog = $state(false);
-
-	$effect(() => {
-		azure = (url.includes('azure.') || url.includes('cognitive.microsoft.com')) && !direct
-			? true
-			: false;
-	});
 
 	const verifyOpenAIHandler = async () => {
 		url = url.replace(/\/$/, '');
@@ -175,7 +181,9 @@
 			modelIds = connection.config?.model_ids ?? [];
 
 			connectionType = connection.config?.connection_type ?? 'external';
-			azure = connection.config?.azure ?? false;
+			azure =
+				connection.config?.azure ??
+				((url.includes('azure.') || url.includes('cognitive.microsoft.com')) && !direct);
 			apiVersion = connection.config?.api_version ?? '';
 		}
 	};
@@ -204,7 +212,7 @@
 					show = false;
 				}}
 			>
-				<XMark className={'size-5'} />
+				<XMark className="size-5" />
 			</button>
 		</div>
 
@@ -265,8 +273,7 @@
 									<datalist id="suggestions">
 										<option value="https://api.openai.com/v1"></option>
 										<option value="https://api.anthropic.com/v1"></option>
-										<option
-											value="https://generativelanguage.googleapis.com/v1beta/openai"
+										<option value="https://generativelanguage.googleapis.com/v1beta/openai"
 										></option>
 										<option value="https://api.mistral.ai/v1"></option>
 										<option value="https://api.groq.com/openai/v1"></option>
@@ -278,7 +285,7 @@
 
 							<Tooltip content={$i18n.t('Verify Connection')} className="self-end -mb-1">
 								<button
-									class="self-center rounded-lg bg-transparent p-1 transition hover:bg-gray-100 dark:hover:bg-gray-850"
+									class="dark:hover:bg-gray-850 self-center rounded-lg bg-transparent p-1 transition hover:bg-gray-100"
 									onclick={() => {
 										verifyOpenAIHandler();
 									}}
@@ -349,15 +356,11 @@
 											</div>
 										{:else if auth_type === 'session'}
 											<div class="self-center text-xs text-gray-500">
-												{$i18n.t(
-													'Forwards system user session credentials to authenticate'
-												)}
+												{$i18n.t('Forwards system user session credentials to authenticate')}
 											</div>
 										{:else if auth_type === 'system_oauth'}
 											<div class="self-center text-xs text-gray-500">
-												{$i18n.t(
-													'Forwards system user OAuth access token to authenticate'
-												)}
+												{$i18n.t('Forwards system user OAuth access token to authenticate')}
 											</div>
 										{:else if auth_type === 'microsoft_entra_id'}
 											<div class="self-center text-xs text-gray-500">
@@ -470,7 +473,7 @@
 
 							{#if modelIds.length > 0}
 								<ul class="flex flex-col">
-									{#each modelIds as _, modelIdx}
+									{#each modelIds as modelId, modelIdx (modelId)}
 										{@const m = modelIds[modelIdx]}
 										<li class="flex w-full items-center justify-between gap-2">
 											<div class="flex-1 rounded-lg py-1 text-sm">
@@ -497,10 +500,9 @@
 									{#if azure}
 										{$i18n.t('Deployment names are required for Azure OpenAI')}
 									{:else}
-										{$i18n.t(
-											'Leave empty to include all models from "{{url}}/models" endpoint',
-											{ url }
-										)}
+										{$i18n.t('Leave empty to include all models from "{{url}}/models" endpoint', {
+											url
+										})}
 									{/if}
 								</div>
 							{/if}
@@ -567,7 +569,7 @@
 						</div>
 
 						<button
-							class={`flex items-center gap-2 whitespace-nowrap rounded-full bg-black px-3.5 py-1.5 text-sm font-medium text-white transition hover:bg-gray-900 dark:bg-white dark:text-black dark:hover:bg-gray-100 ${loading ? 'cursor-not-allowed' : ''}`}
+							class={`flex items-center gap-2 rounded-full bg-black px-3.5 py-1.5 text-sm font-medium whitespace-nowrap text-white transition hover:bg-gray-900 dark:bg-white dark:text-black dark:hover:bg-gray-100 ${loading ? 'cursor-not-allowed' : ''}`}
 							type="submit"
 							disabled={loading}
 						>

@@ -1,5 +1,7 @@
 <script lang="ts">
+	import { SvelteURLSearchParams } from 'svelte/reactivity';
 	import { goto } from '$app/navigation';
+	import { resolve } from '$app/paths';
 	import { page } from '$app/stores';
 	import { onMount } from 'svelte';
 
@@ -31,7 +33,7 @@
 	let manifestText = $state('');
 
 	const withParams = (path: string) => {
-		const params = new URLSearchParams();
+		const params = new SvelteURLSearchParams();
 		const model = $page.url.searchParams.get('model');
 		const chat = $page.url.searchParams.get('chat');
 		if (model) params.set('model', model);
@@ -59,7 +61,7 @@
 				name: `${t.name} (副本)`
 			})
 		);
-		void goto(withParams('/workspace/tools/create'));
+		void goto(resolve(withParams('/workspace/tools/create')));
 	};
 
 	const showManifest = (t: WorkspaceTool) => {
@@ -131,7 +133,9 @@
 						{
 							label: '编辑',
 							onClick: () =>
-								void goto(withParams(`/workspace/tools/edit?id=${encodeURIComponent(tool.id)}`))
+								void goto(
+									resolve(withParams(`/workspace/tools/edit?id=${encodeURIComponent(tool.id)}`))
+								)
 						},
 						{ label: '克隆', onClick: () => cloneTool(tool) },
 						{ label: '导出', onClick: () => downloadJson(`${tool.id}.json`, tool) },
@@ -154,7 +158,7 @@
 		<div class="my-16">
 			<div class="mb-1 line-clamp-1 text-xl font-medium text-white">由 Open WebUI 社区开发</div>
 			<a
-				class="mb-2 flex w-full cursor-pointer items-center justify-between rounded-xl px-3.5 py-1.5 transition hover:bg-gray-850"
+				class="hover:bg-gray-850 mb-2 flex w-full cursor-pointer items-center justify-between rounded-xl px-3.5 py-1.5 transition"
 				href="https://openwebui.com/tools"
 				target="_blank"
 				rel="noopener noreferrer"
@@ -199,15 +203,15 @@
 		onclick={() => (manifestShow = false)}
 	>
 		<div
-			class="w-full max-w-md rounded-2xl border border-gray-800 bg-gray-850 p-4 shadow-2xl"
+			class="bg-gray-850 w-full max-w-md rounded-2xl border border-gray-800 p-4 shadow-2xl"
 			onclick={(e) => e.stopPropagation()}
+			tabindex="-1"
 			role="dialog"
 			aria-modal="true"
 		>
 			<h3 class="text-base font-medium text-white">Manifest</h3>
 			<pre
-				class="mt-3 max-h-64 overflow-auto rounded-xl bg-gray-900 p-3 text-xs text-gray-300">{manifestText}</pre
-			>
+				class="mt-3 max-h-64 overflow-auto rounded-xl bg-gray-900 p-3 text-xs text-gray-300">{manifestText}</pre>
 			<div class="mt-4 flex justify-end">
 				<button
 					type="button"

@@ -59,8 +59,6 @@
 </script>
 
 {#if show}
-	<!-- svelte-ignore a11y_click_events_have_key_events -->
-	<!-- svelte-ignore a11y_no_static_element_interactions -->
 	<div
 		aria-modal="true"
 		role="dialog"
@@ -73,6 +71,7 @@
 		}}
 	>
 		<div
+			role="presentation"
 			class="modal-content m-auto min-h-fit max-w-full border border-white/10 shadow-2xl {sizeToWidth(
 				size
 			)} {size !== 'full' ? 'mx-2' : ''} {className}"

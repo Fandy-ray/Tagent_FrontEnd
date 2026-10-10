@@ -39,7 +39,7 @@
 			<button
 				type="button"
 				class="text-sm text-gray-400 transition hover:text-gray-200"
-				onclick={() => goto(returnPath)}
+				onclick={() => goto(resolve(returnPath))}
 			>
 				‹ 返回
 			</button>

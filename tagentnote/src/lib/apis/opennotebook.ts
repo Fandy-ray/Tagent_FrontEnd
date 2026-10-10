@@ -3,7 +3,8 @@ import { env } from '$env/dynamic/public';
 import {
 	type KnowledgeCollection,
 	type KnowledgeFile,
-	type SourceKind
+	type SourceKind,
+	type SourceStatus
 } from '$lib/data/knowledge';
 
 type NotebookListItem = {
@@ -91,13 +92,19 @@ const sourceKind = (source: SourceListItem): SourceKind => {
 };
 
 const toSourceFile = (source: SourceListItem): KnowledgeFile => {
-	const processing = source.status && source.status !== 'completed';
+	const rawStatus = source.status?.trim().toLowerCase() || 'completed';
+	const failed = ['failed', 'failure', 'error', 'download_failed', 'download-failed'].includes(
+		rawStatus
+	);
+	const processing = !failed && rawStatus !== 'completed';
+	const status: SourceStatus = failed ? 'failed' : processing ? 'processing' : 'ready';
 	const title = sourceTitle(source);
 
 	return {
 		id: source.id,
-		title: processing ? `${title}（处理中）` : title,
-		kind: sourceKind(source)
+		title: failed ? `${title}（下载失败）` : processing ? `${title}（处理中）` : title,
+		kind: sourceKind(source),
+		status
 	};
 };
 
@@ -165,9 +172,7 @@ export async function listNotebooks(signal?: AbortSignal): Promise<NotebookSumma
 			)
 				.then((notes) => notes.length)
 				.catch(() =>
-					typeof reportedCount === 'number' && Number.isFinite(reportedCount)
-						? reportedCount
-						: 0
+					typeof reportedCount === 'number' && Number.isFinite(reportedCount) ? reportedCount : 0
 				);
 
 			return {
@@ -293,9 +298,7 @@ export async function getSourceText(sourceId: string, signal?: AbortSignal) {
 	return source?.full_text?.trim() || '';
 }
 
-export async function listNotebookKnowledge(
-	signal?: AbortSignal
-): Promise<KnowledgeCollection[]> {
+export async function listNotebookKnowledge(signal?: AbortSignal): Promise<KnowledgeCollection[]> {
 	const notebooks = await fetchJson<NotebookListItem[]>(
 		'/api/notebooks?archived=false&order_by=updated+desc',
 		signal ?? new AbortController().signal

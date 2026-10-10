@@ -1,5 +1,7 @@
 <script lang="ts">
+	import { SvelteURLSearchParams } from 'svelte/reactivity';
 	import { goto } from '$app/navigation';
+	import { resolve } from '$app/paths';
 	import { page } from '$app/stores';
 	import { onMount } from 'svelte';
 
@@ -17,7 +19,7 @@
 	let createdAt = $state(Date.now());
 
 	const withParams = (path: string) => {
-		const params = new URLSearchParams();
+		const params = new SvelteURLSearchParams();
 		const model = $page.url.searchParams.get('model');
 		const chat = $page.url.searchParams.get('chat');
 		if (model) params.set('model', model);
@@ -59,7 +61,7 @@
 			updatedAt: Date.now()
 		});
 		saving = false;
-		void goto(withParams('/workspace/skills'));
+		void goto(resolve(withParams('/workspace/skills')));
 	};
 </script>
 
@@ -69,7 +71,7 @@
 		<button
 			type="button"
 			class="mt-3 block w-full text-white underline"
-			onclick={() => void goto(withParams('/workspace/skills'))}
+			onclick={() => void goto(resolve(withParams('/workspace/skills')))}
 		>
 			返回列表
 		</button>
@@ -80,7 +82,7 @@
 		subtitle={id}
 		{saving}
 		saveLabel="保存"
-		onBack={() => void goto(withParams('/workspace/skills'))}
+		onBack={() => void goto(resolve(withParams('/workspace/skills')))}
 		{onSave}
 	>
 		<div>
@@ -93,8 +95,11 @@
 		</div>
 		<div>
 			<label class={label} for="skill-desc">描述</label>
-			<textarea id="skill-desc" class="{field} min-h-[3.5rem] resize-y" bind:value={description} rows="2"
-			></textarea>
+			<textarea
+				id="skill-desc"
+				class="{field} min-h-[3.5rem] resize-y"
+				bind:value={description}
+				rows="2"></textarea>
 		</div>
 		<div>
 			<label class={label} for="skill-content">内容（Markdown）</label>
@@ -102,8 +107,7 @@
 				id="skill-content"
 				class="{field} min-h-[12rem] resize-y font-mono text-xs"
 				bind:value={content}
-				rows="12"
-			></textarea>
+				rows="12"></textarea>
 		</div>
 		<div class="flex items-center justify-between py-1">
 			<span class="text-sm text-gray-300">启用</span>

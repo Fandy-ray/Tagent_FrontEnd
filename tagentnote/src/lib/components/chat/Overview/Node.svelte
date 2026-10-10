@@ -38,8 +38,8 @@
 				U
 			</div>
 			<div class="ml-2 min-w-0 flex-1">
-				<div class="text-xs font-medium text-white line-clamp-1">{data.userName ?? '我'}</div>
-				<div class="mt-0.5 text-xs text-gray-500 line-clamp-2">{preview}</div>
+				<div class="line-clamp-1 text-xs font-medium text-white">{data.userName ?? '我'}</div>
+				<div class="mt-0.5 line-clamp-2 text-xs text-gray-500">{preview}</div>
 			</div>
 		</div>
 	{:else}
@@ -51,11 +51,15 @@
 			</div>
 			<div class="ml-2 min-w-0 flex-1">
 				<div class="flex items-center justify-between gap-1">
-					<div class="text-xs font-medium text-white line-clamp-1">
+					<div class="line-clamp-1 text-xs font-medium text-white">
 						{data.modelName ?? data.message.model ?? '助手'}
 					</div>
 					{#if data.message.favorite}
-						<svg class="size-3 shrink-0 fill-red-500 stroke-red-500" viewBox="0 0 24 24" aria-hidden="true">
+						<svg
+							class="size-3 shrink-0 fill-red-500 stroke-red-500"
+							viewBox="0 0 24 24"
+							aria-hidden="true"
+						>
 							<path
 								stroke-width="2.5"
 								d="M12 21s-6.7-4.35-9.33-7.6C.8 11.2 1.1 7.9 3.4 6.2c2-1.5 4.7-.9 6.1 1 .5.8 1.1 1.6 2.5 1.6s2-0.8 2.5-1.6c1.4-1.9 4.1-2.5 6.1-1 2.3 1.7 2.6 5 .73 7.2C18.7 16.65 12 21 12 21z"
@@ -63,11 +67,19 @@
 						</svg>
 					{/if}
 				</div>
-				<div class="mt-0.5 text-xs text-gray-500 line-clamp-2">{preview}</div>
+				<div class="mt-0.5 line-clamp-2 text-xs text-gray-500">{preview}</div>
 			</div>
 		</div>
 	{/if}
 
-	<Handle type="target" position={Position.Top} class="!h-2 !w-2 !rounded-full !bg-gray-700 !border-0" />
-	<Handle type="source" position={Position.Bottom} class="!h-2 !w-2 !rounded-full !bg-gray-700 !border-0" />
+	<Handle
+		type="target"
+		position={Position.Top}
+		class="!h-2 !w-2 !rounded-full !border-0 !bg-gray-700"
+	/>
+	<Handle
+		type="source"
+		position={Position.Bottom}
+		class="!h-2 !w-2 !rounded-full !border-0 !bg-gray-700"
+	/>
 </div>

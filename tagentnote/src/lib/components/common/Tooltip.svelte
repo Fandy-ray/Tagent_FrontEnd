@@ -6,10 +6,10 @@
 		children?: import('svelte').Snippet;
 	};
 
-	let { content = '', className = 'flex', children }: Props = $props();
+	let { content = '', placement = 'top', className = 'flex', children }: Props = $props();
 </script>
 
-<div class={className} title={content || undefined}>
+<div class={className} data-placement={placement} title={content || undefined}>
 	{#if children}
 		{@render children()}
 	{/if}
