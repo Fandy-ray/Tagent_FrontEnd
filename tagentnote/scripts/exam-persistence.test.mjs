@@ -22,7 +22,7 @@ const saved = {
 		total_points: 10,
 		cloze: [],
 		choice: [],
-		enessay: [{ id: 'essay-1', type: 'essay', points: 10, question: '请作答' }]
+		essay: [{ id: 'essay-1', type: 'essay', points: 10, question: '请作答' }]
 	},
 	answers: { 'essay-1': '回答' },
 	pageIndex: 0,

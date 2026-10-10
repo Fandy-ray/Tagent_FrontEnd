@@ -375,9 +375,10 @@
 		const words = question
 			.replace(/[^\u4e00-\u9fa5a-zA-Z0-9\s]/g, ' ')
 			.split(/\s+/)
-			.filter((w) => w.length >= 2)
-			.slice(0, 3);
-		return words.length ? words : ['答疑'];
+			.filter((w) => w.length >= 2);
+		// 问题里同一个词出现两次，标签不能也重复两遍
+		const unique = [...new Set(words)].slice(0, 3);
+		return unique.length ? unique : ['答疑'];
 	};
 
 	onMount(() => {

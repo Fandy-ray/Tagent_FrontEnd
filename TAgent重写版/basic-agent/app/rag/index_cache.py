@@ -98,6 +98,15 @@ class IndexCache:
 
     def load(self, embeddings, expected: list[Document]):
         """expected 按检索窗口排列；论文多个窗口可以指向同一父片段。"""
+        if not (self.directory / "manifest.json").exists():
+            return None  # 这一版还没建过缓存：不是坏了，别报「无效」吓人
+        store = self._load_checked(embeddings, expected)
+        if store is None:
+            # 有缓存却读不进来（文件不全、被改过、和现在的材料对不上），说一声再重建
+            log.warning("向量索引缓存无效，重新构建。")
+        return store
+
+    def _load_checked(self, embeddings, expected: list[Document]):
         try:
             manifest = json.loads((self.directory / "manifest.json").read_bytes())
             if manifest.get("identity") != self.identity:
@@ -130,7 +139,6 @@ class IndexCache:
             log.info("向量索引走安全缓存：%s（%d 个窗口）", self.directory, index.ntotal)
             return FAISS(embeddings, index, InMemoryDocstore(documents), dict(enumerate(ids)))
         except (OSError, ValueError, TypeError, AttributeError, RuntimeError, KeyError):
-            log.warning("向量索引缓存无效，重新构建。")
             return None
 
     def save(self, store) -> None:

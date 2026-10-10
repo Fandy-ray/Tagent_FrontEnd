@@ -604,6 +604,12 @@ if ($env:TAGENT_REFERENCES -ne '0') {
     Write-Step '参考文献（系统仿真学报）'
     $previous = $ErrorActionPreference
     $ErrorActionPreference = 'Continue'
+    # 这一步的输出和 PowerShell 自己的提示写进同一个地方。直接显示在窗口上时没问题（Python 走控制台接口）；
+    # 被别的程序接管（重定向）时，Python 默认按系统代码页写，PowerShell 按 [Console]::OutputEncoding 写，
+    # 接管的一方把窗口改成 UTF-8 的话，就只有这一段是乱码（2026-10-10 Windows 测试报告）。
+    # 让 Python 跟 PowerShell 用同一个编码；写不出的字符替换掉，别因为编码让这一步失败。
+    $previousIoEncoding = $env:PYTHONIOENCODING
+    $env:PYTHONIOENCODING = "cp$([Console]::OutputEncoding.CodePage):replace"
     Push-Location $AgentDir
     try {
         & $AgentPy (Join-Path 'tools' 'fetch_references.py')
@@ -614,6 +620,7 @@ if ($env:TAGENT_REFERENCES -ne '0') {
         Write-Warn2 '参考文献没准备好，这次先只用教材，下次启动再补。'
     } finally {
         Pop-Location
+        $env:PYTHONIOENCODING = $previousIoEncoding
         $ErrorActionPreference = $previous
     }
 }

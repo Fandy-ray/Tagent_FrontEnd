@@ -156,7 +156,20 @@ def run(
     timeout: float,
     workers: int = 4,
     out=print,
+    problems: list[str] | None = None,
 ) -> dict[str, int]:
+    """准备好全部参考文献，返回各状态的篇数。
+
+    没准备好的那几篇另外记进 problems（「《题目》原因」），启动时的汇总要点名，
+    不能只说「13 篇就绪」让人自己去数缺了哪篇（2026-10-10 Windows 测试报告）。
+    """
+    lock = threading.Lock()
+
+    def problem(text: str) -> None:
+        if problems is not None:
+            with lock:
+                problems.append(text)
+
     try:
         references = load_manifest(directory)
     except FileNotFoundError:
@@ -212,7 +225,7 @@ def run(
             except NetworkUnreachable as exc:
                 give_up_network(exc)
             except Exception as exc:  # noqa: BLE001 —— 网页版不行还有 PDF
-                out(f"    [!] 《{reference.title}》网页版没取到（{exc}），改用 PDF")
+                out(f"    [!] 《{reference.title}》网页版没取到（{failure_reason(exc)}），改用 PDF")
 
         # 2. PDF
         try:
@@ -228,11 +241,15 @@ def run(
             text = pdf_to_markdown(pdf, reference)
             if text is None:
                 out(f"    [!] 《{reference.title}》抽不出文字（可能是扫描版），这篇先不用")
+                problem(f"《{reference.title}》抽不出文字")
                 return "failed"
             write_text_atomically(markdown, text)
             return done()
         except Exception as exc:  # noqa: BLE001 —— 一篇失败不影响别的，也不影响启动
-            out(f"    [!] 《{reference.title}》没下好：{exc}")
+            why = failure_reason(exc)
+            out(f"    [!] 《{reference.title}》没下好：{why}")
+            # 没下到就没有原文，下次启动会再下；原文在、是抽取出错的，下次还会一样
+            problem(f"《{reference.title}》{why}" + ("，下次启动会再试" if not pdf.exists() else ""))
             return "failed"
 
     counts = {"ready": 0, "downloaded": 0, "reextracted": 0, "converted": 0, "failed": 0, "postponed": 0}
@@ -255,6 +272,7 @@ def run(
             text = pdf_to_markdown(pdf, None)
             if text is None:
                 out(f"    [!] {pdf.name} 抽不出文字（可能是扫描版），跳过")
+                problem(f"{pdf.name} 抽不出文字")
                 counts["failed"] += 1
                 continue
             write_text_atomically(markdown, text)
@@ -262,8 +280,21 @@ def run(
             counts["ready"] += 1
         except Exception as exc:  # noqa: BLE001
             out(f"    [!] {pdf.name} 抽文字失败：{exc}")
+            problem(f"{pdf.name} 抽文字失败")
             counts["failed"] += 1
     return counts
+
+
+def failure_reason(exc: Exception) -> str:
+    """下载失败的原因说成人话：httpx 的原话是英文，还带一长串网址。"""
+    if isinstance(exc, httpx.HTTPStatusError):
+        return f"官网返回 {exc.response.status_code}"
+    if isinstance(exc, httpx.TimeoutException):
+        return "下载超时"
+    if isinstance(exc, httpx.TransportError):
+        return "网络出错"
+    text = str(exc).strip()
+    return text[:80] if text else type(exc).__name__
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -276,8 +307,9 @@ def main(argv: list[str] | None = None) -> int:
     if not args.dir.is_dir():
         print(f"    没有参考文献目录 {args.dir}，跳过")
         return 0
+    problems: list[str] = []
     try:
-        counts = run(args.dir, deadline_seconds=args.deadline, timeout=args.timeout)
+        counts = run(args.dir, deadline_seconds=args.deadline, timeout=args.timeout, problems=problems)
     except (ValueError, KeyError, TypeError) as exc:  # json.JSONDecodeError 是 ValueError
         # 清单是仓库里的文件，写错了要让人看见，但别在启动输出里甩一屏 traceback
         print(f"    [!] references/{MANIFEST_NAME} 写错了：{exc!r}")
@@ -291,8 +323,13 @@ def main(argv: list[str] | None = None) -> int:
     if counts["postponed"]:
         summary += f"，{counts['postponed']} 篇这次没下，下次启动再下"
     if counts["failed"]:
-        summary += f"，{counts['failed']} 篇失败（见上）"
+        summary += f"，{counts['failed']} 篇没准备好"
     print(summary)
+    if problems:
+        # 每篇单独一行点名：前面的逐篇提示可能早被别的输出冲掉了
+        for text in sorted(problems):
+            print(f"    [!] 没准备好：{text}")
+        print("    答疑、出题、批改照常用教材和其余论文。")
     return 0
 
 

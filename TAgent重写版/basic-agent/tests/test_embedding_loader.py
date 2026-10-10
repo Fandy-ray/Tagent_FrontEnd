@@ -105,6 +105,20 @@ def test_a_corrupt_cache_is_rebuilt_not_fatal(tmp_path):
     assert (entry / "index.faiss").read_bytes() != b"not an index"
 
 
+def test_first_build_does_not_call_the_missing_cache_invalid(tmp_path, caplog):
+    """还没建过缓存是正常情况；以前第一次启动就打一句「缓存无效」，看着像出了故障。"""
+    with caplog.at_level("WARNING"):
+        make_kb(tmp_path, CountingEmbeddings()).warm_up()
+    assert "无效" not in caplog.text
+
+    entry = make_kb(tmp_path, CountingEmbeddings())._index_cache_path()
+    (entry / "documents.json").write_bytes(b"[]")
+    caplog.clear()
+    with caplog.at_level("WARNING"):
+        make_kb(tmp_path, CountingEmbeddings()).warm_up()
+    assert "无效" in caplog.text  # 真坏了照样要说
+
+
 def test_no_cache_dir_means_no_files(tmp_path):
     from app.rag.knowledge_base import KnowledgeBase
 

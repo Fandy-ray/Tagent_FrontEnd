@@ -371,7 +371,8 @@
 
 							{#if (message.followUps?.length ?? 0) > 0 && (keepFollowUpPrompts || message.id === lastAssistantId) && !message.streaming}
 								<div class="mt-2 flex flex-wrap gap-1.5">
-									{#each message.followUps ?? [] as followUp (followUp)}
+									<!-- 存在浏览器里的旧对话可能有重复项：key 带上序号，重复了也不至于整条消息渲染出错 -->
+									{#each message.followUps ?? [] as followUp, index (`${index}:${followUp}`)}
 										<button
 											type="button"
 											class="rounded-full border border-white/10 bg-white/[0.03] px-3 py-1 text-left text-[12px] text-gray-300 transition hover:bg-white/[0.07] hover:text-white"
@@ -385,7 +386,7 @@
 
 							{#if (message.tags?.length ?? 0) > 0 && !message.streaming}
 								<div class="mt-1.5 flex flex-wrap gap-1">
-									{#each message.tags ?? [] as tag (tag)}
+									{#each message.tags ?? [] as tag, index (`${index}:${tag}`)}
 										<span class="rounded-full bg-white/[0.06] px-2 py-0.5 text-[10px] text-gray-400"
 											>#{tag}</span
 										>

@@ -88,7 +88,10 @@
 
 	const addModelHandler = () => {
 		if (modelId) {
-			modelIds = [...modelIds, modelId];
+			// 同一个模型 ID 加两次没有意义，列表还会因为重复的 key 渲染出错
+			if (!modelIds.includes(modelId)) {
+				modelIds = [...modelIds, modelId];
+			}
 			modelId = '';
 		}
 	};
@@ -473,7 +476,7 @@
 
 							{#if modelIds.length > 0}
 								<ul class="flex flex-col">
-									{#each modelIds as modelId, modelIdx (modelId)}
+									{#each modelIds as modelId, modelIdx (`${modelIdx}:${modelId}`)}
 										{@const m = modelIds[modelIdx]}
 										<li class="flex w-full items-center justify-between gap-2">
 											<div class="flex-1 rounded-lg py-1 text-sm">

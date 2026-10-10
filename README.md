@@ -338,14 +338,16 @@ npm run build && npm run preview -- --port 5173 --strictPort   # 演示 / 日常
 
 ```bash
 cd TAgent重写版/basic-agent
-uv run pytest -q                    # 2026-10-08：532 passed
+uv run pytest -q                    # 2026-10-10：554 passed
 ```
 
 要在 `basic-agent` 目录直接跑，别只跑 `tests/`：根目录下还有路由、模型客户端、并发这几组（`pytest tests` 只有四百多条）。
 
 ```bash
 cd tagentnote
-npm run check                       # 0 errors
+npm run check                       # 0 errors、0 warnings
+npm run lint                        # 格式（prettier）+ eslint，都要通过
+npm test                            # 整卷存档（含逐句批注）的单测
 npm run build
 ```
 
@@ -363,11 +365,11 @@ npm run build
 | 出题、批改报「模型的输出被截断了」，或「试一下」说 token 都用在了思考上 | 模型先思考再回答，思考占满了输出额度。在 `/models` 给它加「关闭思考」的附加参数，见第 3 步 |
 | Windows 上每次启动都是开发服务器、页面打开很慢 | 旧版 `start.ps1` 把构建成功误判成失败（没取进程句柄，退出码读成空值），已修。仍然这样就看 `logs\runtime\tagentnote.build*.log` |
 | Windows 上 `logs\runtime\basic-agent.*.log` 里中文是乱码 | 旧版没让 Python 用 UTF-8 写重定向的日志，中文 Windows 默认写成 GBK。现在启动脚本启动后端时设 `PYTHONUTF8=1`；旧日志用 GBK 打开，在 PowerShell 里看新日志用 `Get-Content -Encoding UTF8` |
-| Windows 上 Docker Desktop 起不来，报错里有 1920 | Docker Desktop 自己的问题，不是本项目的（2026-10-06 Windows 测试时遇到，相关公开问题见 [docker/desktop-feedback#460](https://github.com/docker/desktop-feedback/issues/460)）。当时的恢复办法：完全退出 Docker Desktop，把报错里点名的两个通信文件所在的临时目录改名备份、再建同名空目录，重新启动；不需要恢复出厂、清理镜像或删数据。普通重启后可能复发，复发就再做一遍 |
+| Windows 上 Docker Desktop 起不来，报错里有 1920，或 `dockerInference` 的本地 socket 出错 | Docker Desktop 自己的问题，不是本项目的（2026-10-06、10-10 两次 Windows 测试都遇到过，相关公开问题见 [docker/desktop-feedback#460](https://github.com/docker/desktop-feedback/issues/460)）。当时的恢复办法：完全退出 Docker Desktop，把报错里点名的两个通信文件所在的临时目录改名备份、再建同名空目录，重新启动；不需要恢复出厂、清理镜像或删数据。普通重启后可能复发，复发就再做一遍 |
 | 页面请求全 502 | basic-agent 没起来，或端口不是 5001 |
 | 答疑能答但笔记本内容检索不到 | `notebook_reachable` 是 false。8502 是页面，接口在 5055 |
 | 笔记本明明起着，`notebook_reachable` 还是 false | 多半有个旧的 basic-agent 残留进程在占着 5001。`stop.bat` 后确认 5001 已释放再重启。另：开着 Clash 等系统代理的 Mac 上，旧版本会把 `localhost:5055` 也送进代理（代理回 502），现在本机和局域网地址一律直连 |
-| 「参考文献」那一步提示没下好 | 期刊官网要直连（走代理会 403）。不影响启动，下次启动会自动补；也可以在 `basic-agent` 目录跑 `uv run python tools/fetch_references.py` |
+| 「参考文献」那一步提示有几篇没准备好 | 提示会逐篇点名、写明原因（如「官网返回 404」「下载超时」）。期刊官网要直连（走代理会 403），偶尔也会临时出错。不影响启动，答疑和出题先用教材和其余论文，标了「下次启动会再试」的会自动补；也可以在 `basic-agent` 目录跑 `uv run python tools/fetch_references.py` |
 | `/admin/model-providers` 返回 503 | `AGENT_ADMIN_TOKEN` 是空的。跑一次 `start.bat` 会自动补 |
 | 提示端口被占 | 先 `stop.bat`；脚本不会去结束不认识的进程 |
 | Docker 引擎不可用 | Docker Desktop 没启动，或 WSL2 组件没装（见上面第 1 步）|

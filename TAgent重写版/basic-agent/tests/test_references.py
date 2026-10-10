@@ -294,6 +294,65 @@ def test_a_failed_download_does_not_stop_the_others(tmp_path, monkeypatch):
     assert any("论文bad" in m and "403" in m for m in messages)
 
 
+def _http_error(status):
+    request = httpx.Request("GET", "https://example.com/bad.pdf")
+    return httpx.HTTPStatusError("boom", request=request, response=httpx.Response(status, request=request))
+
+
+def test_failed_papers_are_named_in_plain_words(tmp_path, monkeypatch):
+    """2026-10-10 Windows 测试：一篇 404，启动输出只看得到「13 篇就绪」，不知道缺的是哪篇。"""
+    write_manifest(tmp_path, "bad", "good")
+
+    def download(ref, timeout):
+        if ref.key == "bad":
+            raise _http_error(404)
+        return b"%PDF-1.4"
+
+    monkeypatch.setattr(fetch_references, "download_pdf", download)
+    fake_extraction(monkeypatch)
+    messages, problems = [], []
+    fetch_references.run(tmp_path, deadline_seconds=60, timeout=5, out=messages.append, problems=problems)
+
+    assert problems == ["《论文bad》官网返回 404，下次启动会再试"]
+    assert any("官网返回 404" in m for m in messages)
+    assert not any("example.com" in m for m in messages)  # 不再甩出英文原话和网址
+
+
+def test_a_paper_whose_text_cannot_be_extracted_is_not_promised_a_retry(tmp_path, monkeypatch):
+    write_manifest(tmp_path, "scan")
+    (tmp_path / "scan.pdf").write_bytes(b"%PDF-1.4")
+    monkeypatch.setattr(fetch_references, "extract_pdf_pages", lambda path: [""])
+    problems = []
+    fetch_references.run(tmp_path, deadline_seconds=60, timeout=5, out=lambda _: None, problems=problems)
+    assert problems == ["《论文scan》抽不出文字"]
+
+
+def test_startup_summary_lists_each_missing_paper(tmp_path, monkeypatch, capsys):
+    write_manifest(tmp_path, "bad", "good")
+
+    def download(ref, timeout):
+        if ref.key == "bad":
+            raise httpx.ReadTimeout("slow")
+        return b"%PDF-1.4"
+
+    monkeypatch.setattr(fetch_references, "download_pdf", download)
+    fake_extraction(monkeypatch)
+    assert fetch_references.main(["--dir", str(tmp_path)]) == 0
+    lines = capsys.readouterr().out.splitlines()
+    assert lines[-3].strip().startswith("参考文献 1 篇就绪") and lines[-3].endswith("1 篇没准备好")
+    assert lines[-2].strip() == "[!] 没准备好：《论文bad》下载超时，下次启动会再试"
+    assert "照常用教材和其余论文" in lines[-1]
+
+
+def test_nothing_missing_means_no_extra_lines(tmp_path, monkeypatch, capsys):
+    write_manifest(tmp_path, "good")
+    monkeypatch.setattr(fetch_references, "download_pdf", lambda ref, timeout: b"%PDF-1.4")
+    fake_extraction(monkeypatch)
+    fetch_references.main(["--dir", str(tmp_path)])
+    out = capsys.readouterr().out
+    assert "没准备好" not in out and "照常用" not in out
+
+
 def test_downloads_stop_starting_after_the_deadline(tmp_path, monkeypatch):
     write_manifest(tmp_path, "a", "b")
     monkeypatch.setattr(fetch_references, "download_pdf", lambda ref, timeout: pytest.fail("不该再下"))
