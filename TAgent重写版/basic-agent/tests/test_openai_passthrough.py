@@ -9,6 +9,7 @@
 from __future__ import annotations
 
 import json
+import gzip
 
 import httpx
 import pytest
@@ -197,3 +198,47 @@ class TestTransportErrors:
             httpx.ConnectError("CERTIFICATE_VERIFY_FAILED")
         )
         assert "证书" in error.message
+
+
+@pytest.mark.parametrize("compressed", [False, True])
+def test_stream_decodes_content_encoding_and_releases_client(monkeypatch, compressed):
+    expected = b'data: {"choices":[{"delta":{"content":"hi"}}]}\n\ndata: [DONE]\n\n'
+    encoded = gzip.compress(expected) if compressed else expected
+
+    class Pieces(httpx.SyncByteStream):
+        closed = False
+
+        def __iter__(self):
+            for offset in range(0, len(encoded), 7):
+                yield encoded[offset:offset + 7]
+
+        def close(self):
+            self.closed = True
+
+    pieces = Pieces()
+    upstream = httpx.Client(transport=httpx.MockTransport(lambda request: httpx.Response(
+        200, headers={"Content-Encoding": "gzip"} if compressed else {}, stream=pieces,
+    )))
+    monkeypatch.setattr(passthrough_client, "_open_client", lambda *args: upstream)
+    assert b"".join(passthrough_client.stream({"messages": []}, make_provider())) == expected
+    assert pieces.closed and upstream.is_closed
+
+
+def test_closing_stream_early_releases_upstream(monkeypatch):
+    class Pieces(httpx.SyncByteStream):
+        closed = False
+
+        def __iter__(self):
+            yield b"data: first\n\n"
+            yield b"data: second\n\n"
+
+        def close(self):
+            self.closed = True
+
+    pieces = Pieces()
+    upstream = httpx.Client(transport=httpx.MockTransport(lambda request: httpx.Response(200, stream=pieces)))
+    monkeypatch.setattr(passthrough_client, "_open_client", lambda *args: upstream)
+    stream = passthrough_client.stream({"messages": []}, make_provider())
+    assert next(stream) == b"data: first\n\n"
+    stream.close()
+    assert pieces.closed and upstream.is_closed

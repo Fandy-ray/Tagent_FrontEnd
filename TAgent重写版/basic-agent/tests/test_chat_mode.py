@@ -163,3 +163,14 @@ def test_a_complete_stream_gets_no_interruption_note():
     text = "".join(token for token, _ in make(kb, model).stream_answer(MESSAGES, PROVIDER))
     assert "回答中断" not in text
 
+
+@pytest.mark.parametrize("reason", ["stop", "length", "content_filter"])
+def test_usage_only_chunk_does_not_erase_the_finish_reason(reason):
+    class WithUsage(RecordingModel):
+        def stream(self, messages):
+            yield types.SimpleNamespace(content="好", response_metadata={"finish_reason": reason})
+            yield types.SimpleNamespace(content="", response_metadata={"finish_reason": None})
+
+    chunks = list(make(RecordingKB(), WithUsage()).stream_answer(MESSAGES, PROVIDER))
+    assert chunks == [("好", None), ("", reason)]
+

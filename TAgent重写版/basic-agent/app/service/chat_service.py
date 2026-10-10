@@ -97,7 +97,10 @@ class ChatService:
             finish_reason = None
             for chunk in self.client_factory.get(provider).stream(prompt_messages):
                 metadata = getattr(chunk, "response_metadata", None) or {}
-                finish_reason = metadata.get("finish_reason", finish_reason)
+                # A final usage-only chunk can contain finish_reason=None.
+                # It must not erase the preceding stop/length/filter reason.
+                if metadata.get("finish_reason"):
+                    finish_reason = metadata["finish_reason"]
                 content = content_text(chunk.content)
                 if content:
                     yield content, None

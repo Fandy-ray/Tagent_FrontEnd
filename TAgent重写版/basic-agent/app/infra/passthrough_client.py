@@ -138,7 +138,10 @@ def stream(
                             response.status_code,
                             "upstream_error",
                         )
-                    for chunk in response.iter_raw():
+                    # HTTPX decodes Content-Encoding here; SSE clients do not receive
+                    # the upstream gzip header, so forwarding compressed bytes breaks them.
+                    # https://www.python-httpx.org/quickstart/#streaming-responses
+                    for chunk in response.iter_bytes():
                         if chunk:
                             yield chunk
         except AgentAPIError:
