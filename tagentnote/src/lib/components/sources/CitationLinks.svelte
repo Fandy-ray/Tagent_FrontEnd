@@ -1,4 +1,6 @@
 <script lang="ts">
+	import { resolve } from '$app/paths';
+
 	import { KIND_LABEL, type Citation } from '$lib/data/knowledge';
 
 	type Props = {
@@ -21,6 +23,8 @@
 	const isExternal = (citation: Citation) => /^https?:\/\//i.test(citation.href);
 </script>
 
+<!-- eslint-disable svelte/no-navigation-without-resolve -- external citation URLs are intentionally preserved. -->
+
 {#if citations.length > 0}
 	<div class="mt-3 space-y-1.5">
 		<div class="text-[11px] font-medium tracking-wide text-gray-500">
@@ -29,8 +33,10 @@
 		<div class="flex flex-col gap-1">
 			{#each citations as citation (citation.id)}
 				{#if citation.href}
+					<!-- External journal URLs intentionally bypass resolve(); internal citation paths are resolved above. -->
+					<!-- eslint-disable-next-line svelte/no-navigation-without-resolve -->
 					<a
-						href={citation.href}
+						href={isExternal(citation) ? citation.href : resolve(citation.href)}
 						target={isExternal(citation) ? '_blank' : undefined}
 						rel={isExternal(citation) ? 'noopener noreferrer' : undefined}
 						title={citation.snippet}

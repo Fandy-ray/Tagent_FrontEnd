@@ -4,11 +4,14 @@
 // （见 $lib/apis/opennotebook.ts），所以每个函数都要求调用方把 collections 传进来。
 
 export type SourceKind = 'file' | 'note' | 'web' | 'paper';
+export type SourceStatus = 'ready' | 'processing' | 'failed';
 
 export type KnowledgeFile = {
 	id: string;
 	title: string;
 	kind: SourceKind;
+	/** OpenNoteBook 远程来源可能下载或解析失败，不能把它伪装成可用材料。 */
+	status?: SourceStatus;
 };
 
 export type KnowledgeCollection = {

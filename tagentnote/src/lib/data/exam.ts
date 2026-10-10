@@ -1,3 +1,5 @@
+import type { Annotation } from '$lib/data/essay';
+
 /**
  * 整卷（试卷模式）共用的类型与渲染工具。
  *
@@ -77,6 +79,25 @@ export type ExamReview = {
 	sections: Record<QuestionType, ExamSectionReview>;
 	results: ReviewResult[];
 };
+
+export type SavedAnswerNote = {
+	status: 'done';
+	source: string;
+	items: Annotation[];
+};
+
+export type AnswerNoteState =
+	| { status: 'loading'; source: string }
+	| SavedAnswerNote
+	| { status: 'failed'; source: string; error: string };
+
+/** Only completed annotations are safe to restore after a refresh. */
+export const completedAnswerNotes = (notes: Record<string, AnswerNoteState>) =>
+	Object.fromEntries(
+		Object.entries(notes).flatMap(([questionId, note]) =>
+			note.status === 'done' ? [[questionId, note]] : []
+		)
+	);
 
 export const LETTERS = ['A', 'B', 'C', 'D'];
 
@@ -179,6 +200,8 @@ export type SavedFullExam = {
 	pageIndex: number;
 	review: ExamReview | null;
 	resultIndex: number;
+	/** 已完成的逐句批注；进行中的请求不落盘，避免刷新后留下永久 loading。 */
+	answerNotes: Record<string, SavedAnswerNote>;
 };
 
 const FULL_EXAM_KEY = 'tagent:full-exam';
@@ -195,7 +218,7 @@ export const loadFullExam = (): SavedFullExam | null => {
 			sessionStorage.removeItem(FULL_EXAM_KEY);
 			return null;
 		}
-		return saved;
+		return { ...saved, answerNotes: saved.answerNotes ?? {} };
 	} catch {
 		return null;
 	}

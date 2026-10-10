@@ -90,20 +90,10 @@
 			if (context.attachedFiles?.some((item) => item.id === id)) continue;
 
 			let content = '';
-			let status = '';
+			let status: string;
 			try {
 				if (/\.(xlsx|xls)$/i.test(file.name)) {
-					// xlsx 有几百 KB，只有上传表格才用：用到时再加载，别压在答疑页首屏里
-					const { read, utils } = await import('xlsx');
-					const workbook = read(await file.arrayBuffer(), { type: 'array' });
-					content = workbook.SheetNames.slice(0, 3)
-						.map((sheetName) => {
-							const sheet = workbook.Sheets[sheetName];
-							return `工作表：${sheetName}\n${utils.sheet_to_csv(sheet, { blankrows: false })}`;
-						})
-						.join('\n\n')
-						.slice(0, 16000);
-					status = `已解析 ${workbook.SheetNames.length} 个工作表，已截取前 16000 个字符`;
+					status = '暂不支持直接读取 Excel，请另存为 CSV 后再上传';
 				} else {
 					content = (await file.text()).slice(0, 16000);
 					status = '已读取文本内容，已截取前 16000 个字符';
@@ -218,7 +208,7 @@
 				章节按钮是帮你写这一节，结果以对话回答给出；要打分和逐句批注，把整篇正文粘进下方输入框点「交稿批改」。
 			</p>
 			<div class="flex flex-wrap gap-2">
-				{#each PAPER_SECTIONS as item}
+				{#each PAPER_SECTIONS as item (item)}
 					<button
 						type="button"
 						class={`rounded-xl border px-3 py-2 text-left transition focus:ring-2 focus:ring-amber-300/40 focus:outline-none ${
@@ -247,7 +237,7 @@
 				根据“{section}”显示需要补充的信息，填写后再选择具体写作动作。
 			</p>
 			<div class="grid gap-2 md:grid-cols-2">
-				{#each contextFields as field}
+				{#each contextFields as field (field.id)}
 					<label class="block">
 						<span class="mb-1 block text-[11px] text-gray-500">{field.label}</span>
 						<textarea
@@ -269,16 +259,18 @@
 										class="inline-flex cursor-pointer items-center gap-1 rounded-md border border-white/10 px-2 py-1 text-[11px] text-gray-400 transition hover:border-amber-200/30 hover:bg-white/[0.06] hover:text-amber-100"
 									>
 										<span aria-hidden="true">↑</span>
-										上传 CSV / Excel
+										上传 CSV / TSV
 										<input
 											type="file"
 											class="hidden"
-											accept=".csv,.tsv,.txt,.md,.json,.xlsx,.xls,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel"
+											accept=".csv,.tsv,.txt,.md,.json,text/csv, text/tab-separated-values, application/json, text/markdown"
 											multiple
 											onchange={addDataFiles}
 										/>
 									</label>
-									<span class="text-[11px] text-gray-600">表格会解析为数据摘录发送给智能体</span>
+									<span class="text-[11px] text-gray-600"
+										>Excel 请先另存为 CSV；内容会截取后发送给智能体</span
+									>
 								</div>
 								{#if context.attachedFiles && context.attachedFiles.length > 0}
 									<div class="mt-1 space-y-1">
@@ -305,7 +297,7 @@
 			</div>
 
 			<div class="mt-3 flex flex-wrap gap-2">
-				{#each visibleIntents as intent}
+				{#each visibleIntents as intent (intent.id)}
 					<button
 						type="button"
 						class="rounded-xl border border-amber-200/15 bg-white/[0.04] px-3 py-2 text-left transition hover:-translate-y-0.5 hover:border-amber-200/40 hover:bg-amber-200/10 focus:ring-2 focus:ring-amber-300/40 focus:outline-none"

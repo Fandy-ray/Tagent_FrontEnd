@@ -81,6 +81,8 @@
 		streaming && fadeStreaming ? 'fade-stream' : ''
 	}`}
 >
+	<!-- Markdown is sanitized with DOMPurify above before it reaches the HTML sink. -->
+	<!-- eslint-disable-next-line svelte/no-at-html-tags -->
 	{@html html}{#if streaming}<span
 			class="streaming-caret ml-0.5 inline-block h-[1em] w-[2px] translate-y-[2px] bg-gray-200"
 		></span>{/if}

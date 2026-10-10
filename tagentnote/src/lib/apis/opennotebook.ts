@@ -1,6 +1,11 @@
 import { env } from '$env/dynamic/public';
 
-import { type KnowledgeCollection, type KnowledgeFile, type SourceKind } from '$lib/data/knowledge';
+import {
+	type KnowledgeCollection,
+	type KnowledgeFile,
+	type SourceKind,
+	type SourceStatus
+} from '$lib/data/knowledge';
 
 type NotebookListItem = {
 	id: string;
@@ -87,13 +92,19 @@ const sourceKind = (source: SourceListItem): SourceKind => {
 };
 
 const toSourceFile = (source: SourceListItem): KnowledgeFile => {
-	const processing = source.status && source.status !== 'completed';
+	const rawStatus = source.status?.trim().toLowerCase() || 'completed';
+	const failed = ['failed', 'failure', 'error', 'download_failed', 'download-failed'].includes(
+		rawStatus
+	);
+	const processing = !failed && rawStatus !== 'completed';
+	const status: SourceStatus = failed ? 'failed' : processing ? 'processing' : 'ready';
 	const title = sourceTitle(source);
 
 	return {
 		id: source.id,
-		title: processing ? `${title}（处理中）` : title,
-		kind: sourceKind(source)
+		title: failed ? `${title}（下载失败）` : processing ? `${title}（处理中）` : title,
+		kind: sourceKind(source),
+		status
 	};
 };
 

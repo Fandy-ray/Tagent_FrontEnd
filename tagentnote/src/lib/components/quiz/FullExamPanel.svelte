@@ -11,8 +11,7 @@
 		countCharacters,
 		humanizeRefs,
 		placeAnnotations,
-		pyStrip,
-		type Annotation
+		pyStrip
 	} from '$lib/data/essay';
 	import {
 		LETTERS,
@@ -24,9 +23,11 @@
 		verdictClass,
 		verdictLabel,
 		clearFullExam,
+		completedAnswerNotes,
 		saveFullExam,
 		type ExamAnswers,
 		type ExamReview,
+		type AnswerNoteState,
 		type PublicExam,
 		type PublicQuestion,
 		type ReviewResult,
@@ -96,14 +97,9 @@
 	/** 交卷时发现这张卷在服务端已经没有了：失败页的标题换个说法 */
 	let paperGone = $state(false);
 
-	type AnswerNotes =
-		| { status: 'loading'; source: string }
-		| { status: 'done'; source: string; items: Annotation[] }
-		| { status: 'failed'; source: string; error: string };
-
 	// 大题的逐句批注是**按需**的：判卷已经等过一轮模型，再给每道大题各发一轮等待就翻倍了；
 	// 学生点开哪道才批哪道（见 basic-agent 的 /quiz/exam/annotate）。结果按题号留着，来回翻页不重复花调用。
-	let answerNotes = $state<Record<string, AnswerNotes>>({});
+	let answerNotes = $state<Record<string, AnswerNoteState>>({});
 	let activeNote = $state<number | null>(null);
 	// 只是在飞的请求句柄，不参与渲染，所以用普通对象而不是响应式容器
 	const noteControllers: Record<string, AbortController> = {};
@@ -134,7 +130,7 @@
 
 	let progressPct = $derived(totalCount > 0 ? Math.round((answeredCount / totalCount) * 100) : 0);
 
-	let currentNotes = $derived<AnswerNotes | null>(
+	let currentNotes = $derived<AnswerNoteState | null>(
 		currentResult ? (answerNotes[currentResult.id] ?? null) : null
 	);
 
@@ -382,6 +378,7 @@
 		pageIndex = saved.pageIndex ?? 0;
 		review = saved.review;
 		resultIndex = saved.resultIndex ?? 0;
+		answerNotes = saved.answerNotes ?? {};
 		onTitle(saved.exam.title);
 		phase = saved.review ? 'result' : 'answering';
 	};
@@ -400,7 +397,8 @@
 			answers: $state.snapshot(answers),
 			pageIndex,
 			review,
-			resultIndex
+			resultIndex,
+			answerNotes: completedAnswerNotes($state.snapshot(answerNotes))
 		});
 	});
 
