@@ -292,12 +292,9 @@ html.system .hover\:bg-gray-800:hover {
 	color: #ffffff;
 }
 
-button,
-input,
-select,
-textarea {
-	font: inherit;
-}
+/* 按钮、输入框默认跟随外层字体：Tailwind 自带的基础样式（base 层）已经这么做了。
+   这里原来还有一条不在层里的同样规则，层外的样式压过所有层，按钮上写的字号、字重、行高类
+   因此全部不生效（2026-10-10 复查发现），删掉了。 */
 
 button,
 a {

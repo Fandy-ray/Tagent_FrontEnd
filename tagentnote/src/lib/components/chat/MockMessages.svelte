@@ -393,7 +393,7 @@
 									{#each message.followUps ?? [] as followUp, index (`${index}:${followUp}`)}
 										<button
 											type="button"
-											class="rounded-full bg-white/[0.06] px-2 py-px text-[8px] text-gray-400 transition hover:text-white"
+											class="rounded-full bg-white/[0.06] px-2 py-0.5 text-xs text-gray-400 transition hover:text-white"
 											onclick={() => onFollowUp(followUp, insertFollowUpPrompt)}
 										>
 											{followUp}
