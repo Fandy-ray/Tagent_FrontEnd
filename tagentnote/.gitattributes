@@ -1,0 +1,4 @@
+# 前端源码一律按 LF 检出。上层只设了 text=auto，Windows 上的 Git 检出时会转成 CRLF，
+# 而 prettier 要求 LF（endOfLine 默认 lf），npm run lint 会把每个文件都判成格式不对
+# （2026-10-11 Windows 测试报告：242 个文件）。这个目录里没有 .bat / .ps1 这类需要 CRLF 的文件。
+* text=auto eol=lf

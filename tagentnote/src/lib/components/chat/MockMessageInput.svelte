@@ -358,6 +358,16 @@
 				</button>
 			{/each}
 		</div>
+	{:else if trigger && (trigger.symbol === '#' ? knowledgeOptions : modelOptions).length === 0}
+		<!-- 打了 # / @ 却一个可选的都没有：说一声，别让人以为功能坏了（2026-10-11 Windows 测试报告） -->
+		<div
+			class="bg-gray-850 absolute bottom-full left-0 z-20 mb-2 w-full max-w-md rounded-xl border border-gray-800 px-3 py-2 text-xs text-gray-500 shadow-lg"
+			role="status"
+		>
+			{trigger.symbol === '#'
+				? '还没有笔记本，先到「笔记本」页面新建一个'
+				: '还没有登记模型，到「登记 / 管理模型」登记一个'}
+		</div>
 	{/if}
 	<div class="relative max-h-[18rem] min-h-[3rem] overflow-y-auto">
 		{#if autocompleteHint}

@@ -73,7 +73,7 @@ OpenNotebook 跑在 Docker 里（`opennotebook/docker-compose.yml`）。<https:/
 | `-SkipNotebook` | `--skip-notebook` | 不启动 OpenNotebook（自己用别的方式起好了） |
 | `-WithTts` | `--with-tts` | 连 `aliyun-tts-bridge` 一起起（做播客用，需要阿里云 DashScope Key） |
 | `-PypiMirror <URL>` | `--pypi-mirror <URL>` | 装 Python 依赖失败时改用哪个 PyPI 镜像重试，默认阿里云 |
-| `-AgentTimeout <秒>` | `--agent-timeout <秒>` | 等 basic-agent 就绪的超时，默认 300 |
+| `-AgentTimeout <秒>` | `--agent-timeout <秒>` | 等 basic-agent 就绪的超时，默认 900（首次要建检索索引，慢的电脑要几分钟） |
 | `-NotebookTimeout <秒>` | `--notebook-timeout <秒>` | 等 OpenNotebook 接口就绪的超时，默认 180 |
 | — | `--no-open` | 启动完成后不自动打开浏览器（macOS/Linux 默认会开） |
 
@@ -365,7 +365,7 @@ npm run build
 | 出题、批改报「模型的输出被截断了」，或「试一下」说 token 都用在了思考上 | 模型先思考再回答，思考占满了输出额度。在 `/models` 给它加「关闭思考」的附加参数，见第 3 步 |
 | Windows 上每次启动都是开发服务器、页面打开很慢 | 旧版 `start.ps1` 把构建成功误判成失败（没取进程句柄，退出码读成空值），已修。仍然这样就看 `logs\runtime\tagentnote.build*.log` |
 | Windows 上 `logs\runtime\basic-agent.*.log` 里中文是乱码 | 旧版没让 Python 用 UTF-8 写重定向的日志，中文 Windows 默认写成 GBK。现在启动脚本启动后端时设 `PYTHONUTF8=1`；旧日志用 GBK 打开，在 PowerShell 里看新日志用 `Get-Content -Encoding UTF8` |
-| Windows 上 Docker Desktop 起不来，报错里有 1920，或 `dockerInference` 的本地 socket 出错 | Docker Desktop 自己的问题，不是本项目的（2026-10-06、10-10 两次 Windows 测试都遇到过，相关公开问题见 [docker/desktop-feedback#460](https://github.com/docker/desktop-feedback/issues/460)）。当时的恢复办法：完全退出 Docker Desktop，把报错里点名的两个通信文件所在的临时目录改名备份、再建同名空目录，重新启动；不需要恢复出厂、清理镜像或删数据。普通重启后可能复发，复发就再做一遍 |
+| Windows 上 Docker Desktop 起不来：报错里有 1920，或 `dockerInference` / Inference manager 的运行目录、本地 socket 访问不了 | Docker Desktop 自己的问题，不是本项目的（2026-10-06、10-10、10-11 三次 Windows 测试都遇到过，相关公开问题见 [docker/desktop-feedback#460](https://github.com/docker/desktop-feedback/issues/460)）。恢复办法：完全退出 Docker Desktop（托盘图标里选 Quit），把 `%LOCALAPPDATA%\Docker\run` 和 `%LOCALAPPDATA%\docker-secrets-engine` 两个目录改名备份（例如末尾加 `.bak`），再建两个同名的空目录，重新启动 Docker Desktop。不需要恢复出厂、清理镜像或删数据，容器和笔记数据都在。普通重启后可能复发，复发就再做一遍 |
 | 页面请求全 502 | basic-agent 没起来，或端口不是 5001 |
 | 答疑能答但笔记本内容检索不到 | `notebook_reachable` 是 false。8502 是页面，接口在 5055 |
 | 笔记本明明起着，`notebook_reachable` 还是 false | 多半有个旧的 basic-agent 残留进程在占着 5001。`stop.bat` 后确认 5001 已释放再重启。另：开着 Clash 等系统代理的 Mac 上，旧版本会把 `localhost:5055` 也送进代理（代理回 502），现在本机和局域网地址一律直连 |

@@ -32,7 +32,7 @@
     装 Python 依赖失败时改用哪个 PyPI 镜像重试，默认阿里云。
     官方源装得动就不会用到它。
 .PARAMETER AgentTimeout
-    等待 basic-agent 健康的最长秒数，默认 300（首次要加载嵌入模型并建向量索引）。
+    等待 basic-agent 健康的最长秒数，默认 900（首次要加载嵌入模型并建向量索引）。
 .PARAMETER NotebookTimeout
     等待 OpenNotebook 接口就绪的最长秒数，默认 180。
 .EXAMPLE
@@ -49,7 +49,9 @@ param(
     [switch]$Prepare,
     [switch]$Dev,
     [string]$PypiMirror = 'https://mirrors.aliyun.com/pypi/simple/',
-    [int]$AgentTimeout = 300,
+    # 首次建检索索引在 Windows 测试机上约 221 秒（2026-10-11），慢的电脑更久。超时会关掉后端，
+    # 而向量缓存要建完才保存，设短了慢电脑会一直起不来；后端一就绪就不再等，设长不影响平时启动。
+    [int]$AgentTimeout = 900,
     [int]$NotebookTimeout = 180
 )
 
@@ -703,9 +705,10 @@ if ($Dev) {
     Write-Ok '前端生产包已在后台开始构建（和 basic-agent 加载同时进行，结果见后面「构建前端」一步）'
 }
 
-Write-Warn2 "首次启动需加载嵌入模型并构建向量索引，最长等待 $AgentTimeout 秒..."
+Write-Warn2 "首次启动要加载嵌入模型、建检索索引，约 1–5 分钟（慢的电脑更久），最长等待 $AgentTimeout 秒；之后用缓存，几秒就好..."
 if (-not (Wait-Health "http://127.0.0.1:$AgentPort/health" $AgentTimeout)) {
     Write-Host "`n[错误] basic-agent 在 $AgentTimeout 秒内未就绪。日志：$agentErr" -ForegroundColor Red
+    Write-Host "电脑较慢的话可以加大超时：start.bat -AgentTimeout 1800" -ForegroundColor Yellow
     $null = Invoke-Native 'taskkill' @('/PID', "$($agentProc.Id)", '/T', '/F')
     Remove-Item (Join-Path $RunDir 'agent.pid') -Force -ErrorAction SilentlyContinue
     exit 1
