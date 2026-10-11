@@ -118,7 +118,7 @@ class ExamService:
         operation_started = time.monotonic()
         deadline = operation_started + EXAM_LLM_BUDGET
         # 注意：闸门按"一次出卷"计名额，而一次出卷现在会并发发出 3 次上游调用。
-        # 即上游并发峰值 = EXAM_MAX_CONCURRENT_LLM × 3（默认 2×3=6），
+        # 即上游并发峰值 = EXAM_MAX_CONCURRENT_LLM × 3（默认 5×3=15），
         # 不再等于闸门容量本身。调整闸门容量时按这个倍数换算。
         # 闪卡（generate_flash_deck）走的是同一个倍数：FLASH_SHARD_COUNT 也是 3。
         with self.llm_gate.acquire():

@@ -1,6 +1,6 @@
 """真实后端栈 + 假上游：路由、闸门、service、JSON 重试、HTTP 模型客户端都是真的，只有模型是假的。
 
-服务名沿用 deepseek，前端不用改就能连上；用 waitress 8 线程，和 main.py 一致。
+服务名沿用 deepseek，前端不用改就能连上；waitress 线程数和 main.py 一样取 WAITRESS_THREADS。
 """
 import os
 import sys

@@ -118,7 +118,9 @@ class AgentConfig:
     use_waitress: bool = True
     # 流式回答整段占一个线程。8 个线程时 12 人同时提问，后 4 人的首字要等 6 秒多，
     # 连 /health 都跟着卡住（压测 S7）。这些线程都在等网络，多开很便宜。
-    waitress_threads: int = 32
+    # 32 → 100（2026-10-11 压测，回答约 18 秒）：32 个占满后所有请求都排队，50 人同时提问后 18 人首字要等 18.7 秒；
+    # 100 个时 50 人全部 0.8 秒内出字，内存只多十几 MB。代价是同时打到模型的请求上限跟着变成 100。
+    waitress_threads: int = 100
 
     admin_token: str = ""
     internal_token: str = ""
@@ -137,7 +139,9 @@ class AgentConfig:
     notebook_url: str = ""
     notebook_token: str = ""
 
-    exam_max_concurrent_llm: int = 2
+    # 出卷、批改同时跑几份（并发闸门容量）。2 → 5（2026-10-11 压测，一次批改约 15 秒）：10 人同时交稿，
+    # 容量 2 有 6 人等满 30 秒被拒，容量 5 全部批完。上游并发峰值 = 容量 × 3 = 15。
+    exam_max_concurrent_llm: int = 5
     llm_max_orphan_tasks: int = 2
 
     # 向量索引的磁盘缓存目录。None = 不缓存（TAGENT_VECTOR_CACHE=0，或单测）
@@ -170,7 +174,7 @@ class AgentConfig:
             host=_env("BASIC_AGENT_HOST", "AGENT_HOST", default="127.0.0.1"),
             port=int(_env("BASIC_AGENT_PORT", "AGENT_PORT", default="5000")),
             use_waitress=os.getenv("USE_WAITRESS", "1") == "1",
-            waitress_threads=int(os.getenv("WAITRESS_THREADS", "32")),
+            waitress_threads=int(os.getenv("WAITRESS_THREADS", "100")),
             admin_token=os.getenv("AGENT_ADMIN_TOKEN", ""),
             internal_token=os.getenv("AGENT_INTERNAL_TOKEN", ""),
             model_providers_path=Path(
@@ -188,7 +192,7 @@ class AgentConfig:
             notebook_token=_env(
                 "OPEN_NOTEBOOK_PASSWORD", "OPEN_NOTEBOOK_TOKEN", "NOTEBOOK_TOKEN"
             ),
-            exam_max_concurrent_llm=int(os.getenv("EXAM_MAX_CONCURRENT_LLM", "2")),
+            exam_max_concurrent_llm=int(os.getenv("EXAM_MAX_CONCURRENT_LLM", "5")),
             llm_max_orphan_tasks=int(os.getenv("LLM_MAX_ORPHAN_TASKS", "2")),
             vector_cache_dir=(
                 None
