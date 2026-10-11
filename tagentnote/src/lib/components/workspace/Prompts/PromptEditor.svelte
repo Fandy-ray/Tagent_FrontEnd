@@ -307,7 +307,8 @@
 			</div>
 
 			<div class="mt-2 mb-2 flex flex-wrap gap-1.5">
-				{#each tags as tag (tag)}
+				<!-- key 带序号：导入的 JSON 里同一个标签可能写了两次，只用标签当 key 会重复，整个编辑页报错 -->
+				{#each tags as tag, tagIdx (`${tagIdx}:${tag}`)}
 					<button
 						type="button"
 						class="bg-gray-850 rounded-full px-2 py-0.5 text-xs text-gray-300 hover:bg-gray-800"
@@ -487,7 +488,8 @@
 						</div>
 
 						<div class="mt-2 flex flex-wrap gap-1.5">
-							{#each tags as tag (tag)}
+							<!-- key 带序号：导入的 JSON 里同一个标签可能写了两次，只用标签当 key 会重复，整个编辑页报错 -->
+							{#each tags as tag, tagIdx (`${tagIdx}:${tag}`)}
 								<button
 									type="button"
 									class="bg-gray-850 rounded-full px-2 py-0.5 text-xs text-gray-300 hover:bg-gray-800"

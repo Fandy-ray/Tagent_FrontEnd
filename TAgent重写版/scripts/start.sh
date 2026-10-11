@@ -20,6 +20,7 @@
 #   ./scripts/start.sh --skip-notebook     不启动 OpenNotebook
 #   ./scripts/start.sh --with-tts          连 aliyun-tts-bridge 一起起（需 DashScope Key）
 #   ./scripts/start.sh --agent-timeout 1800 等 basic-agent 就绪的超时，默认 900
+#   ./scripts/start.sh --notebook-timeout 300 等 OpenNotebook 接口就绪的超时，默认 180
 #   ./scripts/start.sh --no-open           启动完成后不自动打开浏览器
 #   ./scripts/start.sh --dev               前端改用开发服务器（改代码时用；页面打开慢约 10 倍）
 #   ./scripts/start.sh --prepare           只装依赖、生成密钥，不启动任何服务
@@ -51,13 +52,14 @@ FRONTEND_DEV=0
 PREPARE_ONLY=0
 # uv sync 失败时用来重试的 PyPI 镜像（--pypi-mirror 可改）
 PYPI_MIRROR='https://mirrors.aliyun.com/pypi/simple/'
-# 首次启动要建检索索引：Windows 测试机实测约 221 秒（2026-10-11），慢的电脑会更久。
+# 首次启动要建检索索引：Windows 测试机首次启动全流程约 221 秒（2026-10-11，含建索引），慢的电脑会更久。
 # 超时会关掉后端，而向量缓存要建完才保存，下次又得从头建——超时设短了，慢电脑会一直起不来。
 # 后端一就绪就不再等，设长不影响平时启动。
 AGENT_TIMEOUT=900
 NOTEBOOK_TIMEOUT=180
 
-usage() { sed -n '2,26p' "$0"; }
+# 打印文件开头那段注释（第 2 行起，到第一个不以 # 开头的行为止）。原来写死 2–26 行，后加的 --pypi-mirror 说明没打出来。
+usage() { awk 'NR == 1 { next } /^#/ { print; next } { exit }' "$0"; }
 
 while [ $# -gt 0 ]; do
     case "$1" in
@@ -675,18 +677,28 @@ else
     ok '前端生产包已在后台开始构建（和 basic-agent 加载同时进行，结果见后面「构建前端」一步）'
 fi
 
+# basic-agent 没起来、脚本要退出时，把还在跑的后台构建一起停掉：它不在 PID 文件里，stop 停不了，
+# 紧接着重新启动的话两次构建会同时写一个输出目录。杀掉后 wait 回收一下，bash 就不会打出像报错的「Killed: 9」。
+stop_front_build() {
+    [ -n "$FRONT_BUILD_PID" ] || return 0
+    kill_pid_tree "$FRONT_BUILD_PID"
+    wait "$FRONT_BUILD_PID" 2>/dev/null || true
+}
+
 warn "首次启动要加载嵌入模型、建检索索引，约 1–5 分钟（慢的电脑更久），最长等待 $AGENT_TIMEOUT 秒；之后用缓存，几秒就好..."
 wait_health "http://127.0.0.1:$AGENT_PORT/health" "$AGENT_TIMEOUT" "$AGENT_PID"
 case $? in
     0) ok "已就绪 (PID $AGENT_PID)" ;;
     2)
         show_log_tail "$AGENT_ERR"
+        stop_front_build
         rm -f "$RUN_DIR/agent.pid"
         die "basic-agent 启动后随即退出。完整日志：$AGENT_ERR"
         ;;
     *)
         show_log_tail "$AGENT_ERR"
         kill_pid_tree "$AGENT_PID"
+        stop_front_build
         rm -f "$RUN_DIR/agent.pid"
         die "basic-agent 在 $AGENT_TIMEOUT 秒内未就绪。日志：$AGENT_ERR
        电脑较慢或模型下载慢的话可以加大超时：./scripts/start.sh --agent-timeout 1800"

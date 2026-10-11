@@ -229,7 +229,8 @@
 						{loading ? '…' : selectedOption}
 					</div>
 					<div class="max-h-60 overflow-auto">
-						{#each filteredItems as item, itemIdx (item.id ?? itemIdx)}
+						<!-- key 带序号：答疑标签取自提问，问「None 和 null…」会有个 id 为 none 的标签，和固定追加的「无标签」撞 id -->
+						{#each filteredItems as item, itemIdx (`${itemIdx}:${item.id}`)}
 							<button
 								type="button"
 								class="flex w-full gap-1 rounded px-1.5 py-0.5 hover:bg-gray-900 {selectedIdx ===

@@ -49,7 +49,7 @@ param(
     [switch]$Prepare,
     [switch]$Dev,
     [string]$PypiMirror = 'https://mirrors.aliyun.com/pypi/simple/',
-    # 首次建检索索引在 Windows 测试机上约 221 秒（2026-10-11），慢的电脑更久。超时会关掉后端，
+    # Windows 测试机首次启动全流程约 221 秒（2026-10-11，含建检索索引），慢的电脑更久。超时会关掉后端，
     # 而向量缓存要建完才保存，设短了慢电脑会一直起不来；后端一就绪就不再等，设长不影响平时启动。
     [int]$AgentTimeout = 900,
     [int]$NotebookTimeout = 180
@@ -155,13 +155,16 @@ function Test-PortBusy($Port) {
 }
 
 # 轮询健康检查
-function Wait-Health($Url, $TimeoutSec) {
+# 传了 $Process 的话，它一退出就不再等（和 start.sh 的 wait_health 一样）：
+# 后端启动即崩溃时（配置写错、依赖缺失等），不用干等到超时。
+function Wait-Health($Url, $TimeoutSec, $Process = $null) {
     $deadline = (Get-Date).AddSeconds($TimeoutSec)
     while ((Get-Date) -lt $deadline) {
         try {
             $resp = Invoke-WebRequest -Uri $Url -UseBasicParsing -TimeoutSec 5
             if ($resp.StatusCode -eq 200) { return $true }
         } catch {
+            if ($Process -and $Process.HasExited) { return $false }
             Start-Sleep -Seconds 2
             continue
         }
@@ -684,6 +687,8 @@ $env:PYTHONUTF8 = '1'
 $agentProc = Start-Process -FilePath $AgentPy -ArgumentList 'main.py' `
     -WorkingDirectory $AgentDir -WindowStyle Hidden -PassThru `
     -RedirectStandardOutput $agentOut -RedirectStandardError $agentErr
+# 和下面的构建进程一样先取一次句柄，等待时用 HasExited 判断它是不是已经退出了
+$null = $agentProc.Handle
 Write-PidFile $agentProc (Join-Path $RunDir 'agent.pid')
 
 # 前端构建和 basic-agent 加载互不相干：趁等后端的这几秒在后台先构建（实测省 4~5 秒）。
@@ -706,10 +711,23 @@ if ($Dev) {
 }
 
 Write-Warn2 "首次启动要加载嵌入模型、建检索索引，约 1–5 分钟（慢的电脑更久），最长等待 $AgentTimeout 秒；之后用缓存，几秒就好..."
-if (-not (Wait-Health "http://127.0.0.1:$AgentPort/health" $AgentTimeout)) {
-    Write-Host "`n[错误] basic-agent 在 $AgentTimeout 秒内未就绪。日志：$agentErr" -ForegroundColor Red
-    Write-Host "电脑较慢的话可以加大超时：start.bat -AgentTimeout 1800" -ForegroundColor Yellow
-    $null = Invoke-Native 'taskkill' @('/PID', "$($agentProc.Id)", '/T', '/F')
+if (-not (Wait-Health "http://127.0.0.1:$AgentPort/health" $AgentTimeout $agentProc)) {
+    # 还在跑的后台构建一起停掉：它不在 PID 文件里，stop 停不了，紧接着重新启动的话两次构建会同时写一个输出目录
+    if ($buildProc -and -not $buildProc.HasExited) {
+        $null = Invoke-Native 'taskkill' @('/PID', "$($buildProc.Id)", '/T', '/F')
+    }
+    if ($agentProc.HasExited) {
+        Write-Host "`n[错误] basic-agent 启动后随即退出。日志：$agentErr" -ForegroundColor Red
+    } else {
+        $null = Invoke-Native 'taskkill' @('/PID', "$($agentProc.Id)", '/T', '/F')
+        Write-Host "`n[错误] basic-agent 在 $AgentTimeout 秒内未就绪。日志：$agentErr" -ForegroundColor Red
+        Write-Host "电脑较慢的话可以在命令行里加大超时：.\start.bat -AgentTimeout 1800" -ForegroundColor Yellow
+    }
+    if (Test-Path $agentErr) {
+        Write-Host "--- 日志最后 20 行 ---"
+        Get-Content -Encoding UTF8 -Tail 20 $agentErr | Write-Host
+        Write-Host "---"
+    }
     Remove-Item (Join-Path $RunDir 'agent.pid') -Force -ErrorAction SilentlyContinue
     exit 1
 }

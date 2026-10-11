@@ -14,10 +14,11 @@
 		$page.url.searchParams.get('mode') === 'full' ? 'full' : 'flash'
 	);
 
+	// 这里只放路径，跳转时再 resolve 一次（原来这里和跳转处各 resolve 一次，配了 base 路径就会加两遍前缀）
 	const returnPath = $derived(
 		$page.url.searchParams.get('from') === 'qa'
-			? resolve(`/qa?model=${encodeURIComponent(modelId)}`)
-			: resolve('/agent-select')
+			? `/qa?model=${encodeURIComponent(modelId)}`
+			: '/agent-select'
 	);
 
 	// 只是把选择记在地址栏里，不触发导航：用浅路由的 replaceState，

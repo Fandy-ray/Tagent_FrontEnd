@@ -124,6 +124,11 @@
 		return source.filter((item) => item.name.toLowerCase().includes(trigger.query));
 	});
 
+	// 打了 # / @ 而对应的列表是空的：模板里给一句提示；Esc 和有菜单时一样，删掉这段、提示随之消失
+	const triggerEmpty = $derived(
+		trigger !== null && (trigger.symbol === '#' ? knowledgeOptions : modelOptions).length === 0
+	);
+
 	$effect(() => {
 		void triggerItems;
 		commandIndex = 0;
@@ -191,6 +196,12 @@
 				prompt = prompt.replace(/[#@][^\s]*$/, '');
 				return;
 			}
+		}
+
+		if (triggerEmpty && event.key === 'Escape') {
+			event.preventDefault();
+			prompt = prompt.replace(/[#@][^\s]*$/, '');
+			return;
 		}
 
 		if (slashCommands.length > 0) {
@@ -358,15 +369,16 @@
 				</button>
 			{/each}
 		</div>
-	{:else if trigger && (trigger.symbol === '#' ? knowledgeOptions : modelOptions).length === 0}
-		<!-- 打了 # / @ 却一个可选的都没有：说一声，别让人以为功能坏了（2026-10-11 Windows 测试报告） -->
+	{:else if trigger && triggerEmpty}
+		<!-- 打了 # / @ 却一个可选的都没有：说一声，别让人以为功能坏了（2026-10-11 Windows 测试报告）。
+		     列表为空也可能是没连上（读取失败时页面把列表置空），所以两种原因都提。 -->
 		<div
 			class="bg-gray-850 absolute bottom-full left-0 z-20 mb-2 w-full max-w-md rounded-xl border border-gray-800 px-3 py-2 text-xs text-gray-500 shadow-lg"
 			role="status"
 		>
 			{trigger.symbol === '#'
-				? '还没有笔记本，先到「笔记本」页面新建一个'
-				: '还没有登记模型，到「登记 / 管理模型」登记一个'}
+				? '没有可选的笔记本：从侧栏「笔记」进去新建一个；建过的话，看看 OpenNotebook 是否在运行'
+				: '没有可选的模型：在顶栏模型下拉里点「去登记模型」；登记过的话，看看 basic-agent 是否在运行'}
 		</div>
 	{/if}
 	<div class="relative max-h-[18rem] min-h-[3rem] overflow-y-auto">
