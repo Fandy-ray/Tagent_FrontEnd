@@ -365,7 +365,9 @@ npm run build
 | 出题、批改报「模型的输出被截断了」，或「试一下」说 token 都用在了思考上 | 模型先思考再回答，思考占满了输出额度。在 `/models` 给它加「关闭思考」的附加参数，见第 3 步 |
 | Windows 上每次启动都是开发服务器、页面打开很慢 | 旧版 `start.ps1` 把构建成功误判成失败（没取进程句柄，退出码读成空值），已修。仍然这样就看 `logs\runtime\tagentnote.build*.log` |
 | Windows 上 `logs\runtime\basic-agent.*.log` 里中文是乱码 | 旧版没让 Python 用 UTF-8 写重定向的日志，中文 Windows 默认写成 GBK。现在启动脚本启动后端时设 `PYTHONUTF8=1`；旧日志用 GBK 打开，在 PowerShell 里看新日志用 `Get-Content -Encoding UTF8` |
+| Windows 上 `npm run lint` 报两百多个文件格式不对 | 旧版本检出时把前端文件转成了 CRLF，prettier 要 LF。现在 `tagentnote/.gitattributes` 规定按 LF 检出，新克隆的不会有；已有的检出拉代码后在 `tagentnote` 目录下先跑 `npx prettier --write .`，再跑 `git add --renormalize .`（只刷新 Git 记下的文件信息，不改内容；不跑的话 `git status` 会显示两百多个文件「已修改」）。有没提交的改动先提交 |
 | Windows 上 Docker Desktop 起不来：报错里有 1920，或 `dockerInference` / Inference manager 的运行目录、本地 socket 访问不了 | Docker Desktop 自己的问题，不是本项目的（2026-10-06、10-10、10-11 三次 Windows 测试都遇到过，相关公开问题见 [docker/desktop-feedback#460](https://github.com/docker/desktop-feedback/issues/460)）。恢复办法：完全退出 Docker Desktop（托盘图标里选 Quit），把 `%LOCALAPPDATA%\Docker\run` 和 `%LOCALAPPDATA%\docker-secrets-engine` 两个目录改名备份（例如末尾加 `.bak`），再建两个同名的空目录，重新启动 Docker Desktop。不需要恢复出厂、清理镜像或删数据，容器和笔记数据都在。普通重启后可能复发，复发就再做一遍 |
+| 很多人同时用时提问半天不出字，或交稿提示「请稍后再试」 | 后端同时处理的请求数（`WAITRESS_THREADS`，默认 100）和同时批改 / 出卷的份数（`EXAM_MAX_CONCURRENT_LLM`，默认 5，每份同时调 3 次模型）都有上限，超出的排队；批改、出卷最多 8 人排队、最多排 30 秒，排不上或等不到就提示稍后再试。人更多就在 `TAgent重写版/.env.runtime` 里调大，重启后端生效。压测数据见 `TAgent重写版/文档/升级轮次/round-07.md`「压测」 |
 | 页面请求全 502 | basic-agent 没起来，或端口不是 5001 |
 | 答疑能答但笔记本内容检索不到 | `notebook_reachable` 是 false。8502 是页面，接口在 5055 |
 | 笔记本明明起着，`notebook_reachable` 还是 false | 多半有个旧的 basic-agent 残留进程在占着 5001。`stop.bat` 后确认 5001 已释放再重启。另：开着 Clash 等系统代理的 Mac 上，旧版本会把 `localhost:5055` 也送进代理（代理回 502），现在本机和局域网地址一律直连 |
