@@ -10,10 +10,12 @@ import uuid
 from typing import Any
 
 from flask import request
+from pydantic import ValidationError
 from werkzeug.exceptions import BadRequest
 
 from app.errors.api_errors import AgentAPIError
 from app.errors.exam_errors import InvalidExamRequestError
+from app.schema.essay import AnnotationGradeContext
 
 
 MAX_MESSAGE_CHARS = 20_000
@@ -234,3 +236,19 @@ def annotate_payload(payload: dict[str, Any]) -> tuple[str, str, str]:
     if len(answer) > MAX_ANSWER_LENGTH:
         raise InvalidExamRequestError(f"答案不能超过 {MAX_ANSWER_LENGTH} 字")
     return exam_id, question_id.strip(), answer.strip()
+
+
+def annotation_grade_context(
+    payload: dict[str, Any], question_id: str, answer: str
+) -> AnnotationGradeContext | None:
+    """只接受与当前题号、原答案对应的评分辅助数据；旧客户端可不传。"""
+    value = payload.get("grading")
+    if value is None:
+        return None
+    try:
+        grading = AnnotationGradeContext.model_validate(value)
+    except ValidationError as exc:
+        raise InvalidExamRequestError("批注评分上下文不合法") from exc
+    if grading.id != question_id or grading.my_answer.strip() != answer:
+        raise InvalidExamRequestError("批注评分上下文与题号或原答案不一致")
+    return grading

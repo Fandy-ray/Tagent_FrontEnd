@@ -114,6 +114,10 @@
 		text-decoration-thickness: 1.5px;
 	}
 
+	mark.suggestion {
+		text-decoration-style: dotted;
+	}
+
 	.shown mark {
 		text-decoration-color: var(--mark-ink, #f87171);
 	}

@@ -9,7 +9,9 @@
  * source[start:end] === text 是否成立；不成立就不画，而不是去猜。
  */
 
-export type AnnotationKind = 'issue' | 'praise';
+export type AnnotationKind = 'issue' | 'suggestion' | 'praise';
+export const annotationLabel = (kind: AnnotationKind) =>
+	({ issue: '需修改', suggestion: '表达完善', praise: '写得好' })[kind];
 export type DimensionName = 'content' | 'argument' | 'language';
 
 export type Annotation = {
@@ -427,7 +429,7 @@ export const paperReviewMarkdown = (review: PaperReview, topic: string, text: st
 					'### 批注',
 					...notes.map(
 						(note, index) =>
-							`${index + 1}. 【${note.kind === 'issue' ? '需修改' : '写得好'}】「${note.text}」—— ${humanizeRefs(note.comment)}`
+							`${index + 1}. 【${annotationLabel(note.kind)}】「${note.text}」—— ${humanizeRefs(note.comment)}`
 					)
 				]
 			: []),

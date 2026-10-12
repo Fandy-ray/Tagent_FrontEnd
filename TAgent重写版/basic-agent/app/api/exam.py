@@ -15,6 +15,7 @@ from app.api.learner import (
 from app.api.response import envelope
 from app.api.validators import (
     annotate_payload,
+    annotation_grade_context,
     essay_text,
     exam_json_body,
     exam_review_payload,
@@ -126,18 +127,24 @@ def annotate_essay_answer():
     payload = exam_json_body()
     provider = select_provider(payload.get("model"))
     exam_id, question_id, answer = annotate_payload(payload)
+    grading = annotation_grade_context(payload, question_id, answer)
     learner = current_learner()
 
     def run():
         question, rubric = get_exam_service().essay_question_for_annotation(
             exam_id, question_id, provider
         )
-        return get_essay_service().annotate_answer(answer, question, rubric, provider)
+        return get_essay_service().annotate_answer(
+            answer, question, rubric, provider, grading=grading
+        )
 
     annotations = _once(
         "exam/annotate",
         provider,
-        {"exam_id": exam_id, "question_id": question_id, "answer": answer},
+        {
+            "exam_id": exam_id, "question_id": question_id, "answer": answer,
+            "grading": grading.model_dump() if grading else None,
+        },
         run,
         replay=True,
         learner=learner,

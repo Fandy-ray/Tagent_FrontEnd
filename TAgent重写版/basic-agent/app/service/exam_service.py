@@ -57,6 +57,7 @@ from app.schema.exam import (
     ExamReview,
     GeneratedExamDraft,
     LLMGradeBatch,
+    LLMGradeItem,
     PrivateExam,
     PublicExam,
     QuestionResult,
@@ -80,6 +81,36 @@ from app.schema.flash import (
 )
 from app.schema.provider import ModelProvider
 from app.util.text import chunked, deal_shards
+
+
+def _build_exam_overall_comment(
+    results: list[QuestionResult], sections: dict[str, SectionScore]
+) -> str:
+    """整卷总评只使用全量判分事实，避免把某一评分批次的评语当作整卷结论。"""
+    unanswered = sum(result.verdict == "unanswered" for result in results)
+    answered = len(results) - unanswered
+    total_score = sum(result.score for result in results)
+    total_points = sum(result.points for result in results)
+    parts = [
+        f"整卷已作答 {answered}/{len(results)} 题，{unanswered} 题未作答，"
+        f"总分 {total_score}/{total_points}。",
+        "，".join(
+            f"{label} {sections[kind].earned}/{sections[kind].max} 分"
+            for kind, label in (("cloze", "填空题"), ("choice", "选择题"), ("essay", "解答题"))
+        ) + "。",
+    ]
+    correct = sum(result.verdict == "correct" for result in results)
+    partial = sum(result.verdict == "partial" for result in results)
+    wrong = sum(result.verdict == "wrong" for result in results)
+    if answered:
+        parts.append(f"已答题中，{correct} 题满分，{partial} 题部分得分，{wrong} 题未得分。")
+    if unanswered:
+        parts.append("建议先补齐未作答题目，再结合逐题反馈复习。")
+    elif partial or wrong:
+        parts.append("建议结合逐题反馈复习失分知识点。")
+    else:
+        parts.append("本卷全部作答且均获满分。")
+    return "".join(parts)
 
 
 class ExamService:
@@ -287,8 +318,8 @@ class ExamService:
         llm_items: list[dict[str, Any]],
         provider: ModelProvider,
         operation_started: float,
-    ) -> tuple[list[Any], str]:
-        """按题型把送评题目切成小批逐批评分，返回打平的评分条目与总评。
+    ) -> list[LLMGradeItem]:
+        """按题型把送评题目切成小批逐批评分，返回打平的评分条目。
 
         分批而不是一次评完，是题量提高后判分准确性的主要保障：
         - 填空复核与解答题各用一套互不干扰的准则（二值判定 vs 逐要点计数），
@@ -308,8 +339,7 @@ class ExamService:
         ]
         batches += [("cloze", chunk) for chunk in chunked(cloze_items, GRADE_CLOZE_BATCH)]
 
-        graded: list[Any] = []
-        overall_comment = ""
+        graded: list[LLMGradeItem] = []
         deadline = operation_started + GRADE_LLM_BUDGET
 
         with self.llm_gate.acquire():
@@ -348,10 +378,9 @@ class ExamService:
                     start_time=batch_started,
                 )
                 graded.extend(batch.items)
-                if kind == "essay" and not overall_comment:
-                    overall_comment = batch.overall_comment.strip()
 
-        return graded, overall_comment
+        return graded
+
     def essay_question_for_annotation(
         self, exam_id: str, question_id: str, provider: ModelProvider
     ) -> tuple[str, str]:
@@ -377,7 +406,7 @@ class ExamService:
         answers: dict[str, object],
         provider: ModelProvider | None = None,
     ) -> ExamReview:
-        """Grade objective questions locally and semantic questions in one provider call."""
+        """Grade locally or in typed LLM batches, then summarize the entire exam."""
         operation_started = time.monotonic()
         cached = self.exam_cache.get_copy(exam_id)
         if isinstance(cached, StoredExam):
@@ -476,11 +505,10 @@ class ExamService:
             )
             llm_meta[question.id] = (question, answer)
 
-        overall_comment = ""
         if llm_items:
             if provider is None:
                 raise ModelMismatchError("判卷模型不可用，请重新生成试卷")
-            graded, overall_comment = self._grade_batches(
+            graded = self._grade_batches(
                 llm_items, provider, operation_started
             )
             for item in graded:
@@ -512,17 +540,10 @@ class ExamService:
             )
         }
         total_score = sum(result.score for result in ordered)
-        if not overall_comment:
-            if total_score >= 90:
-                overall_comment = "知识掌握非常扎实。"
-            elif total_score >= 70:
-                overall_comment = "整体不错，建议回顾错题对应的知识点。"
-            else:
-                overall_comment = "建议结合教材逐题复习本卷知识点。"
         return ExamReview(
             exam_id=exam_id,
             total_score=total_score,
             sections=sections,
             results=ordered,
-            overall_comment=overall_comment,
+            overall_comment=_build_exam_overall_comment(ordered, sections),
         )

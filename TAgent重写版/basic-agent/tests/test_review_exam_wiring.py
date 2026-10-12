@@ -93,8 +93,8 @@ def make_exam(exam_id="wiring-exam-1"):
 class ScriptedGradeLLM:
     """按批作答的假模型。
 
-    判分已按题型分批（见 rag_service._grade_batches），每批的 ID 集合都要精确
-    匹配，所以默认只回本批 prompt 里出现的题号——照搬整份 payload 会被
+    判分已按题型分批（见 ExamService._grade_batches），每批的 ID 集合都要精确
+    匹配，所以默认只回本批待评 JSON 中的题号——照搬整份 payload 会被
     validate_grade_batch 判为"多余 ID"。verbatim=True 用于故意回错题号的用例。
     """
 
@@ -113,12 +113,17 @@ class ScriptedGradeLLM:
         self.prompts.append(prompt)
         payload = self.payload
         if not self.verbatim:
+            # prompt 的输出格式示例也包含 E1/C1，不能把示例题号算进待评集合。
+            requested_ids = {
+                item["question_id"]
+                for item in json.loads(prompt.split("待评题目：\n", 1)[1])
+            }
             payload = {
                 **payload,
                 "items": [
                     item
                     for item in payload["items"]
-                    if f'"{item["question_id"]}"' in prompt
+                    if item["question_id"] in requested_ids
                 ],
             }
         return types.SimpleNamespace(content=json.dumps(payload, ensure_ascii=False))
@@ -210,8 +215,113 @@ def test_text_mismatch_and_essay_are_graded_in_separate_typed_batches():
     by_id = {result.id: result for result in review.results}
     assert by_id["C2"].feedback == "语义不符"
     assert by_id["E1"].score == ratio_to_score(0.5, exam.essay[0].points)
-    assert review.overall_comment == "总体一般"
+    assert "已作答 2/16 题，14 题未作答" in review.overall_comment
+    assert f"总分 {review.total_score}/100" in review.overall_comment
+    assert "1 题部分得分，1 题未得分" in review.overall_comment
+    assert "总体一般" not in review.overall_comment
     assert "传播延迟" in cloze_prompts[0]
+
+
+def make_report_exam():
+    """Windows 报告：21 题，C1/M1/E1 分别为 3/4/15 分。"""
+    return normalize_draft(
+        GeneratedExamDraft(
+            cloze=[
+                DraftClozeQuestion(
+                    cue=f"填空 {i}", text=f"填空 {i} ____", accept=[f"答案{i}"],
+                    match_mode="exact", points=3,
+                )
+                for i in range(10)
+            ],
+            choice=[
+                DraftChoiceQuestion(
+                    question=f"选择 {i}", options=["甲", "乙", "丙", "丁"],
+                    correct_index=0, points=3,
+                )
+                for i in range(8)
+            ],
+            essay=[
+                DraftEssayQuestion(
+                    question=f"解答 {i}", reference_answer="参考答案",
+                    rubric="评分要点", points=15,
+                )
+                for i in range(3)
+            ],
+        ),
+        "windows-report-exam",
+    )
+
+
+def test_sparse_exam_summary_covers_all_questions_and_preserves_essay_feedback():
+    exam = make_report_exam()
+    essay_feedback = "本题作答完整准确，四个得分要点全部命中，计算过程和结论均正确"
+    client = ScriptedGradeLLM({
+        "items": [{"question_id": "E1", "score_ratio": 1, "feedback": essay_feedback}],
+        "overall_comment": essay_feedback,
+    })
+
+    review = make_sim(exam, client).review_exam(
+        exam.exam_id, {"C1": "答案0", "M1": 0, "E1": "全部要点的答案"}, TEST_PROVIDER,
+    )
+
+    assert client.calls == 1
+    assert review.total_score == 22
+    assert "已作答 3/21 题，18 题未作答，总分 22/100" in review.overall_comment
+    assert "填空题 3/30 分，选择题 4/25 分，解答题 15/45 分" in review.overall_comment
+    assert "已答题中，3 题满分" in review.overall_comment
+    assert "补齐未作答题目" in review.overall_comment
+    assert essay_feedback not in review.overall_comment
+    by_id = {result.id: result for result in review.results}
+    assert by_id["E1"].feedback == essay_feedback
+    assert by_id["E1"].score == by_id["E1"].points == 15
+
+
+def test_blank_exam_summary_counts_null_and_whitespace_as_unanswered_without_llm():
+    exam = make_report_exam()
+    review = make_sim(exam).review_exam(
+        exam.exam_id, {"C1": " \t", "M1": None, "E1": "\n "}, TEST_PROVIDER,
+    )
+
+    assert review.total_score == 0
+    assert "已作答 0/21 题，21 题未作答，总分 0/100" in review.overall_comment
+    assert all(result.verdict == "unanswered" for result in review.results)
+    assert "补齐未作答题目" in review.overall_comment
+
+
+@pytest.mark.parametrize("last_essay_ratio", [1, 0.5])
+def test_complete_exam_summary_includes_results_from_every_grading_batch(last_essay_ratio):
+    exam = make_report_exam()
+    client = ScriptedGradeLLM({
+        "items": [
+            {"question_id": question.id,
+             "score_ratio": last_essay_ratio if question.id == "E3" else 1,
+             "feedback": f"{question.id} 的单题反馈"}
+            for question in exam.essay
+        ],
+        "overall_comment": "仅适用于当前批次的评语",
+    })
+    answers = {
+        **{question.id: question.accept[0] for question in exam.cloze},
+        **{question.id: question.correct_index for question in exam.choice},
+        **{question.id: "作答内容" for question in exam.essay},
+    }
+    review = make_sim(exam, client).review_exam(exam.exam_id, answers, TEST_PROVIDER)
+
+    assert client.calls == 2
+    assert "已作答 21/21 题，0 题未作答" in review.overall_comment
+    assert "仅适用于当前批次的评语" not in review.overall_comment
+    assert "补齐未作答题目" not in review.overall_comment
+    assert review.results[-1].feedback == "E3 的单题反馈"
+    if last_essay_ratio == 1:
+        assert review.total_score == 100
+        assert "总分 100/100" in review.overall_comment
+        assert "21 题满分，0 题部分得分，0 题未得分" in review.overall_comment
+        assert "全部作答且均获满分" in review.overall_comment
+    else:
+        assert review.total_score == 93
+        assert "总分 93/100" in review.overall_comment
+        assert "20 题满分，1 题部分得分，0 题未得分" in review.overall_comment
+        assert "复习失分知识点" in review.overall_comment
 
 
 def test_grade_llm_wrong_ids_retry_then_502():

@@ -17,13 +17,13 @@ import math
 import re
 from typing import List, Literal, Optional, Sequence, Set
 
-from pydantic import Field, field_validator
+from pydantic import Field, field_validator, model_validator
 
 from app.schema.exam import StrictModel
 from app.util.text import Sentence
 
 
-AnnotationKind = Literal["issue", "praise"]
+AnnotationKind = Literal["issue", "suggestion", "praise"]
 DimensionName = Literal["content", "argument", "language"]
 
 DIMENSION_LABELS: dict[str, str] = {
@@ -72,6 +72,22 @@ RUBRIC_POINTS: dict[str, tuple[str, ...]] = {
 # 顺带把这一轮的输出量变成有上界的。
 MAX_ISSUES = 3
 MAX_PRAISES = 2
+
+
+class AnnotationGradeContext(StrictModel):
+    """客户端回传的已显示评分，仅辅助批注，不参与计分或替换服务端评分标准。"""
+
+    id: str = Field(min_length=1, max_length=40)
+    my_answer: str = Field(max_length=5000)
+    score: int = Field(ge=0, strict=True)
+    points: int = Field(gt=0, le=100, strict=True)
+    feedback: str = Field(default="", max_length=10000)
+
+    @model_validator(mode="after")
+    def _score_within_points(self):
+        if self.score > self.points:
+            raise ValueError("得分不能超过题目分值")
+        return self
 
 
 # ====================== LLM 输出（不可信，严格校验） ======================
@@ -135,6 +151,7 @@ def validate_annotations(
     *,
     max_issues: int = MAX_ISSUES,
     max_praises: int = MAX_PRAISES,
+    full_credit: bool = False,
 ) -> None:
     """标注 ID 必须是已知句子的**子集**，且不超定额。
 
@@ -149,8 +166,10 @@ def validate_annotations(
         if item.sentence_id in seen:
             raise ValueError(f"同一句被标注了多次：{item.sentence_id}")
         seen.add(item.sentence_id)
+        if full_credit and item.kind == "issue":
+            raise ValueError("已获满分的作答不能标记缺失得分要点；表达完善须使用 suggestion")
 
-    issues = sum(1 for item in batch.items if item.kind == "issue")
+    issues = sum(1 for item in batch.items if item.kind in {"issue", "suggestion"})
     praises = sum(1 for item in batch.items if item.kind == "praise")
     if issues > max_issues:
         raise ValueError(f"问题标注 {issues} 条，超过定额 {max_issues}")
@@ -306,8 +325,7 @@ def build_dimension(name: DimensionName, result: LLMDimension) -> DimensionResul
 def numbered_text(sentences: Sequence[Sentence], *, only_paragraphs: Optional[Set[int]] = None) -> str:
     """把正文渲染成带编号的样子喂给模型。模型只需要照着编号回话。
 
-    only_paragraphs 给下钻用：只铺被点名的那几段，别的段不进 prompt——
-    省的就是这一轮的输入长度。
+    only_paragraphs 可限制可批注的目标句；判定缺失信息时仍需另传全文上下文。
     """
     lines = [
         f"{sentence.id} {sentence.text}"

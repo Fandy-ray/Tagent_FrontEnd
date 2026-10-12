@@ -7,6 +7,7 @@
 	import AnnotatedText from '$lib/components/essay/AnnotatedText.svelte';
 	import {
 		ANNOTATE_MIN_ANSWER_CHARS,
+		annotationLabel,
 		circled,
 		countCharacters,
 		humanizeRefs,
@@ -171,7 +172,14 @@
 		noteControllers[questionId] = own;
 		answerNotes = { ...answerNotes, [questionId]: { status: 'loading', source } };
 
-		void annotateExamAnswer(modelId, exam.exam_id, questionId, source, own.signal)
+		const { id, my_answer, score, points, feedback } = currentResult;
+		void annotateExamAnswer(modelId, exam.exam_id, questionId, source, own.signal, {
+			id,
+			my_answer,
+			score,
+			points,
+			feedback
+		})
 			.then((data) => {
 				if (own.signal.aborted) {
 					return;
@@ -899,7 +907,7 @@
 													>
 														<span class="mr-1 text-red-400">
 															{circled(note.n)}
-															{note.kind === 'issue' ? '需修改' : '写得好'}
+															{annotationLabel(note.kind)}
 														</span>
 														{humanizeRefs(note.comment)}
 													</li>

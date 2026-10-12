@@ -78,6 +78,21 @@ def test_quotas_are_counted_per_kind_not_in_total():
     validate_annotations(ok, KNOWN, max_issues=3, max_praises=2)
 
 
+def test_suggestions_share_the_issue_quota():
+    with pytest.raises(ValueError, match="超过定额"):
+        validate_annotations(
+            batch(("P1S1", "suggestion"), ("P1S2", "issue")), KNOWN, max_issues=1
+        )
+
+
+def test_full_credit_allows_suggestions_and_praises_but_not_issues():
+    validate_annotations(
+        batch(("P1S1", "suggestion"), ("P1S2", "praise")), KNOWN, full_credit=True
+    )
+    with pytest.raises(ValueError, match="满分"):
+        validate_annotations(batch(("P1S1", "issue")), KNOWN, full_credit=True)
+
+
 def test_llm_output_rejects_unknown_fields():
     with pytest.raises(ValidationError):
         LLMAnnotation(sentence_id="P1S1", kind="issue", comment="x", severity="high")

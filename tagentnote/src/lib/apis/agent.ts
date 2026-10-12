@@ -3,7 +3,7 @@ import { env } from '$env/dynamic/public';
 import { type Citation } from '$lib/data/knowledge';
 import { learnerHeaders } from '$lib/data/learner';
 import type { AnswerAnnotations, EssayTopic, PaperReview } from '$lib/data/essay';
-import type { ExamReview, PublicExam } from '$lib/data/exam';
+import type { ExamReview, PublicExam, ReviewResult } from '$lib/data/exam';
 import type { FlashDeck } from '$lib/data/flash';
 
 // 试卷相关的形状统一在 $lib/data 里声明（后端 pydantic 保证），这里只做转发，
@@ -545,6 +545,7 @@ export async function reviewEssay(
  *
  * 题干与评分要点由后端按 exam_id + question_id 回缓存取，不从这里传——
  * 客户端给的评分标准一律不可信。模型必须与出卷时一致，否则后端回 422。
+ * grading 回传当前展示的评分，供批注核对一致性；不会重新计分或替换服务端评分标准。
  * 作答不足 40 字（ANNOTATE_MIN_ANSWER_CHARS）时后端直接回空数组。
  */
 export async function annotateExamAnswer(
@@ -552,7 +553,8 @@ export async function annotateExamAnswer(
 	examId: string,
 	questionId: string,
 	answer: string,
-	signal?: AbortSignal
+	signal?: AbortSignal,
+	grading?: Pick<ReviewResult, 'id' | 'my_answer' | 'score' | 'points' | 'feedback'>
 ): Promise<AnswerAnnotations> {
 	const payload = await agentFetch<{ data: AnswerAnnotations }>('/quiz/exam/annotate', {
 		method: 'POST',
@@ -562,7 +564,8 @@ export async function annotateExamAnswer(
 			model,
 			exam_id: examId,
 			question_id: questionId,
-			answer
+			answer,
+			grading
 		})
 	});
 

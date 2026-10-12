@@ -10,7 +10,7 @@ import pytest
 from app.config import ESSAY_MAX_CHARS, ESSAY_MIN_CHARS
 from app.errors.exam_errors import ExamBusyError, InvalidExamRequestError, UpstreamLLMError
 from app.repository.exam_cache import LLMGate
-from app.schema.essay import RUBRIC_POINTS
+from app.schema.essay import AnnotationGradeContext, RUBRIC_POINTS
 from app.schema.provider import ModelProvider
 from app.service.essay_service import EssayService
 
@@ -178,14 +178,41 @@ def test_flagged_paragraphs_trigger_exactly_one_drill_down_call():
     assert [a.sentence_id for a in review.annotations] == ["P2S2"]
 
 
-def test_drill_down_prompt_contains_only_the_flagged_paragraph():
-    # 只铺被点名的段，省的就是这一轮的输入长度
+def test_drill_down_keeps_full_context_but_only_flags_target_sentences():
     llm = ScriptedLLM(flagged=[2], annotations=[])
     make_service(llm).review_paper(PAPER, None, TEST_PROVIDER)
     (prompt,) = llm.annotation_prompts()
     body = prompt.split("句子：", 1)[1]
     assert "P2S1" in body
     assert "P1S1" not in body and "P3S1" not in body
+    context = prompt.split("全文上下文（", 1)[1].split("只输出 JSON", 1)[0]
+    assert "P1S1" in context and "P3S1" in context
+
+
+def test_paper_parameters_from_previous_paragraph_reach_annotation_round():
+    paper = (
+        "本文假设泊松到达、指数服务、单服务台、先到先服务，到达率为6人/小时，"
+        "原服务率为10人/小时，改进后服务率为12人/小时。\n"
+        "根据M/M/1模型，改进方案能降低平均等待时间。对比结果支持提高服务效率，"
+        "但还需考虑实施成本和真实客流是否满足独立性假设。"
+    )
+    llm = ScriptedLLM(flagged=[2])
+    make_service(llm).review_paper(paper, "排队系统改进", TEST_PROVIDER)
+    (prompt,) = llm.annotation_prompts()
+    assert "到达率为6人/小时" in prompt
+    assert "原服务率为10人/小时，改进后服务率为12人/小时" in prompt
+    assert "全文任何位置都未提供" in prompt
+    assert "不要求每句重复" in prompt
+
+
+def test_context_sentences_cannot_be_annotated_outside_target_paragraphs():
+    llm = ScriptedLLM(
+        flagged=[2],
+        annotations=[{"sentence_id": "P1S1", "kind": "issue", "comment": "越界批注"}],
+    )
+    review = make_service(llm).review_paper(PAPER, None, TEST_PROVIDER)
+    assert review.annotations == []
+    assert len(llm.annotation_prompts()) > 1, "上下文句子不能因加入全文而变成可批注目标"
 
 
 def test_drill_down_caps_the_number_of_paragraphs():
@@ -314,6 +341,61 @@ def test_annotate_answer_uses_a_tighter_quota_than_a_paper():
     assert "最多 2 处" in prompt and "最多 1 处" in prompt
 
 
+FULL_CREDIT_ANSWER = (
+    "变异系数等于标准差与均值之比，因此该样本的变异系数不等于1。"
+    "仅凭变异系数不等于1不能判断具体分布类型，还需进行拟合优度检验。"
+)
+
+
+def full_credit_context(**updates):
+    return AnnotationGradeContext.model_validate({
+        "id": "E1", "my_answer": FULL_CREDIT_ANSWER, "score": 15, "points": 15,
+        "feedback": "四个得分要点全部命中，已说明仅凭变异系数不能判断具体分布类型。",
+        **updates,
+    })
+
+
+def test_full_credit_annotation_receives_original_answer_rubric_and_feedback():
+    llm = ScriptedLLM(annotations=[{
+        "sentence_id": "P1S2", "kind": "suggestion",
+        "comment": "表达完善：可补充拟合优度检验的例子，不影响已有得分。",
+    }])
+    annotations = make_service(llm).annotate_answer(
+        FULL_CREDIT_ANSWER, "判断分布类型", "③ 不能仅凭变异系数判断具体分布",
+        TEST_PROVIDER, grading=full_credit_context(),
+    )
+    (prompt,) = llm.annotation_prompts()
+    assert "15/15" in prompt
+    assert full_credit_context().feedback in prompt
+    assert "③ 不能仅凭变异系数判断具体分布" in prompt
+    assert "仅凭变异系数不等于1不能判断具体分布类型" in prompt
+    assert annotations[0].kind == "suggestion"
+    assert FULL_CREDIT_ANSWER[annotations[0].start:annotations[0].end] == annotations[0].text
+
+
+def test_full_credit_answer_cannot_return_a_missing_point_issue():
+    llm = ScriptedLLM(annotations=[{
+        "sentence_id": "P1S2", "kind": "issue", "comment": "未直接扣住评分要点③。",
+    }])
+    annotations = make_service(llm).annotate_answer(
+        FULL_CREDIT_ANSWER, "判断分布类型", "③ 不能仅凭变异系数判断具体分布",
+        TEST_PROVIDER, grading=full_credit_context(),
+    )
+    assert annotations == []
+    assert len(llm.annotation_prompts()) > 1, "矛盾批注必须进入校验重试，失败时不显示"
+
+
+def test_partial_credit_answer_can_still_report_a_real_issue():
+    llm = ScriptedLLM(annotations=[{
+        "sentence_id": "P1S1", "kind": "issue", "comment": "计算缺少代入过程。",
+    }])
+    annotations = make_service(llm).annotate_answer(
+        FULL_CREDIT_ANSWER, "判断分布类型", "计算并判断", TEST_PROVIDER,
+        grading=full_credit_context(score=10, feedback="分布判断正确，计算过程未写出。"),
+    )
+    assert annotations[0].kind == "issue"
+
+
 # ====================== 路由接线 ======================
 class EssayOnlyServices:
     chat = None
@@ -421,16 +503,16 @@ def annotate_client():
     from app.factory import create_app
     from tests.conftest import FakeRegistry
 
-    essay = make_service(
-        ScriptedLLM(
-            annotations=[{"sentence_id": "P1S1", "kind": "issue", "comment": "没扣住要点"}]
-        )
+    llm = ScriptedLLM(
+        annotations=[{"sentence_id": "P1S1", "kind": "issue", "comment": "没扣住要点"}]
     )
+    essay = make_service(llm)
     application = create_app(
         {"TESTING": True},
         registry=FakeRegistry([TEST_PROVIDER]),
         services=EssayOnlyServices(essay, exam=StubExamService()),
     )
+    application.config["ANNOTATION_LLM"] = llm
     return application.test_client()
 
 
@@ -460,6 +542,45 @@ def test_annotate_route_serializes_annotations(annotate_client):
     assert annotation["sentence_id"] == "P1S1"
     # 区间必须一路活到 JSON 里，前端全靠它高亮
     assert ANNOTATABLE[annotation["start"] : annotation["end"]] == annotation["text"]
+
+
+@pytest.mark.parametrize("updates", [
+    {"id": "E2"}, {"my_answer": "另一份答案"}, {"score": -1}, {"score": 16},
+    {"score": True}, {"points": 0}, {"points": 101},
+])
+def test_annotate_route_rejects_mismatched_or_invalid_grading(annotate_client, updates):
+    import uuid
+
+    payload = {
+        "model": TEST_PROVIDER.served_model_id, "exam_id": str(uuid.uuid4()),
+        "question_id": "E1", "answer": FULL_CREDIT_ANSWER,
+        "grading": {**full_credit_context().model_dump(), **updates},
+    }
+    response = annotate_client.post("/quiz/exam/annotate", json=payload)
+    assert response.status_code == 422
+    assert annotate_client.application.config["ANNOTATION_LLM"].prompts == []
+
+
+def test_annotate_replay_key_includes_grading_context(annotate_client):
+    import uuid
+
+    llm = annotate_client.application.config["ANNOTATION_LLM"]
+    llm.annotations = [{"sentence_id": "P1S2", "kind": "praise", "comment": "判断正确。"}]
+    payload = {
+        "model": TEST_PROVIDER.served_model_id, "exam_id": str(uuid.uuid4()),
+        "question_id": "E1", "answer": FULL_CREDIT_ANSWER,
+        "grading": full_credit_context().model_dump(),
+    }
+    first = annotate_client.post("/quiz/exam/annotate", json=payload)
+    replay = annotate_client.post("/quiz/exam/annotate", json=payload)
+    assert first.status_code == replay.status_code == 200
+    assert len(llm.prompts) == 1
+    assert "四个得分要点全部命中" in llm.prompts[0]
+    payload["grading"] = full_credit_context(score=10, feedback="计算过程不完整。").model_dump()
+    changed = annotate_client.post("/quiz/exam/annotate", json=payload)
+    assert changed.status_code == 200
+    assert len(llm.prompts) == 2
+    assert "计算过程不完整" in llm.prompts[-1]
 
 
 # ====================== 校验必须在重试圈内 ======================

@@ -4,6 +4,7 @@
 	import AnnotatedText from '$lib/components/essay/AnnotatedText.svelte';
 	import ScoreSheet from '$lib/components/essay/ScoreSheet.svelte';
 	import {
+		annotationLabel,
 		circled,
 		countCharacters,
 		countParagraphs,
@@ -12,6 +13,7 @@
 		placeAnnotations,
 		weakestDimension,
 		type DimensionName,
+		type AnnotationKind,
 		type PaperCard
 	} from '$lib/data/essay';
 
@@ -71,10 +73,12 @@
 	};
 </script>
 
-{#snippet kindSample(kind: 'issue' | 'praise')}
+{#snippet kindSample(kind: AnnotationKind)}
 	<svg class="kind-sample" viewBox="0 0 20 8" aria-hidden="true">
 		{#if kind === 'issue'}
 			<path d="M1 5h18"></path>
+		{:else if kind === 'suggestion'}
+			<path d="M1 5h18" stroke-dasharray="2 2"></path>
 		{:else}
 			<path d="M1 5q2.25-3 4.5 0t4.5 0 4.5 0 4.5 0"></path>
 		{/if}
@@ -158,6 +162,7 @@
 			{#if noteCount > 0}
 				<p class="legend">
 					<span>{@render kindSample('issue')}需修改</span>
+					<span>{@render kindSample('suggestion')}表达完善</span>
 					<span>{@render kindSample('praise')}写得好</span>
 				</p>
 
@@ -179,7 +184,7 @@
 									{@render kindSample(note.kind)}
 								</span>
 								<span class="sr-only">
-									第 {note.n} 处，{note.kind === 'issue' ? '需修改' : '写得好'}：
+									第 {note.n} 处，{annotationLabel(note.kind)}：
 								</span>
 								{humanizeRefs(note.comment)}
 							</button>

@@ -49,6 +49,7 @@ from app.schema.essay import (
     MAX_ISSUES,
     MAX_PRAISES,
     Annotation,
+    AnnotationGradeContext,
     EssayTopic,
     LLMAnnotationBatch,
     LLMDimension,
@@ -189,7 +190,7 @@ class EssayService:
         paragraphs = {p for p in flagged if p > 0}
         if not paragraphs or not sentences:
             return []
-        # 点名太多就只取靠前的几段，否则「只看可疑段落」这句话就没意义了
+        # 只限制批注目标；全文仍作为上下文提供，避免把前文已给的参数误判缺失。
         paragraphs = set(sorted(paragraphs)[:ESSAY_MAX_FLAGGED_PARAGRAPHS])
 
         focused = [s for s in sentences if s.paragraph in paragraphs]
@@ -202,6 +203,7 @@ class EssayService:
         )
         prompt = build_annotation_prompt(
             numbered_text(focused),
+            full_text=numbered_text(sentences),
             focus="这几段是通读后觉得问题最集中的部分。",
             max_issues=MAX_ISSUES,
             max_praises=MAX_PRAISES,
@@ -265,6 +267,7 @@ class EssayService:
         rubric: str,
         provider: ModelProvider,
         *,
+        grading: AnnotationGradeContext | None = None,
         max_issues: int = 2,
         max_praises: int = 1,
     ) -> list[Annotation]:
@@ -290,6 +293,7 @@ class EssayService:
             numbered_text(sentences),
             question,
             rubric,
+            grading=grading,
             max_issues=max_issues,
             max_praises=max_praises,
         )
@@ -302,6 +306,7 @@ class EssayService:
                 max(0.0, budget - (time.monotonic() - started)),
                 max_issues,
                 max_praises,
+                full_credit=grading is not None and grading.score == grading.points,
             )
 
     # ====================== 共用 ======================
@@ -314,6 +319,8 @@ class EssayService:
         budget: float,
         max_issues: int,
         max_praises: int,
+        *,
+        full_credit: bool = False,
     ) -> list[Annotation]:
         client = self.client_factory.get(
             provider, timeout_seconds=int(attempt_timeout), max_retries=0
@@ -328,7 +335,8 @@ class EssayService:
                 budget_seconds=budget,
                 # 同上：编错句号、超定额都该重试一次，而不是抛给用户
                 post_validate=lambda value: validate_annotations(
-                    value, known, max_issues=max_issues, max_praises=max_praises
+                    value, known, max_issues=max_issues, max_praises=max_praises,
+                    full_credit=full_credit,
                 ),
             )
         except UpstreamLLMError:
