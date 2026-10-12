@@ -9,10 +9,12 @@ import pytest
 
 from app.config import ESSAY_MAX_CHARS, ESSAY_MIN_CHARS
 from app.errors.exam_errors import ExamBusyError, InvalidExamRequestError, UpstreamLLMError
+from app.prompts.essay_prompts import QUANTITATIVE_REVIEW_RULES
 from app.repository.exam_cache import LLMGate
-from app.schema.essay import AnnotationGradeContext, RUBRIC_POINTS
+from app.schema.essay import AnnotationGradeContext, RUBRIC_POINTS, numbered_text
 from app.schema.provider import ModelProvider
 from app.service.essay_service import EssayService
+from app.util.text import split_sentences
 
 
 TEST_PROVIDER = ModelProvider(
@@ -155,6 +157,30 @@ def test_every_prompt_carries_the_untrusted_guard():
     assert llm.prompts
     for prompt in llm.prompts:
         assert "不可信输入" in prompt
+
+
+def test_quantitative_rules_reach_all_dimensions_and_drill_down_with_original_text():
+    # 打桩只记录输入、触发下钻，不用预设输出冒充模型已能正确判定数值。
+    paper = (
+        "本文采用稳态M/M/1模型，假设泊松到达、指数服务、单服务台、先到先服务，"
+        "无容量限制且无顾客放弃，到达率为6人/小时，服务率为10人/小时。\n"
+        "排队等待时间Wq为9分钟，队列人数Lq为0.9人。"
+        "含服务时间的系统逗留时间W为15分钟，系统人数L为1.5人。"
+    )
+    sentences = split_sentences(paper)
+    llm = ScriptedLLM(flagged=[2])
+    make_service(llm).review_paper(paper, "排队指标比较", TEST_PROVIDER)
+
+    assert set(llm.dimension_prompts()) == set(RUBRIC_POINTS)
+    for prompt in llm.dimension_prompts().values():
+        assert QUANTITATIVE_REVIEW_RULES in prompt
+        assert prompt.endswith(numbered_text(sentences))
+    (annotation_prompt,) = llm.annotation_prompts()
+    assert QUANTITATIVE_REVIEW_RULES in annotation_prompt
+    assert numbered_text(sentences) in annotation_prompt
+    targets = annotation_prompt.rsplit("句子：\n", 1)[1]
+    assert targets == numbered_text([s for s in sentences if s.paragraph == 2])
+    assert "P1S1" not in targets
 
 
 # ====================== 条件下钻 ======================
